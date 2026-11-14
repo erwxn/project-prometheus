@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     name: Lint, Secret Scanning & Build
@@ -18,7 +21,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'npm'
 
       - name: Install Monorepo Dependencies
@@ -32,6 +35,12 @@ jobs:
 
       - name: Run Secretlint (Security Scan)
         run: npm run lint:secrets
+
+      - name: Run Client Lint
+        run: npm --prefix client run lint
+
+      - name: Run Regression Tests
+        run: node --test client/tests/*.test.mjs server/*.test.js
 
       - name: Build Frontend Client (Typecheck & Vite)
         run: npm run build

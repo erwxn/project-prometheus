@@ -9,7 +9,7 @@ export interface FireFeature {
   };
   properties: {
     satellite: string;
-    raw_frp: number;
+    raw_frp: number | null;
     normalized_frp: number | null;
     platform?: string;
     observed_at_utc?: string;
@@ -713,5 +713,5 @@ export const FALLBACK_FIRES = [...MOCK_FALLBACK, ...MOROCCO_DEMO];
 // Raw sensor views use measured FRP; harmonized estimates use normalized FRP.
 export function getDisplayFRP(feature: FireFeature): number {
   return feature.properties.satellite.toLowerCase().includes('harmonized')
-    ? feature.properties.normalized_frp ?? 0 : feature.properties.raw_frp;
+    ? feature.properties.normalized_frp ?? 0 : feature.properties.raw_frp ?? 0;
 }

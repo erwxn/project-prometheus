@@ -7,6 +7,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { MINUTE, STEP_MINUTES, observationTime, defaultWindowStart, fileWindow, matchesDataset, matchesTime, nextDetectionMinute, type TimeBasis } from './timeline';
 import { API_BASE, FALLBACK_FIRES, getDisplayFRP, type FireFeature } from './fire-data';
 import { SiteBrand, SiteNavigation } from './SiteHeader';
+import { watchServerDataset, datasetLabel, type ServerDataset } from './server-dataset';
 import { FireObservations } from './FireObservations';
 import { CountrySearch } from './CountrySearch';
 import type { Country } from './country-bounds';
@@ -118,7 +119,7 @@ export default function App() {
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
   const [uploadMessage, setUploadMessage] = useState('');
   const [allFires, setAllFires] = useState<FireFeature[]>(FALLBACK_FIRES);
-  const [dataMeta, setDataMeta] = useState<{ source: string; source_name?: string; observed_from?: string; observed_to?: string; solar_time_basis?: string; local_solar_dates?: string[]; rejected_rows?: number; uploaded?: boolean }>({ source: 'demo' });
+  const [dataMeta, setDataMeta] = useState<NonNullable<ServerDataset['metadata']>>({ source: 'demo' });
   const [reloadData, setReloadData] = useState(0);
   const [mapReady, setMapReady] = useState(false);
   const [timeScope, setTimeScope] = useState<'day' | 'file'>('day');
@@ -170,36 +171,27 @@ export default function App() {
     setMapProjection(projection);
   };
 
-  // Retry transient API failures instead of leaving a stale demo session indefinitely.
+  // Shared feeds refresh without resetting the user's filters or temporary CSV session.
   useEffect(() => {
     const revision = datasetRevision.current;
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 12000);
-    let active = true;
-    const tryFetch = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/api/v1/fires`, { signal: controller.signal, cache: 'no-store' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        if (!Array.isArray(data.features) || !data.features.length) throw new Error('No observations returned');
-        if (!active || revision !== datasetRevision.current) return;
-        setAllFires(data.features);
-        setDataMeta(data.metadata || { source: 'demo' });
-        setTimeBasis('utc'); setTimeScope('day');
-        setWindowStartOverride(null);
-        setCursorMinute(1440);
-        setSelectedSatellite('ALL');
-        setIsPlaying(false);
-        setAllHoursMode(true);
-        setBackendStatus('online');
-      } catch {
-        if (active && revision === datasetRevision.current) setBackendStatus('fallback');
-      } finally {
-        window.clearTimeout(timeout);
+    let loaded = false;
+    let version: string | undefined;
+    return watchServerDataset(data => {
+      if (revision !== datasetRevision.current) return;
+      if (!loaded || !data.metadata?.version || version !== data.metadata.version) setAllFires(data.features);
+      setDataMeta(data.metadata || { source: 'demo' });
+      version = data.metadata?.version;
+      if (!loaded) {
+        setTimeBasis('utc'); setTimeScope('day'); setWindowStartOverride(null);
+        setCursorMinute(1440); setSelectedSatellite('ALL'); setIsPlaying(false); setAllHoursMode(true);
       }
-    };
-    void tryFetch();
-    return () => { active = false; controller.abort(); window.clearTimeout(timeout); };
+      loaded = true;
+      setBackendStatus('online');
+    }, () => {
+      if (revision !== datasetRevision.current) return;
+      if (loaded) setDataMeta(previous => ({ ...previous, feed_status: 'stale' }));
+      else setBackendStatus('fallback');
+    });
   }, [reloadData]);
 
   useEffect(() => {
@@ -347,7 +339,7 @@ export default function App() {
             <span style="background: rgba(255,255,255,0.1); padding: 1px 6px; border-radius: 4px; font-size: 10px; color: #cbd5e1;">${p.confidence_percent !== undefined ? `${p.confidence_percent}% detection confidence` : p.confidence.toUpperCase()}</span>
           </div>
           <div><b>Normalized FRP:</b> <span style="color: #f87171; font-weight: 600;">${p.normalized_frp === null ? 'Not available' : `${p.normalized_frp.toFixed(1)} MW`}</span></div>
-          <div><b>Raw Sensor FRP:</b> <span style="color: #94a3b8;">${p.raw_frp.toFixed(1)} MW</span></div>
+          <div><b>Raw Sensor FRP:</b> <span style="color: #94a3b8;">${p.raw_frp === null ? 'Not available' : `${p.raw_frp.toFixed(1)} MW`}</span></div>
           <div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.1);">
             <div><b>Local Solar Time:</b> ${p.local_solar_time} LST</div>
             <div><b>UTC Overpass:</b> ${p.observed_at_utc || p.acq_time_utc}</div><div><b>Platform:</b> ${p.platform || p.satellite}</div>
@@ -441,8 +433,8 @@ export default function App() {
             <p>Explore fire activity across the diurnal cycle. Compare satellite observations and harmonized estimates.</p>
             <div className={`data-status ${backendStatus}`} role="status">
               <span className="status-dot" />
-              {backendStatus === 'online' ? dataMeta.source === 'csv' ? 'Imported MODIS CSV' : 'Demo API connected' : backendStatus === 'checking' ? 'Connecting to data source' : 'API unavailable · demo data shown'}
-              <span className="status-label">{backendStatus === 'online' ? dataMeta.source === 'csv' ? 'CSV' : 'DEMO' : backendStatus === 'checking' ? 'WAIT' : 'SAMPLE'}</span>
+              {backendStatus === 'online' ? dataMeta.source === 'harmonized' ? datasetLabel({ features: allFires, metadata: dataMeta }) : dataMeta.source === 'csv' ? 'Imported MODIS CSV' : 'Demo API connected' : backendStatus === 'checking' ? 'Connecting to data source' : 'API unavailable · demo data shown'}
+              <span className="status-label">{backendStatus === 'online' ? dataMeta.source === 'harmonized' ? 'FEED' : dataMeta.source === 'csv' ? 'CSV' : 'DEMO' : backendStatus === 'checking' ? 'WAIT' : 'SAMPLE'}</span>
             </div>
             {backendStatus === 'fallback' && <button className="retry-data" onClick={() => { setBackendStatus('checking'); setReloadData(value => value + 1); }}>Retry real data</button>}
           </div>
@@ -456,12 +448,12 @@ export default function App() {
             <p id="upload-feedback" className={`upload-feedback ${uploadStatus}`} role={uploadStatus === 'error' ? 'alert' : 'status'}>{uploadMessage || 'Up to 50,000 raw MODIS detections. No predictions are generated.'}</p>
             {dataMeta.uploaded && <button className="retry-data" disabled={uploadStatus === 'uploading'} onClick={restoreServerData}>Restore server dataset</button>}
           </section>}
-          {dataMeta.source === 'csv' && <section className="panel-section imported-data" aria-label="Imported observation dataset">
-            <h3>{dataMeta.uploaded ? 'Uploaded MODIS snapshot' : 'Imported MODIS snapshot'}</h3>
+          {['csv', 'harmonized'].includes(dataMeta.source) && <section className="panel-section imported-data" aria-label="Imported observation dataset">
+            <h3>{dataMeta.source === 'harmonized' ? 'Harmonized dataset' : dataMeta.uploaded ? 'Uploaded MODIS snapshot' : 'Imported MODIS snapshot'}</h3>
             <p className="dataset-filename">{dataMeta.source_name}</p>
             <p>{dataMeta.observed_from?.slice(0, 10)} to {dataMeta.observed_to?.slice(0, 10)} (UTC)</p>
-            <p>{allFires.length.toLocaleString()} detections · Measured FRP only</p>
-            <p>{timeBasis === 'utc' ? 'UTC uses original acquisition timestamps to show simultaneous observations worldwide.' : 'Solar clocks align local times across locations, not simultaneous observations (UTC + longitude ÷ 15).' } This is an imported snapshot, not a live feed.</p>
+            <p>{allFires.length.toLocaleString()} detections · {dataMeta.source === 'harmonized' ? 'Estimated harmonized FRP' : 'Measured FRP only'}</p>
+            <p>{timeBasis === 'utc' ? 'UTC uses original acquisition timestamps to show simultaneous observations worldwide.' : 'Solar clocks align local times across locations, not simultaneous observations (UTC + longitude ÷ 15).' } {dataMeta.source === 'harmonized' ? 'Published team snapshot; checks for updates automatically.' : 'This is an imported snapshot, not a live feed.'}</p>
             {timeScope === 'day' && <><label htmlFor="window-start">24-hour window starts ({timeBasis === 'utc' ? 'UTC' : 'local solar clock'})</label>
             <input id="window-start" type="datetime-local" step="60" required value={new Date(windowStart).toISOString().slice(0, 16)} onChange={e => {
               const start = Date.parse(`${e.target.value}:00Z`);
@@ -535,7 +527,7 @@ export default function App() {
             <p>Observation point, not a fire perimeter.</p>
           </section>}
           <div className="thermal-legend" hidden={!!activeFire} aria-label="Fire radiative power color scale">
-            <p className="marker-key"><span className="fire-dot" aria-hidden="true" /> {dataMeta.source === 'csv' ? 'MODIS detection' : 'Sample fire observation'}</p><div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Points are not fire size.</p>
+            <p className="marker-key"><span className="fire-dot" aria-hidden="true" /> {dataMeta.source === 'harmonized' ? 'Harmonized estimate' : dataMeta.source === 'csv' ? 'MODIS detection' : 'Sample fire observation'}</p><div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Points are not fire size.</p>
           </div>
 
           <div className="map-bottom-controls">

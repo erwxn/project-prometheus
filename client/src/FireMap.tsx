@@ -1,8 +1,7 @@
-import { countryBoundaries } from './country-filter';
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import Map, { NavigationControl, useControl, type MapRef } from 'react-map-gl/maplibre';
 import { MapLibreOverlay, type MapLibreOverlayProps } from '@deck.gl/maplibre';
-import { ScatterplotLayer, GeoJsonLayer } from '@deck.gl/layers';
+import { ScatterplotLayer } from '@deck.gl/layers';
 import { TerraDraw, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode, type GeoJSONStoreFeatures } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import mapLib from './maplibre';
@@ -141,7 +140,6 @@ export function FireMap({ trackArchive = true, mapRef, features, theme, projecti
 
   const layers = useMemo(() => {
     const layers = [];
-    if (state.filters.country && countryBoundaries[state.filters.country]) layers.push(new GeoJsonLayer({id:'country-boundary',data:countryBoundaries[state.filters.country],filled:false,stroked:true,getLineColor:[105,203,224,230],getLineWidth:2,lineWidthUnits:'pixels',pickable:false}));
     layers.push(new ScatterplotLayer<FireFeature>({
       id: 'fire-observations', data: features, getPosition: d => d.geometry.coordinates,
       radiusUnits: 'pixels', getRadius: 4,
@@ -154,7 +152,7 @@ export function FireMap({ trackArchive = true, mapRef, features, theme, projecti
       getLineColor: theme === 'light' ? [38, 52, 60, 255] : [255, 255, 255, 255], lineWidthMinPixels: 2, pickable: false,
     }));
     return layers;
-  }, [features, selectedFeature, theme, mode, state.filters.country]);
+  }, [features, selectedFeature, theme, mode]);
 
   const tooltip = useCallback((info: { object?: unknown }) => {
     if (!info.object) return null;

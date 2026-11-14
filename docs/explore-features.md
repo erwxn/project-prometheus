@@ -6,7 +6,7 @@
 
 ## Country filters
 
-The pinned Natural Earth 1:50m boundary dataset is in `shared/countries.json`; provenance is in `shared/README.md`. Explore search applies the country code, draws its outline, and moves the camera. Browser predicates and server archive queries use the same geometry, retaining multipolygons and holes. A custom region intersects the country filter. Clear region removes both; Reset Filters clears the country too. Analyze and Monitor display a clear-country action for a selection carried over from Explore. Country boundaries are cartographic, not exact legal or operational boundaries.
+The pinned Natural Earth 1:50m boundary dataset is in `shared/countries.json`; provenance is in `shared/README.md`. Explore search applies the country filter and moves the camera without drawing a country outline. Browser predicates and server archive queries use the same geometry, retaining multipolygons and holes. A custom region intersects the country filter. Clear region removes both; Reset Filters clears the country too. Analyze and Monitor display a clear-country action for a selection carried over from Explore. Country boundaries are cartographic, not exact legal or operational boundaries.
 
 ## Detection details
 

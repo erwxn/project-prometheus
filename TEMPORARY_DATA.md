@@ -1,6 +1,7 @@
 # Temporary Vis data ingestion
 
-The original ZIP files in `C:/Users/aouam/Downloads/Vis data/` remain untouched.
+The shared ZIP files are in `test-data/vis-data/`. Import them once after pulling
+the repository; starting the web app alone does not import the archives.
 The local index is stored in Git-ignored `server/data/vis-test.sqlite`; its audit
 report is `server/data/vis-test-report.json`. Neither is deployed or committed.
 
@@ -27,9 +28,14 @@ can use **Full filtered file** to show the whole loaded month instead of 24 hour
 Rebuild (stop the API server first if replacing an existing index):
 
 ```powershell
-npm run test-data:ingest -- "C:/Users/aouam/Downloads/Vis data"
+npm run test-data:ingest -- test-data/vis-data
 npm run server:dev
 ```
+
+Restart an already running API after importing: it discovers the index only at
+startup. Check `http://localhost:5000/api/v1/fires/test/catalog`; it should return
+`temporary: true` and a nonzero `total`. A 404 indicates an older API process;
+`temporary: false` means the running process has not loaded the index.
 
 To remove the temporary data later, stop the API server, then run:
 

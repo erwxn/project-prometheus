@@ -6,6 +6,19 @@ const names:Record<string,string>={Terra:'MODIS — Terra',Aqua:'MODIS — Aqua'
 export function TemporaryDataPicker(){
  const {archive,state,selected}=useDashboard();const c=archive.catalog;
  const [draft,setDraft]=useState<ArchiveSelection|null>(null),[error,setError]=useState('');
+ const [exporting,setExporting]=useState(false),[exportMessage,setExportMessage]=useState('');
+ const exportPdf=async()=>{
+  if(!archive.data)return;
+  setExporting(true);setExportMessage('Preparing archive PDF...');
+  try {
+   const {archivePdf}=await import('./archive-pdf');
+   const pdf=archivePdf(archive.data,archive.comparison,{platform:archive.platform,startDate:state.filters.startDate,endDate:state.filters.endDate,area:state.filters.area});
+   const url=URL.createObjectURL(pdf.output('blob'));
+   const link=document.createElement('a');link.href=url;link.download='prometheus-archive-report.pdf';document.body.appendChild(link);link.click();link.remove();
+   window.setTimeout(()=>URL.revokeObjectURL(url),60000);setExportMessage('Archive PDF download started.');
+  } catch {setExportMessage('Could not create the archive PDF. Please try again.');}
+  finally {setExporting(false);}
+ };
  const key=`${state.collection.metadata.archive_platform}|${state.filters.startDate}|${state.filters.endDate}`;
  const [previousKey,setPreviousKey]=useState('');
  const draftKey=`${key}|${archive.active}|${c?.total}`;
@@ -30,7 +43,8 @@ export function TemporaryDataPicker(){
  <p>{archive.busy?'Calculating the entire selection…':totals?`${totals.count.toLocaleString()} indexed matches · ${archive.data!.daily.length} observed active days · mean FRP ${totals.frpCount?(totals.frpSum/totals.frpCount).toFixed(2)+' MW':'unavailable'} (${totals.frpCount.toLocaleString()} readings)`:'No aggregate result available.'}</p>
  <p>{totals?.first?`Recorded observation bounds: ${totals.first.slice(0,10)} – ${totals.last?.slice(0,10)}. These are not coverage guarantees.`:archive.busy?'Recorded observation bounds pending.':'No recorded observations in the selected scope.'}</p>
  <p>{archive.mapBusy?'Loading map observations…':`${state.collection.features.length.toLocaleString()} loaded map records · ${selected.length.toLocaleString()} displayed by shared filters · ${archive.mapInfo.total.toLocaleString()} map matches in the current viewport/day.`} Statistics use the entire applied selection, independently of map pagination. Explorer playback uses loaded points only.</p>
- <div className="control-actions"><button disabled={!archive.data||archive.busy} onClick={()=>{const blob=new Blob([JSON.stringify({scope:'entire applied archive selection',filters:{platform:archive.platform,...state.filters},coverage:'unknown',summary:archive.data,comparison:archive.comparison},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='prometheus-archive-aggregates.json';link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);}}>Export aggregate results</button><button disabled={!archive.cursor||archive.mapBusy} onClick={()=>archive.setCursor(Math.max(0,archive.cursor-10000))}>Previous map page</button><button disabled={archive.mapInfo.nextCursor===null||archive.mapBusy} onClick={()=>archive.setCursor(archive.mapInfo.nextCursor!)}>Next map page</button></div>
+ <div className="control-actions"><button disabled={!archive.data||archive.busy||exporting} onClick={()=>void exportPdf()}>{exporting?'Preparing PDF...':'Export aggregate PDF'}</button><button disabled={!archive.cursor||archive.mapBusy} onClick={()=>archive.setCursor(Math.max(0,archive.cursor-10000))}>Previous map page</button><button disabled={archive.mapInfo.nextCursor===null||archive.mapBusy} onClick={()=>archive.setCursor(archive.mapInfo.nextCursor!)}>Next map page</button></div>
+ {exportMessage&&<p role="status">{exportMessage}</p>}
  </div>}
  <small>No harmonized predictions or complete-coverage guarantees are supplied. Missing records are not zero activity.</small>
  </section>;

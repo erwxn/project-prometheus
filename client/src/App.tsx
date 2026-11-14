@@ -1,3 +1,5 @@
+import { MapLoading } from './MapLoading';
+import { mapFeedback } from './map-feedback';
 import { archivePeriod, explorerDatasetKey } from './explorer-period';
 import { MapAppearance } from './MapAppearance';
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -181,6 +183,7 @@ export default function App() {
     } finally { setExporting(false); }
   };
 
+  const mapState = mapFeedback(state.status === 'loading' || archive.mapBusy, archive.active ? archive.error : state.error, filteredFires.length);
   const compactTimeline = timelineSize === 'compact';
   const timelineTime = allHoursMode ? (timeScope === 'file' ? (archive.active ? 'Selected period' : 'Entire file') : 'Selected 24 hours') : clockFormat.format(cursorTime);
   const timelineSources = [{ id: 'ALL', label: 'All' }, { id: 'MODIS', label: 'MODIS' }, { id: 'VIIRS', label: 'VIIRS' }, { id: 'Harmonized', label: 'AI Harmonized' }] as const;
@@ -263,7 +266,9 @@ export default function App() {
 
         <section className="map-stage" data-projection={mapProjection} aria-label="Interactive fire observation map">
           {mapProjection === 'globe' && <img className="orbital-stars" src={orbitalStars} alt="" aria-hidden="true" draggable={false} />}
-          {filteredFires.length === 0 && drawMode === 'static' && <div className="map-empty" role="status"><strong>{!archive.mapBusy && selectedSatellite !== 'ALL' && !availableSensors(state.collection).includes(selectedSatellite) ? 'Selected sensor is unavailable in this slice' : 'No matching detections in this dataset'}</strong><span>This does not mean there were no fires. Try another dataset, time window, or Next detection.</span><button onClick={() => { showWholeWindow(); }}>{timeScope === 'file' ? 'View entire file' : 'View all selected 24 hours'}</button></div>}
+          {mapState === 'loading' && <MapLoading />}
+          {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry archive in the filters to try again.</p>}
+          {mapState === 'empty' && drawMode === 'static' && <div className="map-empty" role="status"><strong>{!archive.mapBusy && selectedSatellite !== 'ALL' && !availableSensors(state.collection).includes(selectedSatellite) ? 'Selected sensor is unavailable in this slice' : 'No matching detections in this dataset'}</strong><span>This does not mean there were no fires. Try another dataset, time window, or Next detection.</span><button onClick={() => { showWholeWindow(); }}>{timeScope === 'file' ? 'View entire file' : 'View all selected 24 hours'}</button></div>}
           <FireMap mapRef={mapRef} features={filteredFires} selectedFeature={activeFire} onSelectFeature={feature => { setSelectedFire(feature); setIsPlaying(false); }} theme={mapTheme} projection={mapProjection} mode={drawMode} onModeChange={changeDrawMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
           <div className="map-top-controls">
             <div className="map-heading"><h2>{state.filters.area ? 'Selected area' : activeRegion === 'Global' ? 'Global fire activity' : activeRegion} <span>/ {mapProjection === 'globe' ? 'Globe' : 'Flat map'}</span></h2><span className="mobile-data-status">{dataMeta.source === 'simulated' ? 'SIMULATED HISTORY' : backendStatus === 'online' ? 'BACKEND CONNECTED' : backendStatus === 'checking' ? 'CONNECTING' : 'DEMO DATASET'}</span></div>

@@ -1,3 +1,5 @@
+import { MapLoading } from './MapLoading';
+import { mapFeedback } from './map-feedback';
 import { MapAppearance } from './MapAppearance';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl/maplibre';
@@ -86,6 +88,7 @@ export default function AnalyticsPage() {
   },[archive.active,archive.data,localStats,state.filters.selectedDay,basis,summary]);
   const clock = basis === 'utc' ? 'UTC' : 'local mean solar time';
   const loading = state.status === 'loading' || archive.busy || (archive.active && !archive.data);
+  const mapState = mapFeedback(state.status === 'loading' || archive.mapBusy, archive.active ? archive.error : state.error, features.length);
   const changeMode = (next: DrawMode) => { if (next !== 'static') setProjection('mercator'); setMode(next); };
   useEffect(() => {
     if (!mapReady || archive.active) return;
@@ -109,7 +112,9 @@ export default function AnalyticsPage() {
           <FireMap mapRef={mapRef} features={features} theme={theme} projection={projection} mode={mode} onModeChange={changeMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
           <div className="map-top-controls"><div className="map-heading"><h2>{state.filters.area ? 'Selected area' : 'All locations'} <span>/ {whole.format(features.length)} detections</span></h2></div><CountrySearch onSelect={([, , bounds]) => { if (!mapRef.current) return false; mapRef.current.fitBounds(bounds, { padding: 75, pitch: 0, maxZoom: 9 }); return true; }} /><div className="projection-switch" role="group" aria-label="Map projection"><button aria-pressed={projection === 'mercator'} onClick={() => { setMode('static'); setProjection('mercator'); }}>Flat map</button><button aria-pressed={projection === 'globe'} onClick={() => { setMode('static'); setProjection('globe'); }}>3D globe</button></div></div>
           {mode !== 'static' && <p className="map-drawing-status" role="status">{mode === 'select' ? 'Editing selected area' : `Drawing ${mode}`} · Finish or cancel in the area controls</p>}
-          {!features.length && mode === 'static' && <p className="analytics-map-empty" role="status">No matching detections in the loaded snapshot. This does not establish an absence of fires.</p>}
+          {mapState === 'loading' && <MapLoading />}
+          {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry archive in the filters to try again.</p>}
+          {mapState === 'empty' && mode === 'static' && <p className="analytics-map-empty" role="status">No matching detections in the loaded snapshot. This does not establish an absence of fires.</p>}
           <div className="map-activity-caption">{state.collection.metadata.source === 'simulated' ? 'SIMULATED' : state.collection.metadata.source === 'csv' ? 'IMPORTED SNAPSHOT' : 'ILLUSTRATIVE DEMO'} · {state.filters.sensor} · Points show detections, not fire perimeters</div>
         </section>
         <aside className="analytics-area-panel" aria-label="Geographic area selection"><AreaControls mapRef={mapRef} mode={mode} onModeChange={changeMode} error={drawingError} onError={setDrawingError} /></aside>

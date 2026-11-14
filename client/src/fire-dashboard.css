@@ -210,3 +210,10 @@
 .temporary-data-picker h2 { margin:0 0 8px; font-size:22px; }
 .year-toggles { max-height:180px; overflow:auto; }
 @media(max-width:600px) { .archive-toolbar label { flex-basis:45%; } .archive-toolbar button { flex:1; } }
+
+.map-loading { position: absolute; z-index: 5; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 14px; width: min(380px, calc(100% - 32px)); padding: 20px; border-radius: 6px; background: var(--map-tool); color: var(--map-tool-text); box-shadow: 0 8px 28px #10253430; pointer-events: none; }
+.map-loading strong { display: block; font-size: 14px; line-height: 1.5; font-weight: 600; }
+.map-loading span:not(.map-loading-spinner) { display: block; margin-top: 5px; color: var(--map-tool-muted); font-size: 12px; line-height: 1.65; }
+.map-loading-spinner { flex: 0 0 24px; width: 24px; height: 24px; border: 2px solid var(--map-tool-rule); border-top-color: var(--map-tool-text); border-radius: 50%; animation: map-loading-turn 1s linear infinite; }
+@keyframes map-loading-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .map-loading-spinner { animation: none; } }

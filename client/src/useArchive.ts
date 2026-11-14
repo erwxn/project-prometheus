@@ -1,3 +1,4 @@
+import {readArchiveResponse} from './archive-api';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import type {Dispatch} from 'react';
 import {API_BASE} from './fire-data';
@@ -30,13 +31,13 @@ export function useArchive(state:DashboardState,dispatch:Dispatch<DashboardActio
  // Loading state synchronizes with the external archive request.
  // eslint-disable-next-line react/set-state-in-effect
  useEffect(()=>{if(!active)return;const c=new AbortController(),rev=++revision.current;setBusy(true);setData(null);setComparison(null);setError('');
- const post=async(kind:string,body:unknown)=>{const r=await fetch(`${API_BASE}/api/v1/fires/archive/${kind}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:c.signal});const d=await r.json();if(!r.ok)throw Error(d.error||'Archive query failed.');return d as ArchiveSummary;};
+ const post=async(kind:string,body:unknown)=>{const r=await fetch(`${API_BASE}/api/v1/fires/archive/${kind}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:c.signal});return readArchiveResponse<ArchiveSummary>(r);};
  Promise.all([post('summary',query),platform==='ALL'||!comparisonYears.length?Promise.resolve(null):post('comparison',{...query,years:comparisonYears})]).then(([summary,history])=>{if(rev===revision.current){setData(summary);setComparison(history);}}).catch(e=>{if(!c.signal.aborted&&rev===revision.current){setData(null);setComparison(null);setError(e.message);}}).finally(()=>{if(rev===revision.current)setBusy(false);});return()=>c.abort();
  },[active,query,comparisonYears,platform,applyRevision]);
  // Loading state synchronizes with the external archive request.
  // eslint-disable-next-line react/set-state-in-effect
  useEffect(()=>{if(!active)return;const c=new AbortController(),rev=++mapRevision.current;setMapBusy(true);const timer=window.setTimeout(()=>{
- fetch(`${API_BASE}/api/v1/fires/archive/observations`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...query,viewport,cursor,selectedDay:state.filters.selectedDay}),signal:c.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||'Map query failed.');return d as ArchiveMap;}).then(d=>{if(rev===mapRevision.current){dispatch({type:'archive-map',collection:d});setMapInfo({total:d.total,nextCursor:d.nextCursor,cursor});}}).catch(e=>{if(!c.signal.aborted&&rev===mapRevision.current)setError(e.message);}).finally(()=>{if(rev===mapRevision.current)setMapBusy(false);});},250);return()=>{clearTimeout(timer);c.abort();};
+ fetch(`${API_BASE}/api/v1/fires/archive/observations`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...query,viewport,cursor,selectedDay:state.filters.selectedDay}),signal:c.signal}).then(r=>readArchiveResponse<ArchiveMap>(r)).then(d=>{if(rev===mapRevision.current){dispatch({type:'archive-map',collection:d});setMapInfo({total:d.total,nextCursor:d.nextCursor,cursor});}}).catch(e=>{if(!c.signal.aborted&&rev===mapRevision.current)setError(e.message);}).finally(()=>{if(rev===mapRevision.current)setMapBusy(false);});},250);return()=>{clearTimeout(timer);c.abort();};
  },[active,query,viewport,cursor,state.filters.selectedDay,dispatch,applyRevision]);
  const updateViewport=useCallback((bounds:number[])=>{setViewport(old=>JSON.stringify(old)===JSON.stringify(bounds)?old:bounds);setCursor(0);},[]);
  const changeYear=useCallback((year:string)=>{if(!catalog)return;apply({...archiveDefaults(catalog,platform),platform,year,startDate:`${year}-01-01`,endDate:`${year}-12-31`});},[catalog,platform,apply]);

@@ -12,6 +12,18 @@ function useDashboardValue() {
   const saveCamera = useCallback((value: NonNullable<typeof camera.current>) => { camera.current = value; }, []);
   const [requests] = useState(() => new DatasetRequests());
   const archive = useArchive(state, dispatch, requests);
+  const [calendarFocus, setCalendarFocus] = useState(false);
+  const openCalendar = useCallback((range: { startDate: string; endDate: string }, platform: string | null,
+    collection: ReturnType<typeof parseCollection> | null, sensor: DashboardState['filters']['sensor']) => {
+    requests.cancel();
+    if (platform) archive.apply({ ...range, platform, year: range.endDate.slice(0, 4), month: 'ALL' });
+    else if (collection) dispatch({ type: 'loaded', collection, remember: false });
+    else return;
+    dispatch({ type: 'filters', patch: { ...range, metric: 'detections', selectedDay: null, ...(platform ? {} : { sensor }) } });
+    setCalendarFocus(true);
+    window.history.pushState({}, '', '/analytics/');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, [archive.apply, requests]);
   const retry = useCallback(async () => {
     const request = requests.begin();
     dispatch({ type: 'upload', status: 'idle', message: '' });
@@ -84,7 +96,7 @@ function useDashboardValue() {
     const peak=values.length?Math.max(...values):null;
     return {count,activeDays:days.length,meanFrp:frpCount?frpSum/frpCount:null,frpCount,maxFrp:frpCount?Math.max(...days.filter(d=>d.maxFrp!==null).map(d=>d.maxFrp!)):null,peak,peakDays:days.filter(d=>peak!==null&&(state.filters.metric==='detections'?d.count:d.frpCount?d.frpSum/d.frpCount:null)===peak).map(d=>d.date)};
   },[archive.active,archive.data,localSummary,selectedDay,state.filters.metric]);
-  return { saveCamera, camera, archive, state, dispatch, retry, uploadCsv, showSimulatedHistory, returnToLoaded, loadTemporary, prepared, scope, index, selected, summary };
+  return { saveCamera, camera, archive, state, dispatch, retry, uploadCsv, showSimulatedHistory, returnToLoaded, loadTemporary, prepared, scope, index, selected, summary, calendarFocus, setCalendarFocus, openCalendar };
 }
 
 export type DashboardContextValue = ReturnType<typeof useDashboardValue>;

@@ -234,6 +234,19 @@
 .monitor-freshness { font-size: 12px; line-height: 1.6; margin-bottom: 28px; }
 .monitor-freshness dt { color: var(--muted); margin-top: 14px; }
 .monitor-freshness dd { margin: 3px 0 0; }
+.monitor-detections, .monitor-selected, .monitor-history { margin-block: 20px; padding-block: 12px; border-top: 1px solid var(--border); }
+.monitor-detections summary { min-height: 44px; padding-block: 11px; cursor: pointer; color: var(--accent); }
+.monitor-detection-list, .monitor-history ul { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 8px; }
+.monitor-detection-list { max-height: 280px; overflow: auto; padding: 3px; }
+.monitor-reading, .monitor-history li { display: grid; gap: 4px; font-size: 13px; }
+.monitor-reading span, .monitor-history li span { color: var(--muted); }
+.monitor-selected h2, .monitor-history h2 { margin: 0; font-size: 16px; }
+.monitor-detail-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.monitor-detections button, .monitor-selected button, .monitor-history button { min-height: 44px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px; color: var(--text); background: var(--panel); cursor: pointer; }
+.monitor-detections button { width: 100%; text-align: left; }
+.monitor-detections button[aria-pressed='true'] { border-color: var(--accent); }
+.monitor-page :is(summary, button):focus-visible, #calendar-title:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.monitor-history li { padding-block: 8px; border-bottom: 1px solid var(--border); }
 .monitor-map { position: relative; min-height: 580px; }
 .monitor-page .experience-workspace { min-height: calc(100dvh - 78px); }
 .monitor-playback { position: absolute; z-index: 4; bottom: 40px; left: 20px; right: 20px; padding: 18px; background: var(--map-tool); color: var(--map-tool-text); border-radius: 5px; }

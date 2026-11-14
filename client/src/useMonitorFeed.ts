@@ -18,7 +18,12 @@ export function useMonitorFeed() {
       const timeout = setTimeout(() => controller.abort(), 20000);
       try {
         const next = await loadObservations(API_BASE, controller.signal);
-        if (!stopped) { setCollection(next); setCheckedAt(Date.now()); setError(''); }
+        if (!stopped) {
+          setCollection(previous => next.metadata.feed_status === 'stale'
+            ? (previous ? { ...previous, metadata: { ...previous.metadata, feed_status: 'stale' } } : next) : next);
+          if (next.metadata.feed_status !== 'stale') setCheckedAt(Date.now());
+          setError('');
+        }
       } catch { if (!stopped) setError('Feed update unavailable. The last successful response is retained.'); }
       finally { clearTimeout(timeout); if (!stopped) { setLoading(false); timer = setTimeout(() => void refresh(), 60000); } }
     }

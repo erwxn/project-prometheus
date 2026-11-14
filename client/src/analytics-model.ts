@@ -22,6 +22,7 @@ export interface FireMetadata {
   source: string;
   live?: boolean;
   version?: string;
+  feed_status?: 'current' | 'stale';
   temporary?: boolean;
   archive?: boolean;
   archive_platform?: string;

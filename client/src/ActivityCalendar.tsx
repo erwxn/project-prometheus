@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useDashboard } from './dashboard-context';
 import { activityDay, dateTime, enumerateDates, isoDate, UTC_DAY } from './analytics-engine';
 import { metricLabel, metricUnit } from './analytics-model';
@@ -8,7 +8,16 @@ const months = Array.from({ length: 12 }, (_, month) => new Intl.DateTimeFormat(
 const availabilityLabels = { complete: 'Complete coverage', partial: 'Detections recorded; coverage incomplete or unknown', unknown: 'No records; coverage unknown', unavailable: 'No data available' };
 
 export function ActivityCalendar() {
-  const { state, dispatch, index, archive } = useDashboard();
+  const { state, dispatch, index, archive, calendarFocus, setCalendarFocus } = useDashboard();
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (!calendarFocus) return;
+    const frame = window.requestAnimationFrame(() => {
+      heading.current?.focus();
+      setCalendarFocus(false);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [calendarFocus, setCalendarFocus]);
   const { filters, collection } = state;
   const [view, setView] = useState<'year' | 'month'>('year');
   const [year, setYear] = useState(''), [month, setMonth] = useState('01');
@@ -47,7 +56,7 @@ export function ActivityCalendar() {
   const dayLabel = (day: typeof days[number]) => `${day.date} · ${metricLabel(filters.metric)}: ${day.value === null ? 'unavailable' : `${number.format(day.value)} ${metricUnit(filters.metric)}`} · ${day.count} hotspot detections · ${filters.sensor} · ${availabilityLabels[day.availability]}${day.method ? ` · ${day.method}` : ''}`;
 
   return <section className="dashboard-section activity-calendar" aria-labelledby="calendar-title" aria-busy={archive.busy}>
-    <div className="section-toolbar"><div><span className="section-number">01 / DAILY OBSERVATIONS</span><h2 id="calendar-title">Burning activity calendar</h2><p>Satellite-observed activity by UTC day. Select a day to focus the map and summaries.</p></div>
+    <div className="section-toolbar"><div><span className="section-number">01 / DAILY OBSERVATIONS</span><h2 id="calendar-title" ref={heading} tabIndex={-1}>Burning activity calendar</h2><p>Satellite-observed activity by UTC day. Select a day to focus the map and summaries.</p></div>
       <div className="inline-controls"><label>View<select value={view} onChange={e => setView(e.target.value as typeof view)}><option value="year">Yearly</option><option value="month">Monthly</option></select></label>
         {years.length > 0 && <label>Calendar year<select value={visibleYear} onChange={e => {setYear(e.target.value); if(archive.active) archive.changeYear(e.target.value);}}>{calendarYears.map(year => <option key={year}>{year}</option>)}</select></label>}
         {view === 'month' && <label>Calendar month<select value={month} onChange={e => setMonth(e.target.value)}>{months.map((name, i) => <option key={name} value={String(i + 1).padStart(2, '0')}>{name}</option>)}</select></label>}

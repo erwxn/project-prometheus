@@ -18,3 +18,13 @@ test('empty archive selections generate valid PDFs with an explicit empty result
  const text=Object.values(pdf.internal.pages).flat().join(' ');
  assert.match(text,/No recorded observations match/);assert.match(text,/N\/A/);
 });
+test('archive PDF renders selected trend, historical comparison, calendar, and appendix from aggregates',()=>{
+ const monthly=[...Array(12)].map((_,month)=>({...bucket,date:`2025-${String(month+1).padStart(2,'0')}`,count:(month+1)*10,frpSum:(month+1)*20,frpCount:10,methods:['Aqua/61.03']}));
+ const daily=[{...bucket,date:'2025-01-02',count:12,frpSum:30,frpCount:2,methods:['Aqua/61.03']}];
+ const summary={totals:{...bucket,date:'2025',count:780,frpSum:1560,frpCount:120},monthly,daily,yearly:[{...bucket,date:'2025',count:780,frpSum:1560,frpCount:120}],baselineReason:'Coverage is incomplete.'};
+ const comparison={...summary,monthly:[...monthly,...monthly.map(value=>({...value,date:value.date.replace('2025','2024'),methods:['Aqua/6.1NRT']}))],yearly:[{...bucket,date:'2024',count:600,frpCount:10},{...bucket,date:'2025',count:780,frpCount:10}]};
+ const pdf=archivePdf(summary,comparison,{...query,startDate:'2025-01-01',endDate:'2025-12-31'},{grouping:'yearly',metric:'mean-frp',comparisonYears:[2024,2025],generatedAt:'2026-01-01T00:00:00Z'});
+ const text=Object.values(pdf.internal.pages).flat().join(' ');
+ assert.match(text,/Historical fire activity/);assert.match(text,/Historical year comparison/);assert.match(text,/Burning activity calendar/);assert.match(text,/Detailed aggregate data/);
+ assert.match(text,/Yearly mean frp/);assert.match(text,/grouping: yearly/);assert.match(text,/Processing evidence/);assert.ok(pdf.getNumberOfPages()>=5);
+});

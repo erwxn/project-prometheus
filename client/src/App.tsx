@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Map, { useControl, NavigationControl, type MapRef } from 'react-map-gl/maplibre';
 import mapLib from './maplibre';
 import { MapLibreOverlay, type MapLibreOverlayProps } from '@deck.gl/maplibre';
-import { ScatterplotLayer, ColumnLayer } from '@deck.gl/layers';
+import { ScatterplotLayer } from '@deck.gl/layers';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MINUTE, STEP_MINUTES, observationTime, defaultWindowStart, fileWindow, matchesDataset, matchesTime, nextDetectionMinute, type TimeBasis } from './timeline';
 import { API_BASE, FALLBACK_FIRES, getDisplayFRP, type FireFeature } from './fire-data';
@@ -128,7 +128,6 @@ export default function App() {
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'fallback'>('checking');
   const [allHoursMode, setAllHoursMode] = useState<boolean>(true);
   const [selectedSatellite, setSelectedSatellite] = useState<'ALL' | 'MODIS' | 'VIIRS' | 'Harmonized'>('ALL');
-  const [vizMode, setVizMode] = useState<'hybrid' | 'columns' | 'scatter'>('scatter');
   const [selectedFire, setSelectedFire] = useState<FireFeature | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [showTimeline, setShowTimeline] = useState(true);
@@ -192,7 +191,6 @@ export default function App() {
         setSelectedSatellite('ALL');
         setIsPlaying(false);
         setAllHoursMode(true);
-        if (data.metadata?.source === 'csv') setVizMode('scatter');
         setBackendStatus('online');
       } catch {
         if (active && revision === datasetRevision.current) setBackendStatus('fallback');
@@ -229,7 +227,7 @@ export default function App() {
       if (!data?.features?.length || data.metadata?.source !== 'csv') throw new Error('No valid MODIS detections returned. Check the CSV columns.');
       setAllFires(data.features); setDataMeta(data.metadata); setTimeBasis('utc'); setTimeScope('day');
       setWindowStartOverride(null); setCursorMinute(1440); setSelectedSatellite('ALL');
-      setIsPlaying(false); setAllHoursMode(true); setVizMode('scatter'); setBackendStatus('online');
+      setIsPlaying(false); setAllHoursMode(true); setBackendStatus('online');
       setUploadStatus('done');
       setUploadMessage(`Loaded ${data.features.length.toLocaleString()} detections from ${file.name}.${data.metadata.rejected_rows ? ` ${data.metadata.rejected_rows} invalid rows excluded.` : ''} Showing the file’s latest 24 hours.`);
     } catch (error) {
@@ -307,58 +305,32 @@ export default function App() {
     };
   }, [filteredFires]);
 
-  // Deck.gl WebGL layers
+  // Screen-sized points show location; color carries FRP, not footprint area.
   const layers = useMemo(() => {
-    const activeLayers = [];
+    const activeLayers = [new ScatterplotLayer({
+      id: 'fire-observations',
+      data: filteredFires,
+      getPosition: (d: FireFeature) => d.geometry.coordinates,
+      radiusUnits: 'pixels',
+      getRadius: 4,
+      getFillColor: (d: FireFeature) => getFRPColor(getDisplayFRP(d)),
+      getLineColor: [23, 47, 64, 220],
+      stroked: true,
+      lineWidthMinPixels: 1,
+      radiusMinPixels: 3,
+      radiusMaxPixels: 5,
+      pickable: true
+    })];
 
-    // Screen-sized points show location; color carries FRP, not footprint area.
-    if (vizMode === 'scatter' || vizMode === 'hybrid') {
-      activeLayers.push(
-        new ScatterplotLayer({
-          id: 'fire-observations',
-          data: filteredFires,
-          getPosition: (d: FireFeature) => d.geometry.coordinates,
-          radiusUnits: 'pixels',
-          getRadius: 4,
-          getFillColor: (d: FireFeature) => getFRPColor(getDisplayFRP(d)),
-          getLineColor: [23, 47, 64, 220],
-          stroked: true,
-          lineWidthMinPixels: 1,
-          radiusMinPixels: 3,
-          radiusMaxPixels: 5,
-          pickable: true
-        })
-      );
-    }
-
-    // 3D Extruded Thermal Column Layer
-    if (vizMode === 'columns' || vizMode === 'hybrid') {
-      activeLayers.push(
-        new ColumnLayer({
-          id: 'fire-column-elevation',
-          data: filteredFires,
-          getPosition: (d: FireFeature) => d.geometry.coordinates,
-          getElevation: (d: FireFeature) => getDisplayFRP(d) * 500,
-          radius: dataMeta.source === 'csv' ? 500 : 10000,
-          extruded: true,
-          diskResolution: 8,
-          material: false,
-          getFillColor: (d: FireFeature) => getFRPColor(getDisplayFRP(d)),
-          getLineColor: [255, 200, 100, 200],
-          pickable: true
-        })
-      );
-    }
-
-    if (activeFire) activeLayers.push(new ScatterplotLayer({
+    const selectedLayer = activeFire ? new ScatterplotLayer({
       id: 'selected-observation', data: [activeFire],
       getPosition: (d: FireFeature) => d.geometry.coordinates,
       radiusUnits: 'pixels', getRadius: 10, filled: false, stroked: true,
       getLineColor: mapTheme === 'light' ? [38, 52, 60, 255] : [255, 255, 255, 255],
       lineWidthMinPixels: 2, pickable: false,
-    }));
-    return activeLayers;
-  }, [filteredFires, vizMode, dataMeta.source, mapTheme, activeFire]);
+    }) : null;
+    return selectedLayer ? [...activeLayers, selectedLayer] : activeLayers;
+  }, [filteredFires, mapTheme, activeFire]);
 
   // Hover Tooltip
   const renderTooltip = useCallback((info: { object?: unknown }) => {
@@ -526,14 +498,6 @@ export default function App() {
             </div>
           </section>
 
-          <section className="panel-section" aria-labelledby="render-title">
-            <div className="section-heading"><h3 id="render-title">Visualization</h3></div>
-            <div className="segmented-control" role="group" aria-labelledby="render-title">
-              {([{ id: 'scatter', label: 'Points' }, { id: 'columns', label: 'Columns' }, { id: 'hybrid', label: 'Hybrid 3D' }] as const).map(mode => (
-                <button key={mode.id} className={vizMode === mode.id ? 'selected' : ''} aria-pressed={vizMode === mode.id} onClick={() => setVizMode(mode.id)}>{mode.label}</button>
-              ))}
-            </div>
-          </section>
           <FireObservations fires={filteredFires} timeBasis={timeBasis} selected={activeFire} onSelect={locateFire} onFit={fitHotspots} />
           <div className="panel-footer"><p>One planet. Multiple perspectives.<br /><span>MODIS + VIIRS / Diurnal harmonization</span></p></div>
         </aside>

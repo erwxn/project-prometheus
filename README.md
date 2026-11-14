@@ -248,3 +248,7 @@ between these two pages; refreshing loads the server dataset again.
 
 See [FIRE_ANALYTICS.md](FIRE_ANALYTICS.md) for the architecture, scientific rules,
 dependencies, launch commands, feature walkthrough, limitations, and validation.
+
+## Production harmonized results
+
+The service supports configurable API or private Google Cloud Storage snapshots in CSV, Parquet, or tabular JSON. See [the integration and teammate handoff guide](docs/harmonized-feed.md) for environment settings, column mapping, credentials, local fixtures, validation commands, and cache limitations. The MODIS upload remains a separate temporary testing tool.

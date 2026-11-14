@@ -4,6 +4,9 @@ const path = require('node:path');
 const { gzipSync } = require('node:zlib');
 const { loadModisCsv, parseModisCsv } = require('./modis-csv');
 const testData = require('./test-data').openTestData();
+
+const { feedConfig, createHarmonizedFeed } = require('./harmonized-feed');
+
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -716,13 +719,26 @@ const FIRES_DATASET = [
 ];
 
 // Import once at startup. An explicitly configured bad path fails visibly rather than serving demos.
+const remoteConfig = feedConfig();
+const remoteFeed = remoteConfig ? createHarmonizedFeed(remoteConfig) : null;
 const csvPath = process.env.FIRES_CSV_PATH || path.join(__dirname, 'data', 'modis.csv');
-const imported = process.env.FIRES_CSV_PATH || fs.existsSync(csvPath) ? loadModisCsv(csvPath) : null;
+const imported = !remoteFeed && (process.env.FIRES_CSV_PATH || fs.existsSync(csvPath)) ? loadModisCsv(csvPath) : null;
 const activeData = (testData && testData.collection()) || imported || { type: 'FeatureCollection', metadata: { source: 'demo', source_name: 'Illustrative demo dataset', total_features: FIRES_DATASET.length }, features: FIRES_DATASET };
+
 if (imported) console.log(`Loaded ${imported.features.length} MODIS observations (${imported.metadata.rejected_rows} rejected rows)`);
+// Resolve production snapshots on requests, including on serverless instances.
+app.get(['/api/v1/fires', '/api/v1/fires/diurnal'], async (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    res.locals.fireData = remoteFeed ? await remoteFeed.get() : activeData;
+    next();
+  } catch {
+    res.set('Retry-After', '60').status(503).json({ error: 'Harmonized feed unavailable; retry shortly.', source: 'harmonized' });
+  }
+});
 app.get('/api/v1/fires', (req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json(activeData);
+  res.json(res.locals.fireData);
 });
 
 app.get('/api/v1/fires/test/catalog', (req, res) => res.json(testData ? testData.catalog : {temporary:false,total:0,partitions:[]}));
@@ -781,6 +797,7 @@ app.get('/api/v1/fires/sample', (req, res) => {
 
 // Endpoint: Diurnal Filtered Fire Anomalies (?hour=HH)
 app.get('/api/v1/fires/diurnal', (req, res) => {
+  const activeData = res.locals.fireData;
   const { hour } = req.query;
 
   if (hour !== undefined && hour !== null && hour !== '') {

@@ -7,6 +7,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { MINUTE, STEP_MINUTES, observationTime, defaultWindowStart, fileWindow, matchesDataset, matchesTime, nextDetectionMinute, type TimeBasis } from './timeline';
 import { API_BASE, FALLBACK_FIRES, getDisplayFRP, type FireFeature } from './fire-data';
 import { SiteBrand, SiteNavigation } from './SiteHeader';
+import { FireObservations } from './FireObservations';
 import { CountrySearch } from './CountrySearch';
 import type { Country } from './country-bounds';
 import orbitalStars from './assets/orbital-stars.svg';
@@ -127,7 +128,8 @@ export default function App() {
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'fallback'>('checking');
   const [allHoursMode, setAllHoursMode] = useState<boolean>(true);
   const [selectedSatellite, setSelectedSatellite] = useState<'ALL' | 'MODIS' | 'VIIRS' | 'Harmonized'>('ALL');
-  const [vizMode, setVizMode] = useState<'hybrid' | 'columns' | 'scatter'>('hybrid');
+  const [vizMode, setVizMode] = useState<'hybrid' | 'columns' | 'scatter'>('scatter');
+  const [selectedFire, setSelectedFire] = useState<FireFeature | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [showTimeline, setShowTimeline] = useState(true);
   const [timelineSize, setTimelineSize] = useState('compact');
@@ -257,7 +259,6 @@ export default function App() {
   const hasDates = useMemo(() => allFires.some(fire => !!fire.properties.observed_at_utc), [allFires]);
   const defaultStart = useMemo(() => defaultWindowStart(allFires, timeBasis), [allFires, timeBasis]);
   const timestamps = useMemo(() => new globalThis.Map(allFires.map(fire => [fire, observationTime(fire, timeBasis)])), [allFires, timeBasis]);
-  const rankedFires = useMemo(() => [...allFires].sort((a, b) => getDisplayFRP(b) - getDisplayFRP(a)), [allFires]);
   const fileBounds = useMemo(() => fileWindow(allFires, timeBasis), [allFires, timeBasis]);
   const durationMinutes = timeScope === 'file' ? fileBounds.durationMinutes : 1440;
   const cursorPosition = Math.min(cursorMinute, durationMinutes);
@@ -274,12 +275,7 @@ export default function App() {
   const filteredFires = useMemo(() => datasetFires.filter(fire => matchesTime(timestamps.get(fire) ?? NaN, windowStart, cursorPosition, allHoursMode, durationMinutes)), [datasetFires, timestamps, windowStart, cursorPosition, allHoursMode, durationMinutes]);
   const datasetTimes = useMemo(() => datasetFires.map(fire => timestamps.get(fire) ?? NaN), [datasetFires, timestamps]);
   const nextMinute = useMemo(() => nextDetectionMinute(datasetTimes, windowStart, cursorPosition, durationMinutes), [datasetTimes, windowStart, cursorPosition, durationMinutes]);
-  const topFires = useMemo(() => {
-    const visible = new Set(filteredFires);
-    const top: FireFeature[] = [];
-    for (const fire of rankedFires) { if (visible.has(fire)) top.push(fire); if (top.length === 100) break; }
-    return top;
-  }, [rankedFires, filteredFires]);
+  const activeFire = selectedFire && filteredFires.includes(selectedFire) ? selectedFire : null;
   const switchTimeBasis = (basis: TimeBasis) => {
     setTimeBasis(basis); setWindowStartOverride(null); setAllHoursMode(true); setIsPlaying(false); setCursorMinute(timeScope === 'file' ? fileWindow(allFires, basis).durationMinutes : 1440);
   };
@@ -315,20 +311,21 @@ export default function App() {
   const layers = useMemo(() => {
     const activeLayers = [];
 
-    // 2D/3D Glowing Scatterplot Layer
+    // Screen-sized points show location; color carries FRP, not footprint area.
     if (vizMode === 'scatter' || vizMode === 'hybrid') {
       activeLayers.push(
         new ScatterplotLayer({
-          id: 'fire-scatterplot-glow',
+          id: 'fire-observations',
           data: filteredFires,
           getPosition: (d: FireFeature) => d.geometry.coordinates,
-          getRadius: (d: FireFeature) => dataMeta.source === 'csv' ? 500 : Math.max(12000, getDisplayFRP(d) * 280),
+          radiusUnits: 'pixels',
+          getRadius: 4,
           getFillColor: (d: FireFeature) => getFRPColor(getDisplayFRP(d)),
-          getLineColor: mapTheme === 'light' ? [110, 78, 31, 190] : [255, 255, 255, 160],
+          getLineColor: [23, 47, 64, 220],
           stroked: true,
           lineWidthMinPixels: 1,
-          radiusMinPixels: dataMeta.source === 'csv' ? 4 : 10,
-          radiusMaxPixels: dataMeta.source === 'csv' ? 12 : 80,
+          radiusMinPixels: 3,
+          radiusMaxPixels: 5,
           pickable: true
         })
       );
@@ -353,8 +350,15 @@ export default function App() {
       );
     }
 
+    if (activeFire) activeLayers.push(new ScatterplotLayer({
+      id: 'selected-observation', data: [activeFire],
+      getPosition: (d: FireFeature) => d.geometry.coordinates,
+      radiusUnits: 'pixels', getRadius: 10, filled: false, stroked: true,
+      getLineColor: mapTheme === 'light' ? [38, 52, 60, 255] : [255, 255, 255, 255],
+      lineWidthMinPixels: 2, pickable: false,
+    }));
     return activeLayers;
-  }, [filteredFires, vizMode, dataMeta.source, mapTheme]);
+  }, [filteredFires, vizMode, dataMeta.source, mapTheme, activeFire]);
 
   // Hover Tooltip
   const renderTooltip = useCallback((info: { object?: unknown }) => {
@@ -420,8 +424,13 @@ export default function App() {
   };
 
   const locateFire = (fire: FireFeature) => {
+    setSelectedFire(fire);
+    setIsPlaying(false);
+    if (window.matchMedia('(max-width: 480px)').matches) {
+      mapRef.current?.getContainer().closest('.map-stage')?.scrollIntoView({ block: 'start' });
+    }
     mapRef.current?.flyTo({ center: fire.geometry.coordinates, zoom: 7, pitch: 30,
-      padding: { top: 100, bottom: 260, left: 0, right: 0 },
+      padding: { top: 160, bottom: 200, left: 0, right: Math.min(270, (mapRef.current?.getContainer().clientWidth ?? 600) * .55) },
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 700 });
   };
 
@@ -520,25 +529,12 @@ export default function App() {
           <section className="panel-section" aria-labelledby="render-title">
             <div className="section-heading"><h3 id="render-title">Visualization</h3></div>
             <div className="segmented-control" role="group" aria-labelledby="render-title">
-              {([{ id: 'hybrid', label: 'Hybrid 3D' }, { id: 'columns', label: 'Columns' }, { id: 'scatter', label: 'Scatter' }] as const).map(mode => (
+              {([{ id: 'scatter', label: 'Points' }, { id: 'columns', label: 'Columns' }, { id: 'hybrid', label: 'Hybrid 3D' }] as const).map(mode => (
                 <button key={mode.id} className={vizMode === mode.id ? 'selected' : ''} aria-pressed={vizMode === mode.id} onClick={() => setVizMode(mode.id)}>{mode.label}</button>
               ))}
             </div>
           </section>
-          <section className="panel-section hotspot-section" aria-labelledby="hotspots-title">
-            <div className="section-heading"><h3 id="hotspots-title">Spotted fires</h3><span>{filteredFires.length.toLocaleString()} detections</span></div>
-            <p className="hotspot-hint">Select an observation to find it on the map. Showing up to 100, highest FRP first.</p>
-            <button type="button" className="fit-hotspots" onClick={fitHotspots} disabled={!filteredFires.length}>Fit hotspots</button>
-            <div className="hotspot-list">
-              {topFires.map((fire, index) => {
-                const [lng, lat] = fire.geometry.coordinates;
-                return <button key={`${lng}-${lat}-${fire.properties.local_solar_time}-${index}`} className="hotspot-row" onClick={() => locateFire(fire)} aria-label={`Locate ${fire.properties.satellite} observation at ${lat.toFixed(2)}, ${lng.toFixed(2)}`}>
-                  <span className="fire-dot" aria-hidden="true" /><span><strong>{Math.abs(lat).toFixed(2)}°{lat >= 0 ? 'N' : 'S'}, {Math.abs(lng).toFixed(2)}°{lng >= 0 ? 'E' : 'W'}</strong><small>{fire.properties.platform || fire.properties.satellite} · {timeBasis === 'utc' ? `${fire.properties.observed_at_utc?.slice(0, 10) || ''} ${fire.properties.acq_time_utc} UTC` : `${fire.properties.local_solar_date || ''} ${fire.properties.local_solar_time} solar`}</small></span><span className="fire-power">{getDisplayFRP(fire).toFixed(1)}<small> MW</small></span>
-                </button>;
-              })}
-              {!filteredFires.length && <p className="hotspot-hint">No matching detections in this dataset and time window. Try Next detection or view the full selected range.</p>}
-            </div>
-          </section>
+          <FireObservations fires={filteredFires} timeBasis={timeBasis} selected={activeFire} onSelect={locateFire} onFit={fitHotspots} />
           <div className="panel-footer"><p>One planet. Multiple perspectives.<br /><span>MODIS + VIIRS / Diurnal harmonization</span></p></div>
         </aside>
 
@@ -549,7 +545,7 @@ export default function App() {
             mapStyle={BASEMAP_STYLES.dark} projection={projection} transformStyle={INITIAL_BASEMAP_TRANSFORM} pixelRatio={RENDER_PIXEL_RATIO}
             sky={mapProjection === 'globe' ? ORBITAL_SKY : FLAT_SKY}
             minZoom={-2} renderWorldCopies={false} dragRotate={true} touchPitch={true} touchZoomRotate={true} keyboard={true} pitchWithRotate={true} maxPitch={85}>
-            <DeckGLOverlay useDevicePixels={RENDER_PIXEL_RATIO} interleaved={false} layers={layers} getTooltip={renderTooltip} />
+            <DeckGLOverlay useDevicePixels={RENDER_PIXEL_RATIO} interleaved={false} layers={layers} getTooltip={renderTooltip} onClick={info => { setSelectedFire((info.object as FireFeature | undefined) ?? null); setIsPlaying(false); }} />
             <NavigationControl position="top-right" visualizePitch={true} />
           </Map>
           <div className="map-top-controls">
@@ -567,8 +563,15 @@ export default function App() {
             </div>
           </div>
           <div className="map-help">DRAG TO PAN<span>·</span>RIGHT-DRAG TO ROTATE<span>·</span>SCROLL TO ZOOM</div>
-          <div className="thermal-legend" aria-label="Fire radiative power color scale">
-            <p className="marker-key"><span className="fire-dot" aria-hidden="true" /> {dataMeta.source === 'csv' ? 'MODIS detection' : 'Sample fire observation'}</p><div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div>
+          {activeFire && <section className="observation-detail" aria-label="Selected observation">
+            <div className="observation-detail-heading"><strong>{activeFire.properties.platform || activeFire.properties.satellite}</strong><button type="button" aria-label="Close observation details" onClick={() => setSelectedFire(null)}>Close</button></div>
+            <p>{activeFire.geometry.coordinates[1].toFixed(3)}°, {activeFire.geometry.coordinates[0].toFixed(3)}°</p>
+            <dl><div><dt>{activeFire.properties.satellite.toLowerCase().includes('harmonized') ? 'Estimated FRP' : 'Measured FRP'}</dt><dd>{getDisplayFRP(activeFire).toFixed(1)} MW</dd></div>
+            <div><dt>Acquired UTC</dt><dd>{activeFire.properties.observed_at_utc ? activeFire.properties.observed_at_utc.replace('T', ' ').slice(0, 16) : `${activeFire.properties.acq_time_utc} · Undated demo`}</dd></div></dl>
+            <p>Observation point, not a fire perimeter.</p>
+          </section>}
+          <div className="thermal-legend" hidden={!!activeFire} aria-label="Fire radiative power color scale">
+            <p className="marker-key"><span className="fire-dot" aria-hidden="true" /> {dataMeta.source === 'csv' ? 'MODIS detection' : 'Sample fire observation'}</p><div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Points are not fire size.</p>
           </div>
 
           <div className="map-bottom-controls">

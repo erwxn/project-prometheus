@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import type { MapRef } from 'react-map-gl/maplibre';
 import { MINUTE, STEP_MINUTES, observationTime, defaultWindowStart, fileWindow, matchesTime, nextDetectionMinute, type TimeBasis } from './timeline';
 import { type FireFeature } from './fire-data';
-import { observationFrp, type DrawMode, type SensorFilter } from './analytics-model';
+import { availableSensors, observationFrp, type DrawMode, type SensorFilter } from './analytics-model';
 import { selectRange, dateTime } from './analytics-engine';
 import { areaBounds } from './area-selection';
 import { useDashboard } from './dashboard-context';
@@ -263,7 +263,7 @@ export default function App() {
 
         <section className="map-stage" data-projection={mapProjection} aria-label="Interactive fire observation map">
           {mapProjection === 'globe' && <img className="orbital-stars" src={orbitalStars} alt="" aria-hidden="true" draggable={false} />}
-          {filteredFires.length === 0 && drawMode === 'static' && <div className="map-empty" role="status"><strong>{dataMeta.source === 'csv' && selectedSatellite !== 'ALL' && selectedSatellite !== 'MODIS' ? 'Selected sensor is unavailable in this slice' : 'No matching detections in this dataset'}</strong><span>This does not mean there were no fires. Try another dataset, time window, or Next detection.</span><button onClick={() => { showWholeWindow(); }}>{timeScope === 'file' ? 'View entire file' : 'View all selected 24 hours'}</button></div>}
+          {filteredFires.length === 0 && drawMode === 'static' && <div className="map-empty" role="status"><strong>{!archive.mapBusy && selectedSatellite !== 'ALL' && !availableSensors(state.collection).includes(selectedSatellite) ? 'Selected sensor is unavailable in this slice' : 'No matching detections in this dataset'}</strong><span>This does not mean there were no fires. Try another dataset, time window, or Next detection.</span><button onClick={() => { showWholeWindow(); }}>{timeScope === 'file' ? 'View entire file' : 'View all selected 24 hours'}</button></div>}
           <FireMap mapRef={mapRef} features={filteredFires} selectedFeature={activeFire} onSelectFeature={feature => { setSelectedFire(feature); setIsPlaying(false); }} theme={mapTheme} projection={mapProjection} mode={drawMode} onModeChange={changeDrawMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
           <div className="map-top-controls">
             <div className="map-heading"><h2>{state.filters.area ? 'Selected area' : activeRegion === 'Global' ? 'Global fire activity' : activeRegion} <span>/ {mapProjection === 'globe' ? 'Globe' : 'Flat map'}</span></h2><span className="mobile-data-status">{dataMeta.source === 'simulated' ? 'SIMULATED HISTORY' : backendStatus === 'online' ? 'BACKEND CONNECTED' : backendStatus === 'checking' ? 'CONNECTING' : 'DEMO DATASET'}</span></div>
@@ -288,7 +288,7 @@ export default function App() {
             <p>Observation point, not a fire perimeter.</p>
           </section>}
           <div className="thermal-legend" hidden={!!activeFire} aria-label="Fire radiative power color scale">
-            <p className="marker-key"><span className="fire-dot" aria-hidden="true" /> {dataMeta.source === 'csv' ? 'MODIS detection' : dataMeta.source === 'simulated' ? 'SIMULATED observation' : 'Sample fire observation'}</p><div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Points are not fire size.</p>
+            <p className="marker-key"><span className="fire-dot" aria-hidden="true" /> {dataMeta.source === 'csv' ? `${selectedSatellite === 'ALL' ? 'Satellite' : selectedSatellite} detection` : dataMeta.source === 'simulated' ? 'SIMULATED observation' : 'Sample fire observation'}</p><div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Points are not fire size.</p>
           </div>
 
           <div className="map-bottom-controls">

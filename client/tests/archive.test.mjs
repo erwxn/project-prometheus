@@ -14,3 +14,16 @@ test('archive defaults use real platform years and map paging retains applied fi
  state=dashboardReducer(state,{type:'archive-apply',selection,sensor:'VIIRS',reset:true});assert.equal(state.filters.area,null);assert.equal(state.filters.selectedDay,null);
  state=dashboardReducer(state,{type:'loaded',collection:collection([feature('2025-01-01')],{uploaded:true,source:'csv'}),remember:true});const uploaded=state;state=dashboardReducer(state,{type:'archive-map',collection:collection()});assert.equal(state,uploaded);
 });
+
+test('all VIIRS archive platforms retain their sensor and dated points through map updates', async()=>{
+ const {archiveSensor,archiveFeature}=await import('../src/archive-model.ts');
+ const {prepareObservations,selectScope,selectRange}=await import('../src/analytics-engine.ts');
+ for(const platform of ['SNPP','N20','N21']) {
+  const catalog={partitions:[{platform,sensor:'VIIRS',month:'2026-08',count:1}]};
+  const sensor=archiveSensor(platform,catalog);
+  assert.equal(sensor,'VIIRS');
+  const point=archiveFeature({sensor:'VIIRS',platform,lat:35,lon:-5,date:'2026-08-15',time:'12:00',frp:0,confidence:'n',version:'2',source:'test'});
+  const rows=selectRange(selectScope(prepareObservations([point]),{sensor,area:null}),{startDate:'2026-08-01',endDate:'2026-08-31',selectedDay:null});
+  assert.equal(rows.length,1); assert.equal(rows[0].feature.properties.platform,platform);
+ }
+});

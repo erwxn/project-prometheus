@@ -11,6 +11,7 @@ import { HistoricalActivity } from './HistoricalActivity';
 import { CountrySearch } from './CountrySearch';
 import { areaBounds } from './area-selection';
 import { metricUnit, type DrawMode } from './analytics-model';
+import { archiveFeature } from './archive-model';
 import orbitalStars from './assets/orbital-stars.svg';
 
 const whole = new Intl.NumberFormat();
@@ -63,7 +64,7 @@ function Breakdown({ rows, total }: { rows: { label: string; count: number }[]; 
 }
 
 export default function AnalyticsPage() {
-  const { state, selected, summary } = useDashboard();
+  const { state, selected, summary, archive } = useDashboard();
   const [basis, setBasis] = useState<TimeBasis>('utc');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [projection, setProjection] = useState<'mercator' | 'globe'>('mercator');
@@ -72,19 +73,28 @@ export default function AnalyticsPage() {
   const [mapReady, setMapReady] = useState(false);
   const mapRef = useRef<MapRef>(null);
   const features = useMemo(() => selected.map(row => row.feature), [selected]);
-  const stats = useMemo(() => summarizeObservations(features, 'ALL', '', basis), [features, basis]);
+  const localStats = useMemo(() => summarizeObservations(features, 'ALL', '', basis), [features, basis]);
+  const stats = useMemo(()=>{
+    if(!archive.active)return localStats;
+    if(!archive.data)return summarizeObservations([], 'ALL', '', basis);
+    const days=archive.data.daily.filter(d=>!state.filters.selectedDay||d.date===state.filters.selectedDay);
+    const hours=Array<number>(24).fill(0),bands=[0,0,0],sources:Record<string,number>={};
+    for(const d of days){for(let h=0;h<24;h++)hours[h]+=(basis==='utc'?d.hours:d.solarHours)[h];for(let b=0;b<3;b++)bands[b]+=d.bands[b];for(const [k,v]of Object.entries(d.sources))sources[k]=(sources[k]||0)+v;}
+    const strongest=days.flatMap(d=>d.strongest).sort((a,b)=>b.frp-a.frp).slice(0,8).map(r=>({feature:archiveFeature(r),frp:r.frp,label:r.sensor}));
+    return {...localStats,count:summary.count,timedCount:summary.count,hours,sources:Object.entries(sources).map(([label,count])=>({label,count})),bands:['Below 50 MW','50–150 MW','Above 150 MW'].map((label,i)=>({label,count:bands[i]})),strongest,frpCount:summary.frpCount,meanFrp:summary.meanFrp,peakFrp:summary.maxFrp};
+  },[archive.active,archive.data,localStats,state.filters.selectedDay,basis,summary]);
   const clock = basis === 'utc' ? 'UTC' : 'local mean solar time';
-  const loading = state.status === 'loading';
+  const loading = state.status === 'loading' || archive.busy || (archive.active && !archive.data);
   const changeMode = (next: DrawMode) => { if (next !== 'static') setProjection('mercator'); setMode(next); };
   useEffect(() => {
-    if (!mapReady) return;
+    if (!mapReady || archive.active) return;
     if (state.filters.area) { mapRef.current?.fitBounds(areaBounds(state.filters.area), { padding: 65, pitch: 0, maxZoom: 12, duration: 0 }); return; }
     const coordinates = state.collection.features.map(f => f.geometry.coordinates);
     if (!coordinates.length) return;
     let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
     for (const [lng, lat] of coordinates) { west = Math.min(west, lng); south = Math.min(south, lat); east = Math.max(east, lng); north = Math.max(north, lat); }
     mapRef.current?.fitBounds([[west, south], [east, north]], { padding: { top: 110, bottom: 65, left: 35, right: 55 }, maxZoom: 8, pitch: 0, duration: 0 });
-  }, [mapReady, state.collection, state.filters.area]);
+  }, [mapReady, state.collection, state.filters.area, archive.active]);
 
   return <div className="mission-app analytics-page" data-theme={theme}>
     <header className="mission-header"><SiteBrand /><SiteNavigation current="analytics" /><div className="challenge-tag"><span className="tiny-orbit" aria-hidden="true" />NASA Space Apps</div><button className="theme-button" onClick={() => setTheme(value => value === 'dark' ? 'light' : 'dark')} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} map`}>{theme === 'dark' ? 'Light map' : 'Dark map'}</button></header>

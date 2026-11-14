@@ -3,7 +3,7 @@ import type { MapRef } from 'react-map-gl/maplibre';
 import { useDashboard } from './dashboard-context';
 import { dateRangeError } from './analytics-engine';
 import { SENSOR_IDS, availableSensors, metricLabel, type ActivityMetric, type DrawMode, type SensorFilter } from './analytics-model';
-import { areaBounds, radiusArea } from './area-selection';
+import { areaBounds, radiusArea, validateArea } from './area-selection';
 import { TemporaryDataPicker } from './TemporaryDataPicker';
 
 export function DatasetControls() {
@@ -32,7 +32,7 @@ export function DatasetControls() {
 }
 
 export function GlobalFilters({ compact = false }: { compact?: boolean }) {
-  const { state, dispatch } = useDashboard();
+  const { state, dispatch, archive } = useDashboard();
   const filters = state.filters;
   const id = useId();
   const [error, setError] = useState('');
@@ -41,14 +41,14 @@ export function GlobalFilters({ compact = false }: { compact?: boolean }) {
   if (previousRange !== rangeKey) { setPreviousRange(rangeKey); setError(''); }
   const available = useMemo(() => availableSensors(state.collection), [state.collection]);
   return <div className={`global-filters${compact ? ' compact' : ''}`} aria-label="Shared dashboard filters">
-    <form className="date-filter" onSubmit={event => { event.preventDefault(); const data = new FormData(event.currentTarget); const start = String(data.get('startDate') || ''), end = String(data.get('endDate') || ''); const error = dateRangeError(start, end); setError(error || ''); if (!error) dispatch({ type: 'filters', patch: { startDate: start, endDate: end } }); }}>
+    {!archive.active && <form className="date-filter" onSubmit={event => { event.preventDefault(); const data = new FormData(event.currentTarget); const start = String(data.get('startDate') || ''), end = String(data.get('endDate') || ''); const error = dateRangeError(start, end); setError(error || ''); if (!error) dispatch({ type: 'filters', patch: { startDate: start, endDate: end } }); }}>
       <label htmlFor={`${id}-start`}>Start date (UTC)<input key={`${rangeKey}-start`} id={`${id}-start`} name="startDate" type="date" defaultValue={filters.startDate} disabled={!filters.startDate} required /></label>
       <label htmlFor={`${id}-end`}>End date (UTC)<input key={`${rangeKey}-end`} id={`${id}-end`} name="endDate" type="date" defaultValue={filters.endDate} disabled={!filters.endDate} required /></label>
       <button disabled={!filters.startDate}>Apply dates</button>
-    </form>
-    <label htmlFor={`${id}-sensor`}>Sensor<select id={`${id}-sensor`} value={filters.sensor} onChange={event => dispatch({ type: 'filters', patch: { sensor: event.target.value as SensorFilter } })}>
+    </form>}
+    {!archive.active && <label htmlFor={`${id}-sensor`}>Sensor<select id={`${id}-sensor`} value={filters.sensor} onChange={event => dispatch({ type: 'filters', patch: { sensor: event.target.value as SensorFilter } })}>
       <option value="ALL">All sources · overview</option>{SENSOR_IDS.map(sensor => <option key={sensor} value={sensor}>{sensor}{available.includes(sensor) ? '' : ' · no loaded data'}</option>)}
-    </select></label>
+    </select></label>}
     <label htmlFor={`${id}-metric`}>Activity metric<select id={`${id}-metric`} value={filters.metric} onChange={event => dispatch({ type: 'filters', patch: { metric: event.target.value as ActivityMetric } })}>{(['detections', 'mean-frp'] as const).map(metric => <option key={metric} value={metric}>{metricLabel(metric)}</option>)}</select></label>
     {filters.selectedDay && <button className="day-filter" onClick={() => dispatch({ type: 'filters', patch: { selectedDay: null } })}>Clear selected day · {filters.selectedDay} ×</button>}
     {!filters.startDate && <p className="filter-help">Date filters require dated observations. The current illustrative data is undated.</p>}
@@ -96,6 +96,7 @@ export function AreaControls({ mapRef, mode, onModeChange, error, onError }: Are
       </div>
       <button>Select location</button>
     </form>
+    <details><summary>Enter geographic bounding box</summary><form onSubmit={event=>{event.preventDefault();const data=new FormData(event.currentTarget);const [w,s,e,n]=['west','south','east','north'].map(k=>Number(data.get(k)));const selected={type:'Feature' as const,geometry:{type:'Polygon' as const,coordinates:[[[w,s],[e,s],[e,n],[w,n],[w,s]]]},properties:{kind:'rectangle' as const}};const error=w>=e||s>=n?'West/south must be smaller than east/north.':validateArea(selected);if(error){onError(error);return;}dispatch({type:'filters',patch:{area:selected}});onModeChange('static');onError('');}}><div className="coordinate-inputs">{['west','south','east','north'].map(k=><label key={k}>{k}<input aria-label={`Bounding box ${k}`} name={k} type="number" step="any" required /></label>)}</div><button>Apply bounding box</button></form></details>
     {error && <p className="dashboard-error" role="alert">{error}</p>}
     {area ? <div className="area-summary"><strong>{area.properties.kind === 'radius' ? `${area.properties.radiusKm} km radius` : `Selected ${area.properties.kind}`}</strong><button onClick={zoom}>Zoom to area</button><details><summary>Selected coordinates · longitude, latitude</summary><code>{JSON.stringify(area.geometry.coordinates[0].map(p => p.map(v => Number(v.toFixed(5)))))}</code></details></div> : <p className="filter-help">All locations · no area filter</p>}
   </div>;

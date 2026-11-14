@@ -22,6 +22,6 @@ function openTestData(databasePath = filename) {
     });
     return { type: 'FeatureCollection', metadata: { source:'csv', temporary:true, source_name:`TEMPORARY TEST · ${partition.sensor} / ${platform} · ${month}`, total_features:features.length, indexed_total:total, partition_total:partition.count, test_platform:platform, test_month:month, test_page:page, test_pages:Math.ceil(partition.count/50000), observed_from:features[0].properties.observed_at_utc, observed_to:features.at(-1).properties.observed_at_utc, has_harmonized:false }, features };
   }
-  return { collection, close:()=>db.close(), catalog: { temporary:true,total,partitions,pageSize:50000 } };
+  return { collection, close:()=>db.close(), catalog: { temporary:true,total,partitions,pageSize:50000,platforms:[...new Set(partitions.map(p=>p.platform))].map(platform=>({platform,sensor:partitions.find(p=>p.platform===platform).sensor,years:[...new Set(partitions.filter(p=>p.platform===platform).map(p=>p.month.slice(0,4)))].sort().reverse(),...db.prepare('SELECT (SELECT date FROM observations WHERE platform=? ORDER BY date LIMIT 1) observedFrom,(SELECT date FROM observations WHERE platform=? ORDER BY date DESC LIMIT 1) observedTo').get(platform,platform)})) } };
 }
 module.exports = { openTestData };

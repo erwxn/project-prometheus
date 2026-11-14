@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-for (const name of ['vis-test.sqlite', 'vis-test-report.json', 'vis-test.building.sqlite']) {
+for (const name of ['vis-test.sqlite', 'vis-test-report.json', 'vis-test.building.sqlite', 'vis-test.sqlite.archive-v2.sqlite', 'vis-test.sqlite.archive-v2.sqlite-wal', 'vis-test.sqlite.archive-v2.sqlite-shm']) {
   const target = path.join(__dirname, 'data', name);
   if (fs.existsSync(target)) fs.unlinkSync(target);
 }

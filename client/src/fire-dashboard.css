@@ -172,3 +172,11 @@
   .analytics-page .mission-header { gap: 8px; }
   .analytics-page .theme-button { font-size: 10px; white-space: nowrap; }
 }
+
+.archive-toolbar { display:flex; flex-wrap:wrap; gap:12px; align-items:end; margin:16px 0; }
+.archive-toolbar label { display:flex; flex-direction:column; gap:6px; min-width:120px; flex:1; }
+.archive-toolbar input,.archive-toolbar select { width:100%; min-height:42px; padding:8px; color:var(--ink,#243b49); background:#fff; border:1px solid #b6c8d0; border-radius:3px; }
+.archive-summary { border-top:1px solid #bbcbd1; padding-top:12px; margin-top:12px; }
+.temporary-data-picker h2 { margin:0 0 8px; font-size:22px; }
+.year-toggles { max-height:180px; overflow:auto; }
+@media(max-width:600px) { .archive-toolbar label { flex-basis:45%; } .archive-toolbar button { flex:1; } }

@@ -238,3 +238,7 @@ server persistence. Set `ENABLE_CSV_UPLOAD=false` and build with
 Post-deployment smoke checks: open `/`, `/about`, `/health`, and `/api/v1/fires`, then
 upload a small valid MODIS CSV. This configuration task does not itself publish a
 Vercel deployment or change the account's project settings.
+
+## Production harmonized results
+
+The service supports configurable API or private Google Cloud Storage snapshots in CSV, Parquet, or tabular JSON. See [the integration and teammate handoff guide](docs/harmonized-feed.md) for environment settings, column mapping, credentials, local fixtures, validation commands, and cache limitations. The MODIS upload remains a separate temporary testing tool.

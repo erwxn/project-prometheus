@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SiteBrand, SiteNavigation } from './SiteHeader';
-import { API_BASE, FALLBACK_FIRES, type FireFeature } from './fire-data';
+import { FALLBACK_FIRES, type FireFeature } from './fire-data';
+import { watchServerDataset, datasetLabel } from './server-dataset';
 import { sensors, summarizeObservations } from './fire-analytics';
 import type { TimeBasis } from './timeline';
 import './index.css';
@@ -63,28 +64,13 @@ function AnalyticsPage() {
   const [date, setDate] = useState('');
   const [basis, setBasis] = useState<TimeBasis>('utc');
 
-  useEffect(() => {
-    const controller = new AbortController();
-    let active = true;
-    const timeout = window.setTimeout(() => controller.abort(), 10000);
-
-    async function load() {
-      try {
-        const response = await fetch(`${API_BASE}/api/v1/fires`, { signal: controller.signal, cache: 'no-store' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        if (!Array.isArray(data.features)) throw new Error('Invalid observation collection');
-        if (active) setDataset({ features: data.features, label: data.metadata?.source === 'csv' ? 'Imported MODIS snapshot' : 'Illustrative demo dataset', status: 'ready' });
-      } catch {
-        if (active) setDataset({ features: FALLBACK_FIRES, label: 'Offline demo dataset', status: 'offline' });
-      } finally {
-        window.clearTimeout(timeout);
-      }
-    }
-
-    void load();
-    return () => { active = false; controller.abort(); window.clearTimeout(timeout); };
-  }, []);
+  useEffect(() => watchServerDataset(data => {
+    setDataset({ features: data.features, label: datasetLabel(data), status: 'ready' });
+  }, () => {
+    setDataset(previous => previous.status === 'ready'
+      ? { ...previous, label: 'Update unavailable · showing last loaded dataset' }
+      : { features: FALLBACK_FIRES, label: 'Offline demo dataset', status: 'offline' });
+  }), []);
 
   const dates = useMemo(() => [...new Set(dataset.features.flatMap(feature => {
     const value = feature.properties.observed_at_utc?.slice(0, 10);

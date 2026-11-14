@@ -1,0 +1,3 @@
+id,latitude,longitude,observed_at_utc,harmonized_frp_mw,model_version
+illustrative-1,35.7,-5.8,2026-11-14T13:30:00Z,185.2,illustrative-only
+illustrative-2,-12.65,132.85,2026-11-14T14:00:00Z,0,illustrative-only

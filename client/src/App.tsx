@@ -435,7 +435,6 @@ export default function App() {
       <main className="mission-workspace">
         <aside className="analysis-panel" aria-label="Fire analysis controls">
           <div className="panel-intro">
-            <span className="intro-planet" aria-hidden="true" />
 
             <h2>Every hotspot.<br />A clearer picture.</h2>
             <p>Explore fire activity across the diurnal cycle. Compare satellite observations and harmonized estimates.</p>
@@ -473,7 +472,7 @@ export default function App() {
             {!!dataMeta.rejected_rows && <p>{dataMeta.rejected_rows} invalid rows excluded.</p>}
           </section>}
           <section className="panel-section" aria-labelledby="summary-title">
-            <div className="section-heading"><h3 id="summary-title">Observation summary</h3><span>Current selection</span></div>
+            <div className="section-heading"><h3 id="summary-title" className="space-heading space-heading-comet">Observation summary</h3><span>Current selection</span></div>
             <div className="primary-stat"><strong>{stats.count.toLocaleString()}</strong><span>visible hotspots</span></div>
             <div className="stat-grid">
               <div><span>Peak FRP</span><strong>{stats.peakFrp}<small> MW</small></strong></div>
@@ -483,7 +482,7 @@ export default function App() {
           </section>
 
           <section className="panel-section" aria-labelledby="sources-title">
-            <div className="section-heading"><h3 id="sources-title">Observation source</h3></div>
+            <div className="section-heading"><h3 id="sources-title">Observation source</h3><span className="source-planet" aria-hidden="true" /></div>
             <div className="source-options" role="group" aria-labelledby="sources-title">
               {([
                 { id: 'ALL', label: 'All view', detail: 'Combined dataset', badge: 'ALL' },

@@ -32,7 +32,6 @@
 .analysis-panel { margin: 0; border: 0; border-right: 1px solid var(--border); border-radius: 0; background: var(--panel); box-shadow: none; scrollbar-color: #b6c3c8 transparent; }
 .panel-intro { padding: 30px 24px 26px; }
 .panel-intro h2 { font-size: 28px; font-weight: 550; letter-spacing: -.035em; line-height: 1.2; color: var(--text); }
-.intro-planet, .panel-footer::before, .hotspot-section .section-heading h3::before { display: none; }
 .panel-section { padding: 25px 24px; border-color: var(--border); }
 .section-heading { margin-bottom: 18px; }
 .section-heading h3, .csv-upload h3 { color: var(--text); font-size: 13px; font-weight: 550; }
@@ -91,7 +90,21 @@
 .analytics-page .mission-header, .about-page .mission-header { top: 0; }
 .analytics-content { padding-top: 48px; }
 .analytics-hero, .about-hero { border: 0; border-bottom: 1px solid #becbd0; border-radius: 0; padding: 0 0 32px; margin-bottom: 32px; background: transparent; box-shadow: none; }
-.analytics-orbit, .about-earth { display: none; }
+.analytics-hero, .about-hero {
+  --hero-art-width: clamp(64px, 22vw, 230px);
+  padding-inline-end: calc(var(--hero-art-width) + 16px);
+}
+.analytics-orbit, .about-earth {
+  inset: 0 0 auto auto;
+  width: var(--hero-art-width);
+  pointer-events: none;
+}
+.analytics-orbit { top: 16px; opacity: .72; }
+.about-earth { width: min(var(--hero-art-width), 134px); opacity: .55; }
+@media (max-width: 560px) {
+  .analytics-hero, .about-hero { --hero-art-width: 64px; padding-inline-end: 0; }
+  .analytics-hero h1, .about-hero h1 { padding-inline-end: calc(var(--hero-art-width) + 8px); }
+}
 .analytics-hero h1, .about-hero h1 { color: var(--text); font-size: clamp(36px, 5vw, 60px); font-weight: 550; letter-spacing: -.04em; margin: 0 0 18px; }
 .analytics-hero p:last-child, .about-hero p:last-child { max-width: 64ch; font-size: 16px; }
 .analytics-filters { margin-bottom: 28px; gap: 16px; }

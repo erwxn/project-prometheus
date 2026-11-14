@@ -157,7 +157,7 @@ function AnalyticsPage() {
               </section>
             </div>
             <section className="analytics-card analytics-strongest" aria-labelledby="strongest-title">
-              <h2 id="strongest-title">Highest FRP readings</h2>
+              <h2 id="strongest-title" className="space-heading space-heading-starburst">Highest FRP readings</h2>
               <p>Up to eight records, ordered by fire radiative power.</p>
               {stats.strongest.length > 0 ? <div className="analytics-table-scroll" role="region" aria-label="Highest FRP readings table" tabIndex={0}>
                 <table className="analytics-table">

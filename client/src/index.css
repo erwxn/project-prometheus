@@ -206,18 +206,36 @@ button, input { accent-color: #38677f; }
 .panel-intro h2 { font-size: 26px; font-weight: 500; letter-spacing: -.03em; line-height: 1.25; margin: 0 0 14px; }
 .panel-intro { position: relative; padding-top: 30px; }
 /* Figma image fills use atlas crops. The existing accent tints their alpha masks. */
-.intro-planet {
-  position: absolute;
-  top: 24px;
-  right: 16px;
-  width: 66px;
+.space-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.space-heading::before {
+  content: '';
+  flex: 0 0 1.35em;
+  background: var(--accent);
+}
+.space-heading-comet::before {
+  aspect-ratio: 187 / 145;
+  mask: url('./assets/space-comet.png') 45.60% 7.46% / 1193.05% 1117.24% no-repeat;
+}
+.space-heading-starburst::before {
+  aspect-ratio: 200 / 207;
+  mask: url('./assets/space-starburst.png') 48.39% 44.06% / 710.51% 501.55% no-repeat;
+}
+.space-heading-eclipse::before {
+  aspect-ratio: 234 / 227;
+  mask: url('./assets/space-eclipse.png') 17.61% 24.17% / 1037.67% 775.12% no-repeat;
+}
+.section-heading > .source-planet {
+  display: block;
+  flex: 0 0 38px;
   aspect-ratio: 333 / 193;
   background: var(--accent);
-  opacity: .4;
   mask: url('./assets/space-ringed-planet.png') 96.2% 27.49% / 1246.37% 1572.82% no-repeat;
   pointer-events: none;
 }
-@media (max-width: 900px) { .intro-planet { display: none; } }
 .panel-intro > p { line-height: 1.8; }
 .data-status { background: transparent; padding: 0; }
 .status-label { border: 0; color: var(--muted); }

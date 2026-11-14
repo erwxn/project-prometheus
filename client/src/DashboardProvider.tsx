@@ -25,18 +25,19 @@ function useDashboardValue() {
     }
     dispatch({type:'filters',patch:sharedView.filters});
   }, [sharedView,state.status,state.collection.metadata.temporary,archive]);
+  const applyArchive = archive.apply;
   const [calendarFocus, setCalendarFocus] = useState(false);
   const openCalendar = useCallback((range: { startDate: string; endDate: string }, platform: string | null,
     collection: ReturnType<typeof parseCollection> | null, sensor: DashboardState['filters']['sensor']) => {
     requests.cancel();
-    if (platform) archive.apply({ ...range, platform, year: range.endDate.slice(0, 4), month: 'ALL' });
+    if (platform) applyArchive({ ...range, platform, year: range.endDate.slice(0, 4), month: 'ALL' });
     else if (collection) dispatch({ type: 'loaded', collection, remember: false });
     else return;
     dispatch({ type: 'filters', patch: { ...range, metric: 'detections', selectedDay: null, ...(platform ? {} : { sensor }) } });
     setCalendarFocus(true);
     window.history.pushState({}, '', '/analytics/');
     window.dispatchEvent(new PopStateEvent('popstate'));
-  }, [archive.apply, requests]);
+  }, [applyArchive, requests]);
   const retry = useCallback(async () => {
     const request = requests.begin();
     dispatch({ type: 'upload', status: 'idle', message: '' });

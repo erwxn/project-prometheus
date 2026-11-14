@@ -19,6 +19,7 @@ export interface FireFeature {
     acq_time_utc: string;
     local_solar_time: string;
     confidence: string;
+    model_version?: string | null;
     product_version?: string | null;
     method_id?: string;
   };

@@ -1,9 +1,12 @@
 const { Worker } = require('node:worker_threads');
 const path = require('node:path');
 const fs = require('node:fs');
+const {createHash}=require('node:crypto');
 
 function createArchiveService(filename = path.join(__dirname, 'data', 'vis-test.sqlite')) {
   if (!fs.existsSync(filename)) return null;
+  const stat=fs.statSync(filename);
+  const version=createHash('sha256').update(`${stat.size}:${stat.mtimeMs}`).digest('hex').slice(0,24);
   let worker, failure, serial = 0;
   const pending = new Map(), shared = new Map();
   function finish(entry, error, result) {
@@ -28,6 +31,7 @@ function createArchiveService(filename = path.join(__dirname, 'data', 'vis-test.
     });
   }
   return {
+    version,
     query(kind, filters, signal) {
       if (failure) return Promise.reject(failure);
       if (signal?.aborted) return Promise.reject(Object.assign(Error('Archive request cancelled.'), { status: 499 }));

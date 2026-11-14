@@ -1,3 +1,6 @@
+import { SearchExport } from './SearchExport';
+import { SeasonalHeatmap } from './SeasonalHeatmap';
+import { DatasetStatus } from './DatasetStatus';
 import { MapLoading } from './MapLoading';
 import { mapFeedback } from './map-feedback';
 import { MapAppearance } from './MapAppearance';
@@ -121,6 +124,8 @@ export default function AnalyticsPage() {
         <aside className="analytics-area-panel" aria-label="Geographic area selection"><AreaControls mapRef={mapRef} mode={mode} onModeChange={changeMode} error={drawingError} onError={setDrawingError} /></aside>
       </div>
       <GlobalFilters />
+      <DatasetStatus />
+      <SearchExport />
       <dl className="analytics-metrics" aria-label="Fire statistics" aria-busy={loading}>
         <div><dt>Total hotspot detections</dt><dd>{loading ? '—' : whole.format(summary.count)}<small>Satellite records matching the filters</small></dd></div>
         <div><dt>Active observation days</dt><dd>{loading || summary.activeDays === null ? '—' : whole.format(summary.activeDays)}<small>{summary.activeDays === null ? 'Acquisition dates unavailable' : 'UTC days with at least one detection'}</small></dd></div>
@@ -131,6 +136,7 @@ export default function AnalyticsPage() {
       {!loading && !summary.count && <p className="dashboard-unavailable" role="status">No recorded detections match these filters. Change the area, sensor, dates, or selected day. Unknown coverage is not a known zero.</p>}
       <ActivityCalendar />
       <HistoricalActivity />
+      <SeasonalHeatmap />
       <section className="dashboard-section observation-analytics" aria-labelledby="details-title"><div className="section-toolbar"><div><span className="section-number">03 / OBSERVATION DETAILS</span><h2 id="details-title">Observation detail analytics</h2><p>Hourly timing, source breakdown, FRP distribution, and strongest readings for the focused selection.</p></div><label>Hourly chart clock<select value={basis} onChange={e => setBasis(e.target.value as TimeBasis)}><option value="utc">UTC</option><option value="solar">Local mean solar time</option></select></label></div>
           <div className="analytics-grid">
             <section className="analytics-card" aria-labelledby="hourly-title">

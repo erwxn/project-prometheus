@@ -1,3 +1,4 @@
+import { ExploreControls } from './ExploreControls';
 import { MapLoading } from './MapLoading';
 import { mapFeedback } from './map-feedback';
 import { archivePeriod, explorerDatasetKey } from './explorer-period';
@@ -10,7 +11,7 @@ import { availableSensors, observationFrp, type DrawMode, type SensorFilter } fr
 import { selectRange, dateTime } from './analytics-engine';
 import { areaBounds } from './area-selection';
 import { useDashboard } from './dashboard-context';
-import { AreaControls, DatasetControls, GlobalFilters } from './DashboardControls';
+import { AreaControls, GlobalFilters } from './DashboardControls';
 import { FireMap } from './FireMap';
 import { FireObservations } from './FireObservations';
 import { SiteBrand, SiteNavigation } from './SiteHeader';
@@ -206,8 +207,8 @@ export default function App() {
           <div className="panel-intro">
             <span className="intro-planet" aria-hidden="true" />
 
-            <h2>Every hotspot.<br />A clearer picture.</h2>
-            <p>Explore fire activity across the diurnal cycle. Compare satellite observations and harmonized estimates.</p>
+            <h2>Explore fire activity</h2>
+            <p>Find satellite detections, choose a period, and inspect what was observed.</p>
             <div className={`data-status ${backendStatus}`} role="status">
               <span className="status-dot" />
               {backendStatus === 'online' ? dataMeta.source === 'csv' ? 'Imported observations' : dataMeta.source === 'simulated' ? 'Simulated history' : 'Demo API connected' : backendStatus === 'checking' ? 'Connecting to data source' : dataMeta.source === 'csv' ? 'API unavailable · loaded snapshot kept' : 'API unavailable · illustrative demo shown'}
@@ -216,7 +217,7 @@ export default function App() {
             {backendStatus === 'fallback' && <button className="retry-data" onClick={() => void retry()}>Retry real data</button>}
           </div>
 
-          <section className="panel-section explore-periods"><h3>Explore a place and period</h3><p>Search for a country on the map. Use the archive controls below to choose a satellite and period.</p><p>Showing {state.filters.startDate || 'undated data'} to {state.filters.endDate || 'undated data'}. This is historical/test data, not a live fire feed.</p><details><summary>Choose dataset and dates</summary><DatasetControls /></details><a href="/monitor/">Monitor the last 24 hours</a></section>
+          <ExploreControls onPeriodChange={() => { setTimeScope('file'); setAllHoursMode(true); setIsPlaying(false); setWindowStartOverride(null); }} />
           <details className="explore-advanced"><summary>Region and research controls</summary>
 
           <section className="panel-section shared-controls"><AreaControls mapRef={mapRef} mode={drawMode} onModeChange={changeDrawMode} error={drawingError} onError={setDrawingError} /></section>
@@ -240,12 +241,12 @@ export default function App() {
           </details>
           <section className="panel-section" aria-labelledby="summary-title">
             <div className="section-heading"><h3 id="summary-title">Observation summary</h3><span>Current selection</span></div>
-            <div className="primary-stat"><strong>{stats.count.toLocaleString()}</strong><span>visible hotspots</span></div>
+            <div className="primary-stat"><strong>{stats.count.toLocaleString()}</strong><span>detections on this map</span></div>
             <div className="stat-grid">
               <div><span>Peak FRP</span><strong>{stats.peakFrp}<small> MW</small></strong></div>
               <div><span>Mean FRP</span><strong>{stats.avgNormalizedFrp}<small> MW</small></strong></div>
             </div>
-            <p className="micro-copy">FRP · Raw sensors / normalized predictions</p>
+            <p className="micro-copy">Fire radiative power (FRP) measures energy, not fire size.</p>
           </section>
 
           <details className="panel-section" aria-labelledby="sources-title"><summary>Observation sources</summary>

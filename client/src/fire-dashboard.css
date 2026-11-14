@@ -251,3 +251,13 @@
 .monitor-page .brand .brand-name { font-size: 22px; font-weight: 550; color: var(--text); }
 .monitor-map .analytics-map-empty { top: 42%; bottom: auto; left: 20px; right: 20px; }
 @media (max-width: 760px) { .monitor-page .brand .brand-name { font-size: 17px; } .monitor-map .analytics-map-empty { top: 35%; left: 14px; right: 14px; } }
+
+.explore-shortcuts { display: flex; flex-wrap: wrap; gap: 7px; margin-block: 16px 20px; }
+.explore-shortcuts button, .explore-selection button { min-height: 40px; padding: 8px 11px; border: 1px solid var(--control-rule); border-radius: 4px; background: var(--panel); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+.explore-shortcuts button:hover:not(:disabled) { background: var(--selected); border-color: var(--accent); }
+.explore-selection { margin: 0; font-size: 12px; line-height: 1.6; }
+.explore-selection dt { margin-top: 14px; color: var(--muted); }
+.explore-selection dd { margin: 4px 0 0; }
+.explore-selection small { display: block; color: var(--muted); margin-top: 5px; }
+.explore-selection button { display: block; margin-top: 8px; }
+.explore-next { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid var(--border); }

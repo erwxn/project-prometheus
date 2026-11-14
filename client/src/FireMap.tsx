@@ -1,9 +1,8 @@
-import { detectionCells, type DetectionCell } from './map-aggregation';
 import { countryBoundaries } from './country-filter';
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import Map, { NavigationControl, useControl, type MapRef } from 'react-map-gl/maplibre';
 import { MapLibreOverlay, type MapLibreOverlayProps } from '@deck.gl/maplibre';
-import { ScatterplotLayer, TextLayer, GeoJsonLayer } from '@deck.gl/layers';
+import { ScatterplotLayer, GeoJsonLayer } from '@deck.gl/layers';
 import { TerraDraw, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode, type GeoJSONStoreFeatures } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import mapLib from './maplibre';
@@ -20,8 +19,6 @@ function DeckGLOverlay(props: MapLibreOverlayProps) {
 }
 
 interface FireMapProps {
-  aggregate?: boolean;
-  onAggregationChange?(active:boolean): void;
   trackArchive?: boolean;
   mapRef: RefObject<MapRef | null>;
   features: FireFeature[];
@@ -35,12 +32,8 @@ interface FireMapProps {
   onLoad?(): void;
 }
 
-export function FireMap({ onAggregationChange, aggregate = false, trackArchive = true, mapRef, features, theme, projection, selectedFeature, onSelectFeature, mode, onModeChange, onDrawingError, onLoad }: FireMapProps) {
+export function FireMap({ trackArchive = true, mapRef, features, theme, projection, selectedFeature, onSelectFeature, mode, onModeChange, onDrawingError, onLoad }: FireMapProps) {
   const { state, dispatch, archive, camera, saveCamera } = useDashboard();
-  const [zoom,setZoom] = useState(camera.current?.zoom ?? INITIAL_VIEW_STATE.zoom);
-  const aggregated = aggregate && zoom < 5 && features.length > 500;
-  useEffect(() => { onAggregationChange?.(aggregated); }, [aggregated,onAggregationChange]);
-  const cells = useMemo(() => aggregated ? detectionCells(features,zoom) : [], [aggregated,features,zoom]);
   const [ready, setReady] = useState(false);
   const area = state.filters.area;
   const {active:archiveActive,updateViewport}=archive;
@@ -149,10 +142,7 @@ export function FireMap({ onAggregationChange, aggregate = false, trackArchive =
   const layers = useMemo(() => {
     const layers = [];
     if (state.filters.country && countryBoundaries[state.filters.country]) layers.push(new GeoJsonLayer({id:'country-boundary',data:countryBoundaries[state.filters.country],filled:false,stroked:true,getLineColor:[105,203,224,230],getLineWidth:2,lineWidthUnits:'pixels',pickable:false}));
-    if(aggregated) {
-      layers.push(new ScatterplotLayer<DetectionCell>({id:'detection-cells',data:cells,getPosition:d=>d.coordinates,radiusUnits:'pixels',getRadius:d=>Math.min(22,10+Math.log2(d.count)),getFillColor:[48,100,122,235],getLineColor:[188,224,234,255],stroked:true,lineWidthMinPixels:1,pickable:mode==='static'}));
-      layers.push(new TextLayer<DetectionCell>({id:'detection-counts',data:cells,getPosition:d=>d.coordinates,getText:d=>String(d.count),getSize:12,getColor:[255,255,255,255],fontFamily:'DM Sans, sans-serif',fontWeight:600,pickable:false}));
-    } else layers.push(new ScatterplotLayer<FireFeature>({
+    layers.push(new ScatterplotLayer<FireFeature>({
       id: 'fire-observations', data: features, getPosition: d => d.geometry.coordinates,
       radiusUnits: 'pixels', getRadius: 4,
       getFillColor: d => getFRPColor(observationFrp(d)), getLineColor: [23, 47, 64, 220],
@@ -164,21 +154,19 @@ export function FireMap({ onAggregationChange, aggregate = false, trackArchive =
       getLineColor: theme === 'light' ? [38, 52, 60, 255] : [255, 255, 255, 255], lineWidthMinPixels: 2, pickable: false,
     }));
     return layers;
-  }, [features, selectedFeature, theme, mode, aggregated, cells, state.filters.country]);
+  }, [features, selectedFeature, theme, mode, state.filters.country]);
 
   const tooltip = useCallback((info: { object?: unknown }) => {
     if (!info.object) return null;
-    if ((info.object as DetectionCell).kind === 'cell') return {text:`${(info.object as DetectionCell).count} loaded detections in this map cell. Click to zoom in. This is not a count of unique fires.`};
     const feature = info.object as FireFeature, p = feature.properties;
     const power = (value: number | null) => value === null || !Number.isFinite(value) ? 'Not available' : `${value.toFixed(1)} MW`;
     return { text: `${p.satellite}${state.collection.metadata.source === 'simulated' ? ' · SIMULATED' : ''}\nRaw FRP: ${power(p.raw_frp)}\nNormalized FRP: ${power(p.normalized_frp)}\nAcquired (UTC): ${p.observed_at_utc || `${p.acq_time_utc} · undated`}\nLocal mean solar time: ${p.local_solar_time || 'Unavailable'}\nPlatform: ${p.platform || p.satellite}\nConfidence: ${p.confidence || 'Unavailable'}\nLatitude, longitude: ${feature.geometry.coordinates[1].toFixed(4)}, ${feature.geometry.coordinates[0].toFixed(4)}`, style: { backgroundColor: '#172f40', color: '#f4f7fa', font: '12px/1.6 "DM Sans", sans-serif', borderRadius: '4px', maxWidth: '300px' } };
   }, [state.collection.metadata.source]);
 
-  return <Map mapLib={mapLib} ref={mapRef} initialViewState={camera.current ?? INITIAL_VIEW_STATE} onMoveEnd={event => { const v = event.viewState; setZoom(v.zoom); saveCamera({ longitude: v.longitude, latitude: v.latitude, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing }); }} onLoad={() => { setReady(true); onLoad?.(); }}
+  return <Map mapLib={mapLib} ref={mapRef} initialViewState={camera.current ?? INITIAL_VIEW_STATE} onMoveEnd={event => { const v = event.viewState; saveCamera({ longitude: v.longitude, latitude: v.latitude, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing }); }} onLoad={() => { setReady(true); onLoad?.(); }}
     mapStyle={BASEMAP_STYLES.dark} projection={{ type: projection }} transformStyle={INITIAL_BASEMAP_TRANSFORM} pixelRatio={RENDER_PIXEL_RATIO}
     sky={projection === 'globe' ? ORBITAL_SKY : FLAT_SKY} minZoom={-2} renderWorldCopies={false} dragRotate touchPitch touchZoomRotate keyboard pitchWithRotate maxPitch={85}>
-    <DeckGLOverlay useDevicePixels={RENDER_PIXEL_RATIO} interleaved={false} layers={layers} getTooltip={tooltip} onClick={info => { if (mode !== 'static') return; const cell=info.object as DetectionCell|undefined; if(cell?.kind==='cell'){ mapRef.current?.flyTo({center:cell.coordinates,zoom:Math.max(5,zoom+2),duration:400}); return; } onSelectFeature?.((info.object as FireFeature | undefined) ?? null); }} />
-    {aggregated && <div className="map-aggregation-note">Counts of loaded detections · click a cell to zoom · {features.length.toLocaleString()} records</div>}
+    <DeckGLOverlay useDevicePixels={RENDER_PIXEL_RATIO} interleaved={false} layers={layers} getTooltip={tooltip} onClick={info => { if (mode !== 'static') return; onSelectFeature?.((info.object as FireFeature | undefined) ?? null); }} />
     <NavigationControl position="top-right" visualizePitch />
   </Map>;
 }

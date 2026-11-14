@@ -40,7 +40,6 @@ export default function App() {
   const [windowStartOverride, setWindowStartOverride] = useState<number | null>(null);
   const [cursorMinute, setCursorMinute] = useState(1440);
   const [allHoursMode, setAllHoursMode] = useState(true);
-  const [aggregated,setAggregated] = useState(false);
   const [selectedFire, setSelectedFire] = useState<FireFeature | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showTimeline, setShowTimeline] = useState(true);
@@ -298,7 +297,7 @@ export default function App() {
           {mapState === 'loading' && <MapLoading />}
           {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry archive in the filters to try again.</p>}
           {mapState === 'empty' && drawMode === 'static' && <div className="map-empty" role="status"><strong>{!archive.mapBusy && selectedSatellite !== 'ALL' && !availableSensors(state.collection).includes(selectedSatellite) ? 'Selected sensor is unavailable in this slice' : 'No matching detections in this dataset'}</strong><span>This does not mean there were no fires. Try another dataset, time window, or Next detection.</span><button onClick={() => { showWholeWindow(); }}>{timeScope === 'file' ? 'View entire file' : 'View all selected 24 hours'}</button></div>}
-          <FireMap aggregate onAggregationChange={setAggregated} mapRef={mapRef} features={filteredFires} selectedFeature={activeFire} onSelectFeature={feature => { setSelectedFire(feature); setIsPlaying(false); }} theme={mapTheme} projection={mapProjection} mode={drawMode} onModeChange={changeDrawMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
+          <FireMap mapRef={mapRef} features={filteredFires} selectedFeature={activeFire} onSelectFeature={feature => { setSelectedFire(feature); setIsPlaying(false); }} theme={mapTheme} projection={mapProjection} mode={drawMode} onModeChange={changeDrawMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
           <div className="map-top-controls">
             <div className="map-heading"><h2>{state.filters.country ? countryName(state.filters.country) : state.filters.area ? 'Selected area' : activeRegion === 'Global' ? 'Global fire activity' : activeRegion} <span>/ {mapProjection === 'globe' ? 'Globe' : 'Flat map'}</span></h2><span className="mobile-data-status">{dataMeta.source === 'simulated' ? 'SIMULATED HISTORY' : backendStatus === 'online' ? 'BACKEND CONNECTED' : backendStatus === 'checking' ? 'CONNECTING' : 'DEMO DATASET'}</span></div>
             <CountrySearch onSelect={locateCountry} selectionDescription="Country boundary filter applied" />{countryError && <p className="country-search-feedback" role="alert">{countryError}</p>}
@@ -325,7 +324,7 @@ export default function App() {
             <p>Product: {activeFire.properties.product_version || 'Not supplied'} · {dataMeta.source_name || dataMeta.source}</p>
             <p>Observation point, not a fire perimeter. Acquisition time above is UTC.</p>
           </section>}
-          <div className="thermal-legend" hidden={!!activeFire || aggregated} aria-label="Fire radiative power color scale">
+          <div className="thermal-legend" hidden={!!activeFire} aria-label="Fire radiative power color scale">
             <p className="marker-key"><span className="fire-dot" aria-hidden="true" /> {dataMeta.source === 'csv' ? `${selectedSatellite === 'ALL' ? 'Satellite' : selectedSatellite} detection` : dataMeta.source === 'simulated' ? 'SIMULATED observation' : 'Sample fire observation'}</p><div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Points are not fire size.</p>
           </div>
 

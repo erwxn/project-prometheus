@@ -12,10 +12,10 @@ The pinned Natural Earth 1:50m boundary dataset is in `shared/countries.json`; p
 
 Point inspection distinguishes acquisition time, sensor/platform, measured versus estimated FRP, confidence, and product/source. Explanations distinguish detected heat from unique fires, fire size, or perimeters. Details remain scrollable on small displays.
 
-## Dense maps
+## Map rendering
 
-`map-aggregation.ts` bins loaded points into 48px Mercator cells at the current zoom. Explore uses these cells below zoom 5 when more than 500 points are loaded. The count is the number of loaded detections in a cell; it does not estimate unique fires or the full archive outside the current page. Click a cell to zoom to individual points. Analyze and Monitor retain their existing point rendering. Tests verify conservation of counts, boundaries, sharing validation, islands, and backend country scopes.
+Detections remain individual points at every zoom level. Count-cell aggregation has been removed.
 
 ## Remaining boundaries
 
-CSV exports belong to Analyze and were not added here. Large archive selections remain paginated, and aggregation describes the loaded page. A future server aggregation endpoint could summarize an entire search at distant zooms. Share links cannot reproduce an unavailable uploaded file or fetch a removed dataset version. Those limits are intentional and stated in the UI.
+CSV exports belong to Analyze and were not added here. Large archive selections remain paginated. Share links cannot reproduce an unavailable uploaded file or fetch a removed dataset version. Those limits are intentional and stated in the UI.

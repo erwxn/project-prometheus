@@ -15,10 +15,12 @@ export function useArchive(state:DashboardState,dispatch:Dispatch<DashboardActio
  const active=state.collection.metadata.archive===true;
  const platform=state.collection.metadata.archive_platform||'Aqua';
  const [mapBusy,setMapBusy]=useState(false);
+ const [mapLoading,setMapLoading]=useState(false);
+ const mapScope=useRef('');
  const revision=useRef(0),mapRevision=useRef(0);
  useEffect(()=>{const c=new AbortController();fetch(`${API_BASE}/api/v1/fires/test/catalog`,{signal:c.signal}).then(r=>r.ok?r.json():null).then(c=>{if(c?.temporary)setCatalog(c);}).catch(()=>{});return()=>c.abort();},[]);
  const apply=useCallback((selection:ArchiveSelection,reset=false)=>{
- requests.cancel();revision.current++;mapRevision.current++;setApplyRevision(n=>n+1);setBusy(true);setMapBusy(true);setMapInfo({total:0,nextCursor:null,cursor:0});setData(null);setComparison(null);setCursor(0);setViewport(null);setError('');
+ requests.cancel();revision.current++;mapRevision.current++;setApplyRevision(n=>n+1);setBusy(true);setMapBusy(true);setMapLoading(true);setMapInfo({total:0,nextCursor:null,cursor:0});setData(null);setComparison(null);setCursor(0);setViewport(null);setError('');
  const years=[...new Set(catalog?.partitions.filter(p=>p.platform===selection.platform).map(p=>Number(p.month.slice(0,4)))||[])].filter(y=>y<=Number(selection.year)).sort((a,b)=>b-a).slice(0,3);setComparisonYears(years);
  dispatch({type:'archive-apply',selection,sensor:archiveSensor(selection.platform,catalog),reset});
  },[catalog,dispatch,requests]);
@@ -36,10 +38,10 @@ export function useArchive(state:DashboardState,dispatch:Dispatch<DashboardActio
  },[active,query,comparisonYears,platform,applyRevision]);
  // Loading state synchronizes with the external archive request.
  // eslint-disable-next-line react/set-state-in-effect
- useEffect(()=>{if(!active)return;const c=new AbortController(),rev=++mapRevision.current;setMapBusy(true);const timer=window.setTimeout(()=>{
- fetch(`${API_BASE}/api/v1/fires/archive/observations`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...query,viewport,cursor,selectedDay:state.filters.selectedDay}),signal:c.signal}).then(r=>readArchiveResponse<ArchiveMap>(r)).then(d=>{if(rev===mapRevision.current){dispatch({type:'archive-map',collection:d});setMapInfo({total:d.total,nextCursor:d.nextCursor,cursor});}}).catch(e=>{if(!c.signal.aborted&&rev===mapRevision.current)setError(e.message);}).finally(()=>{if(rev===mapRevision.current)setMapBusy(false);});},250);return()=>{clearTimeout(timer);c.abort();};
+ useEffect(()=>{if(!active)return;const scopeKey=JSON.stringify([query,cursor,state.filters.selectedDay,applyRevision]);if(mapScope.current!==scopeKey){mapScope.current=scopeKey;setMapLoading(true);}const c=new AbortController(),rev=++mapRevision.current;setMapBusy(true);const timer=window.setTimeout(()=>{
+ fetch(`${API_BASE}/api/v1/fires/archive/observations`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...query,viewport,cursor,selectedDay:state.filters.selectedDay}),signal:c.signal}).then(r=>readArchiveResponse<ArchiveMap>(r)).then(d=>{if(rev===mapRevision.current){dispatch({type:'archive-map',collection:d});setMapInfo({total:d.total,nextCursor:d.nextCursor,cursor});}}).catch(e=>{if(!c.signal.aborted&&rev===mapRevision.current)setError(e.message);}).finally(()=>{if(rev===mapRevision.current){setMapBusy(false);setMapLoading(false);}});},250);return()=>{clearTimeout(timer);c.abort();};
  },[active,query,viewport,cursor,state.filters.selectedDay,dispatch,applyRevision]);
  const updateViewport=useCallback((bounds:number[])=>{setViewport(old=>JSON.stringify(old)===JSON.stringify(bounds)?old:bounds);setCursor(0);},[]);
  const changeYear=useCallback((year:string)=>{if(!catalog)return;apply({...archiveDefaults(catalog,platform),platform,year,startDate:`${year}-01-01`,endDate:`${year}-12-31`});},[catalog,platform,apply]);
- return {active,catalog,apply,data:active?data:null,comparison:active?comparison:null,busy:active&&busy,mapBusy:active&&mapBusy,error:active?error:'',platform,mapInfo,cursor,setCursor,updateViewport,comparisonYears,setComparisonYears,changeYear};
+ return {active,catalog,apply,data:active?data:null,comparison:active?comparison:null,busy:active&&busy,mapBusy:active&&mapBusy,mapLoading:active&&mapLoading,error:active?error:'',platform,mapInfo,cursor,setCursor,updateViewport,comparisonYears,setComparisonYears,changeYear};
 }

@@ -89,7 +89,7 @@ export default function AnalyticsPage() {
   },[archive.active,archive.data,localStats,state.filters.selectedDay,basis,summary]);
   const clock = basis === 'utc' ? 'UTC' : 'local mean solar time';
   const loading = state.status === 'loading' || archive.busy || (archive.active && !archive.data);
-  const mapState = mapFeedback(state.status === 'loading' || archive.mapBusy, archive.active ? archive.error : state.error, features.length);
+  const mapState = mapFeedback(state.status === 'loading' || archive.mapLoading, archive.active ? archive.error : state.error, features.length);
   const changeMode = (next: DrawMode) => { if (next !== 'static') setProjection('mercator'); setMode(next); };
   useEffect(() => {
     if (!mapReady || archive.active || restoreCamera.current) return;

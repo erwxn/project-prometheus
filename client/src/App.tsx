@@ -184,7 +184,7 @@ export default function App() {
     } finally { setExporting(false); }
   };
 
-  const mapState = mapFeedback(state.status === 'loading' || archive.mapBusy, archive.active ? archive.error : state.error, filteredFires.length);
+  const mapState = mapFeedback(state.status === 'loading' || archive.mapLoading, archive.active ? archive.error : state.error, filteredFires.length);
   const compactTimeline = timelineSize === 'compact';
   const timelineTime = allHoursMode ? (timeScope === 'file' ? (archive.active ? 'Selected period' : 'Entire file') : 'Selected 24 hours') : clockFormat.format(cursorTime);
   const timelineSources = [{ id: 'ALL', label: 'All' }, { id: 'MODIS', label: 'MODIS' }, { id: 'VIIRS', label: 'VIIRS' }, { id: 'Harmonized', label: 'AI Harmonized' }] as const;

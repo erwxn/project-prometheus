@@ -20,6 +20,7 @@ export interface CoverageInterval {
 
 export interface FireMetadata {
   source: string;
+  live?: boolean;
   temporary?: boolean;
   archive?: boolean;
   archive_platform?: string;

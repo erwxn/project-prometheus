@@ -217,3 +217,30 @@
 .map-loading-spinner { flex: 0 0 24px; width: 24px; height: 24px; border: 2px solid var(--map-tool-rule); border-top-color: var(--map-tool-text); border-radius: 50%; animation: map-loading-turn 1s linear infinite; }
 @keyframes map-loading-turn { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .map-loading-spinner { animation: none; } }
+
+/* Experience workspaces share the atlas palette, map, and location selection. */
+.experience-workspace { display: grid; grid-template-columns: 330px minmax(0, 1fr); flex: 1; min-height: 0; }
+.experience-rail { padding: 28px 24px; overflow-y: auto; border-right: 1px solid var(--border); background: var(--panel); }
+.experience-rail h1 { margin: 0 0 12px; font-size: 28px; line-height: 1.18; letter-spacing: -.03em; font-weight: 600; }
+.experience-rail p, .explore-periods p { font-size: 12px; line-height: 1.75; color: var(--muted); }
+.monitor-source { margin-block: 24px; padding-block: 16px; border-block: 1px solid var(--border); font-size: 14px; }
+.monitor-freshness { font-size: 12px; line-height: 1.6; margin-bottom: 28px; }
+.monitor-freshness dt { color: var(--muted); margin-top: 14px; }
+.monitor-freshness dd { margin: 3px 0 0; }
+.monitor-map { position: relative; min-height: 580px; }
+.monitor-page .experience-workspace { min-height: calc(100dvh - 78px); }
+.monitor-playback { position: absolute; z-index: 4; bottom: 40px; left: 20px; right: 20px; padding: 18px; background: var(--map-tool); color: var(--map-tool-text); border-radius: 5px; }
+.monitor-playback strong { display: block; font-size: 14px; }
+.monitor-playback span { display: block; font-size: 12px; color: var(--map-tool-muted); margin-top: 6px; }
+.monitor-playback input { width: 100%; accent-color: #7ba7b9; }
+.monitor-playback button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--map-tool-rule); border-radius: 4px; background: var(--map-tool); color: var(--map-tool-text); cursor: pointer; }
+.explore-periods h3 { font-size: 15px; }
+.explore-periods details { margin-block: 18px; }
+.explore-periods summary, .explore-advanced > summary { font-size: 13px; cursor: pointer; color: var(--accent); }
+.explore-advanced > summary { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+.explore-periods a { font-size: 13px; color: var(--accent); text-underline-offset: 4px; }
+@media (max-width: 1000px) { .header-nav { gap: 16px; } .mission-header .challenge-tag { display: none; } }
+@media (max-width: 760px) { .experience-workspace { display: flex; flex-direction: column; } .experience-rail { order: 1; overflow: visible; border-right: 0; } .monitor-map { order: 0; height: 70dvh; min-height: 520px; } .monitor-page { height: auto; overflow: visible; } .monitor-playback { left: 10px; right: 10px; padding: 14px; } }
+.monitor-page .brand .brand-name { font-size: 22px; font-weight: 550; color: var(--text); }
+.monitor-map .analytics-map-empty { top: 42%; bottom: auto; left: 20px; right: 20px; }
+@media (max-width: 760px) { .monitor-page .brand .brand-name { font-size: 17px; } .monitor-map .analytics-map-empty { top: 35%; left: 14px; right: 14px; } }

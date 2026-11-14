@@ -35,9 +35,12 @@
       "dest": "/client/analytics/index.html"
     },
     {
+      "src": "/monitor/?",
+      "dest": "/client/monitor/index.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/client/$1"
     }
   ]
 }
-

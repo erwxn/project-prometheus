@@ -260,3 +260,7 @@ full-selection calendar and statistics, and separately paginated map points.
 See [HISTORICAL_ARCHIVE.md](HISTORICAL_ARCHIVE.md) for launch/cache commands,
 API contracts, scientific limits, and the walkthrough. Original ZIP inputs stay
 unchanged; generated indexes and caches remain Git-ignored.
+
+## Experience workstreams
+
+Explore, Analyze and Monitor share navigation without accounts. See [the team workstream guide](docs/experiences.md) for routes, file ownership boundaries and the live-feed integration contract.

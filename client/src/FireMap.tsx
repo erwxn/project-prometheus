@@ -18,6 +18,7 @@ function DeckGLOverlay(props: MapLibreOverlayProps) {
 }
 
 interface FireMapProps {
+  trackArchive?: boolean;
   mapRef: RefObject<MapRef | null>;
   features: FireFeature[];
   theme: 'light' | 'dark';
@@ -30,12 +31,12 @@ interface FireMapProps {
   onLoad?(): void;
 }
 
-export function FireMap({ mapRef, features, theme, projection, selectedFeature, onSelectFeature, mode, onModeChange, onDrawingError, onLoad }: FireMapProps) {
-  const { state, dispatch, archive } = useDashboard();
+export function FireMap({ trackArchive = true, mapRef, features, theme, projection, selectedFeature, onSelectFeature, mode, onModeChange, onDrawingError, onLoad }: FireMapProps) {
+  const { state, dispatch, archive, camera, saveCamera } = useDashboard();
   const [ready, setReady] = useState(false);
   const area = state.filters.area;
   const {active:archiveActive,updateViewport}=archive;
-  useEffect(()=>{if(!ready || !archiveActive)return;const map=mapRef.current!.getMap();const update=()=>{const b=map.getBounds();if(b && b.getWest()>=-180 && b.getEast()<=180 && b.getWest()<b.getEast())updateViewport([b.getWest(),Math.max(-90,b.getSouth()),b.getEast(),Math.min(90,b.getNorth())]);};map.on('moveend',update);update();return()=>{map.off('moveend',update);};},[ready,archiveActive,updateViewport,mapRef]);
+  useEffect(()=>{if(!ready || !archiveActive || !trackArchive)return;const map=mapRef.current!.getMap();const update=()=>{const b=map.getBounds();if(b && b.getWest()>=-180 && b.getEast()<=180 && b.getWest()<b.getEast())updateViewport([b.getWest(),Math.max(-90,b.getSouth()),b.getEast(),Math.min(90,b.getNorth())]);};map.on('moveend',update);update();return()=>{map.off('moveend',update);};},[ready,archiveActive,updateViewport,mapRef,trackArchive]);
 
 
   const [styleRevision, setStyleRevision] = useState(0);
@@ -160,7 +161,7 @@ export function FireMap({ mapRef, features, theme, projection, selectedFeature, 
     return { text: `${p.satellite}${state.collection.metadata.source === 'simulated' ? ' · SIMULATED' : ''}\nRaw FRP: ${power(p.raw_frp)}\nNormalized FRP: ${power(p.normalized_frp)}\nAcquired (UTC): ${p.observed_at_utc || `${p.acq_time_utc} · undated`}\nLocal mean solar time: ${p.local_solar_time || 'Unavailable'}\nPlatform: ${p.platform || p.satellite}\nConfidence: ${p.confidence || 'Unavailable'}\nLatitude, longitude: ${feature.geometry.coordinates[1].toFixed(4)}, ${feature.geometry.coordinates[0].toFixed(4)}`, style: { backgroundColor: '#172f40', color: '#f4f7fa', font: '12px/1.6 "DM Sans", sans-serif', borderRadius: '4px', maxWidth: '300px' } };
   }, [state.collection.metadata.source]);
 
-  return <Map mapLib={mapLib} ref={mapRef} initialViewState={INITIAL_VIEW_STATE} onLoad={() => { setReady(true); onLoad?.(); }}
+  return <Map mapLib={mapLib} ref={mapRef} initialViewState={camera.current ?? INITIAL_VIEW_STATE} onMoveEnd={event => { const v = event.viewState; saveCamera({ longitude: v.longitude, latitude: v.latitude, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing }); }} onLoad={() => { setReady(true); onLoad?.(); }}
     mapStyle={BASEMAP_STYLES.dark} projection={{ type: projection }} transformStyle={INITIAL_BASEMAP_TRANSFORM} pixelRatio={RENDER_PIXEL_RATIO}
     sky={projection === 'globe' ? ORBITAL_SKY : FLAT_SKY} minZoom={-2} renderWorldCopies={false} dragRotate touchPitch touchZoomRotate keyboard pitchWithRotate maxPitch={85}>
     <DeckGLOverlay useDevicePixels={RENDER_PIXEL_RATIO} interleaved={false} layers={layers} getTooltip={tooltip} onClick={info => { if (mode === 'static') onSelectFeature?.((info.object as FireFeature | undefined) ?? null); }} />

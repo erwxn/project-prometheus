@@ -19,13 +19,14 @@ import type { Country } from './country-bounds';
 import orbitalStars from './assets/orbital-stars.svg';
 
 export default function App() {
-  const { state, dispatch, selected, scope, retry, archive } = useDashboard();
+  const { state, dispatch, selected, scope, retry, archive, camera } = useDashboard();
   const allFires = state.collection.features;
   const dataMeta = state.collection.metadata;
   const backendStatus = state.status === 'loading' ? 'checking' : state.status === 'error' ? 'fallback' : 'online';
   const selectedSatellite = state.filters.sensor;
   const setSelectedSatellite = (sensor: SensorFilter) => !archive.active && dispatch({ type: 'filters', patch: { sensor } });
   const mapRef = useRef<MapRef>(null);
+  const restoreCamera = useRef(camera.current !== null);
   const [mapReady, setMapReady] = useState(false);
   const [drawMode, setDrawMode] = useState<DrawMode>('static');
   const [drawingError, setDrawingError] = useState('');
@@ -60,7 +61,7 @@ export default function App() {
 
   // Both the map and CSV load asynchronously; frame the loaded data once both are ready.
   useEffect(() => {
-    if (!mapReady || !allFires.length || archive.active) return;
+    if (!mapReady || !allFires.length || archive.active || restoreCamera.current) return;
     if (state.filters.area) { mapRef.current?.fitBounds(areaBounds(state.filters.area), { padding: { top: 130, bottom: 180, left: 40, right: 60 }, pitch: 0, maxZoom: 12, duration: 0 }); return; }
     const coordinates = allFires.map(fire => fire.geometry.coordinates);
     const lngs = coordinates.map(point => point[0]);
@@ -215,7 +216,9 @@ export default function App() {
             {backendStatus === 'fallback' && <button className="retry-data" onClick={() => void retry()}>Retry real data</button>}
           </div>
 
-          <section className="panel-section shared-controls"><DatasetControls /></section>
+          <section className="panel-section explore-periods"><h3>Explore a place and period</h3><p>Search for a country on the map. Use the archive controls below to choose a satellite and period.</p><p>Showing {state.filters.startDate || 'undated data'} to {state.filters.endDate || 'undated data'}. This is historical/test data, not a live fire feed.</p><details><summary>Choose dataset and dates</summary><DatasetControls /></details><a href="/monitor/">Monitor the last 24 hours</a></section>
+          <details className="explore-advanced"><summary>Region and research controls</summary>
+
           <section className="panel-section shared-controls"><AreaControls mapRef={mapRef} mode={drawMode} onModeChange={changeDrawMode} error={drawingError} onError={setDrawingError} /></section>
           <section className="panel-section shared-controls"><h3>Shared filters</h3><GlobalFilters compact /></section>
           {dataMeta.source === 'csv' && <section className="panel-section imported-data" aria-label="Imported observation dataset">
@@ -234,6 +237,7 @@ export default function App() {
             {timeScope === 'file' && <p>Entire file: {formatInstant(fileBounds.start)} – {formatInstant(fileBounds.start + (fileBounds.durationMinutes - 1) * MINUTE)} {basisLabel}. Shared area, UTC date, and sensor filters apply.</p>}
             {!!dataMeta.rejected_rows && <p>{dataMeta.rejected_rows} invalid rows excluded.</p>}
           </section>}
+          </details>
           <section className="panel-section" aria-labelledby="summary-title">
             <div className="section-heading"><h3 id="summary-title">Observation summary</h3><span>Current selection</span></div>
             <div className="primary-stat"><strong>{stats.count.toLocaleString()}</strong><span>visible hotspots</span></div>
@@ -244,7 +248,7 @@ export default function App() {
             <p className="micro-copy">FRP · Raw sensors / normalized predictions</p>
           </section>
 
-          <section className="panel-section" aria-labelledby="sources-title">
+          <details className="panel-section" aria-labelledby="sources-title"><summary>Observation sources</summary>
             <div className="section-heading"><h3 id="sources-title">Observation source</h3></div>
             <div className="source-options" role="group" aria-labelledby="sources-title">
               {([
@@ -258,7 +262,7 @@ export default function App() {
                 </button>
               ))}
             </div>
-          </section>
+          </details>
 
           <FireObservations fires={filteredFires} timeBasis={timeBasis} selected={activeFire} onSelect={locateFire} onFit={fitHotspots} />
           <div className="panel-footer"><p>One planet. Multiple perspectives.<br /><span>MODIS + VIIRS / Diurnal harmonization</span></p></div>

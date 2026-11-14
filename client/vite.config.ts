@@ -10,7 +10,8 @@ export default defineConfig({
       input: [
         fileURLToPath(new URL('./index.html', import.meta.url)),
         fileURLToPath(new URL('./about/index.html', import.meta.url)),
-        fileURLToPath(new URL('./analytics/index.html', import.meta.url))
+        fileURLToPath(new URL('./analytics/index.html', import.meta.url)),
+        fileURLToPath(new URL('./monitor/index.html', import.meta.url))
       ]
     }
   },

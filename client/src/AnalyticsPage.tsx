@@ -67,7 +67,7 @@ function Breakdown({ rows, total }: { rows: { label: string; count: number }[]; 
 }
 
 export default function AnalyticsPage() {
-  const { state, selected, summary, archive } = useDashboard();
+  const { camera, state, selected, summary, archive } = useDashboard();
   const [basis, setBasis] = useState<TimeBasis>('utc');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [projection, setProjection] = useState<'mercator' | 'globe'>('mercator');
@@ -75,6 +75,7 @@ export default function AnalyticsPage() {
   const [drawingError, setDrawingError] = useState('');
   const [mapReady, setMapReady] = useState(false);
   const mapRef = useRef<MapRef>(null);
+  const restoreCamera = useRef(camera.current !== null);
   const features = useMemo(() => selected.map(row => row.feature), [selected]);
   const localStats = useMemo(() => summarizeObservations(features, 'ALL', '', basis), [features, basis]);
   const stats = useMemo(()=>{
@@ -91,7 +92,7 @@ export default function AnalyticsPage() {
   const mapState = mapFeedback(state.status === 'loading' || archive.mapBusy, archive.active ? archive.error : state.error, features.length);
   const changeMode = (next: DrawMode) => { if (next !== 'static') setProjection('mercator'); setMode(next); };
   useEffect(() => {
-    if (!mapReady || archive.active) return;
+    if (!mapReady || archive.active || restoreCamera.current) return;
     if (state.filters.area) { mapRef.current?.fitBounds(areaBounds(state.filters.area), { padding: 65, pitch: 0, maxZoom: 12, duration: 0 }); return; }
     const coordinates = state.collection.features.map(f => f.geometry.coordinates);
     if (!coordinates.length) return;

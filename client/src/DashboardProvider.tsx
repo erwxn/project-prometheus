@@ -1,5 +1,5 @@
 import { useArchive } from './useArchive';
-import { useCallback, useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useState, useRef, type ReactNode } from 'react';
 import { DashboardContext } from './dashboard-context';
 import { API_BASE, FALLBACK_FIRES } from './fire-data';
 import { dashboardReducer, initialDashboardState, type DashboardAction, type DashboardState } from './dashboard-state';
@@ -8,6 +8,8 @@ import { dailyBuckets, prepareObservations, selectRange, selectScope, summarizeR
 
 function useDashboardValue() {
   const [state, dispatch] = useReducer(dashboardReducer, { type: 'FeatureCollection', features: FALLBACK_FIRES, metadata: { source: 'demo', source_name: 'Undated illustrative demo' } }, initialDashboardState);
+  const camera = useRef<{ longitude: number; latitude: number; zoom: number; pitch: number; bearing: number } | null>(null);
+  const saveCamera = useCallback((value: NonNullable<typeof camera.current>) => { camera.current = value; }, []);
   const [requests] = useState(() => new DatasetRequests());
   const archive = useArchive(state, dispatch, requests);
   const retry = useCallback(async () => {
@@ -82,7 +84,7 @@ function useDashboardValue() {
     const peak=values.length?Math.max(...values):null;
     return {count,activeDays:days.length,meanFrp:frpCount?frpSum/frpCount:null,frpCount,maxFrp:frpCount?Math.max(...days.filter(d=>d.maxFrp!==null).map(d=>d.maxFrp!)):null,peak,peakDays:days.filter(d=>peak!==null&&(state.filters.metric==='detections'?d.count:d.frpCount?d.frpSum/d.frpCount:null)===peak).map(d=>d.date)};
   },[archive.active,archive.data,localSummary,selectedDay,state.filters.metric]);
-  return { archive, state, dispatch, retry, uploadCsv, showSimulatedHistory, returnToLoaded, loadTemporary, prepared, scope, index, selected, summary };
+  return { saveCamera, camera, archive, state, dispatch, retry, uploadCsv, showSimulatedHistory, returnToLoaded, loadTemporary, prepared, scope, index, selected, summary };
 }
 
 export type DashboardContextValue = ReturnType<typeof useDashboardValue>;

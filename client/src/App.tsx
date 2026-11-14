@@ -1,3 +1,4 @@
+import { MapAppearance } from './MapAppearance';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { MapRef } from 'react-map-gl/maplibre';
 import { MINUTE, STEP_MINUTES, observationTime, defaultWindowStart, fileWindow, matchesTime, nextDetectionMinute, type TimeBasis } from './timeline';
@@ -170,10 +171,8 @@ export default function App() {
         <SiteBrand heading />
         <SiteNavigation current="explorer" />
         <div className="challenge-tag"><span className="tiny-orbit" aria-hidden="true" />NASA Space Apps</div>
-        <button className="export-button" aria-label="Export data" title="Export data" onClick={exportObservations}><span aria-hidden="true">↓</span> Export data</button>
-        <button className="theme-button" onClick={() => setMapTheme(t => t === 'dark' ? 'light' : 'dark')} aria-label={`Switch to ${mapTheme === 'dark' ? 'light' : 'dark'} theme`}>
-          <span aria-hidden="true">{mapTheme === 'dark' ? '☼' : '◐'}</span><span>{mapTheme === 'dark' ? 'Light' : 'Dark'} mode</span>
-        </button>
+        <button className="export-button" aria-label="Export data" title="Export data" onClick={exportObservations}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4" /></svg><span>Export data</span></button>
+        <MapAppearance value={mapTheme} onChange={setMapTheme} />
       </header>
 
       {dataMeta.source === 'simulated' && <div className="simulation-banner" role="status">SIMULATED HISTORY · Synthetic examples, not NASA observations.</div>}

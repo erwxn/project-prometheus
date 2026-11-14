@@ -1,5 +1,5 @@
 /* Shared fire analytics follows the editorial atlas surfaces and palette. */
-.temporary-data-picker { margin-bottom: 18px; padding: 12px; border: 1px solid #b5c4ca; border-left: 3px solid #a17a3d; border-radius: 4px; }
+.temporary-data-picker { margin-bottom: 18px; padding: 12px; border: 1px solid #b5c4ca; border-radius: 4px; }
 .temporary-data-picker p, .temporary-data-picker small { font-size: 12px; line-height: 1.65; color: var(--muted); }
 .temporary-data-picker label { display: grid; gap: 6px; font-size: 12px; }
 .temporary-data-picker select { width: 100%; min-width: 0; min-height: 44px; padding: 8px; background: var(--panel); color: var(--text); border: 1px solid #b5c4ca; border-radius: 4px; }
@@ -11,7 +11,7 @@
 .analytics-hero { margin-bottom: 24px; padding-bottom: 24px; }
 .analytics-hero h1 { font-size: clamp(36px, 4vw, 52px); margin-bottom: 12px; }
 .dataset-controls { margin-bottom: 24px; min-width: 0; }
-.dataset-notice { display: flex; flex-direction: column; gap: 5px; padding-left: 12px; border-left: 3px solid #6e94a5; }
+.dataset-notice { display: flex; flex-direction: column; gap: 5px; padding-left: 12px; border-left: 1px solid #6e94a5; }
 .dataset-notice strong { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 .dataset-notice span, .dataset-controls > small { color: var(--muted); font-size: 12px; line-height: 1.65; }
 .dataset-notice.simulated { border-color: #a17a3d; }
@@ -171,4 +171,35 @@
   .mission-workspace > .analysis-panel { order: 1; flex: 0 0 auto; height: auto; min-height: 0; max-height: none; display: block; overflow: visible; }
   .analytics-page .mission-header { gap: 8px; }
   .analytics-page .theme-button { font-size: 10px; white-space: nowrap; }
+}
+
+/* A common control scale keeps the explorer and analytics tools aligned. */
+.temporary-data-picker { padding: 18px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); }
+.temporary-data-picker > p:first-child { margin-top: 0; color: var(--text); font-size: 14px; }
+.temporary-data-picker select { margin-top: 2px; }
+.dataset-notice { border-left-width: 1px; padding-left: 14px; gap: 7px; }
+.dataset-controls > small { display: block; margin-top: 10px; max-width: 75ch; }
+.dataset-controls button, .area-controls button, .global-filters button { min-height: 42px; border-color: var(--control-rule); padding: 9px 13px; font-weight: 500; }
+.control-actions { gap: 8px; margin-block: 16px 10px; }
+.area-tools { gap: 8px; }
+.area-controls h3 { font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
+.area-controls input, .global-filters :is(input, select), .inline-controls select, .section-toolbar > label select { min-height: 44px; border-color: var(--control-rule); border-radius: 5px; padding: 10px 12px; }
+.area-controls label, .global-filters label, .inline-controls label { gap: 8px; font-weight: 500; }
+.analytics-area-panel { padding: 18px 0 18px 22px; border-left: 1px solid var(--border); }
+.coordinate-inputs { gap: 12px; margin-top: 20px; }
+.global-filters { padding-block: 24px; gap: 16px; }
+.global-filters .date-filter { gap: 12px; }
+.global-filters .date-filter button { min-height: 44px; }
+.dashboard-section { padding-block: 36px; }
+.dashboard-section h2 { font-weight: 600; font-size: 26px; }
+.section-toolbar { margin-bottom: 26px; }
+.analytics-metrics dd { font-weight: 500; }
+.calendar-detail { padding-block: 16px; }
+@media (max-width: 1000px) {
+  .analytics-area-panel { padding: 20px 0 0; border-left: 0; border-top: 1px solid var(--border); }
+}
+@media (max-width: 480px) {
+  .temporary-data-picker { padding: 14px; }
+  .control-actions button { flex: 1 1 auto; }
+  .area-tools button { flex: 1 1 calc(50% - 8px); }
 }

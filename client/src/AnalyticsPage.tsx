@@ -1,3 +1,4 @@
+import { MapAppearance } from './MapAppearance';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl/maplibre';
 import { SiteBrand, SiteNavigation } from './SiteHeader';
@@ -87,7 +88,7 @@ export default function AnalyticsPage() {
   }, [mapReady, state.collection, state.filters.area]);
 
   return <div className="mission-app analytics-page" data-theme={theme}>
-    <header className="mission-header"><SiteBrand /><SiteNavigation current="analytics" /><div className="challenge-tag"><span className="tiny-orbit" aria-hidden="true" />NASA Space Apps</div><button className="theme-button" onClick={() => setTheme(value => value === 'dark' ? 'light' : 'dark')} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} map`}>{theme === 'dark' ? 'Light map' : 'Dark map'}</button></header>
+    <header className="mission-header"><SiteBrand /><SiteNavigation current="analytics" /><div className="challenge-tag"><span className="tiny-orbit" aria-hidden="true" />NASA Space Apps</div><MapAppearance value={theme} onChange={setTheme} /></header>
     {state.collection.metadata.source === 'simulated' && <div className="simulation-banner" role="status">SIMULATED HISTORY · Synthetic examples, not NASA satellite observations.</div>}
     <main className="analytics-content">
       <section className="analytics-hero" aria-labelledby="analytics-title"><h1 id="analytics-title">Fire analytics</h1><p>Explore where satellite hotspots occur, follow activity through time, and compare observations with a defensible historical reference.</p></section>

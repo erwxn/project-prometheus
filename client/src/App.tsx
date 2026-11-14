@@ -1,3 +1,4 @@
+import { archivePeriod, explorerDatasetKey } from './explorer-period';
 import { MapAppearance } from './MapAppearance';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { MapRef } from 'react-map-gl/maplibre';
@@ -26,7 +27,7 @@ export default function App() {
   const [mapReady, setMapReady] = useState(false);
   const [drawMode, setDrawMode] = useState<DrawMode>('static');
   const [drawingError, setDrawingError] = useState('');
-  const [timeScope, setTimeScope] = useState<'day' | 'file'>('day');
+  const [timeScope, setTimeScope] = useState<'day' | 'file'>(archive.active ? 'file' : 'day');
   const [timeBasis, setTimeBasis] = useState<TimeBasis>('utc');
   const [windowStartOverride, setWindowStartOverride] = useState<number | null>(null);
   const [cursorMinute, setCursorMinute] = useState(1440);
@@ -41,10 +42,11 @@ export default function App() {
   const [mapProjection, setMapProjection] = useState<'mercator' | 'globe'>('mercator');
   const changeDrawMode = (mode: DrawMode) => { if (mode !== 'static') setMapProjection('mercator'); setDrawMode(mode); };
   const switchProjection = (projection: typeof mapProjection) => { setDrawMode('static'); setMapProjection(projection); };
-  const [previousCollection, setPreviousCollection] = useState(allFires);
-  if (previousCollection !== allFires) {
-    setPreviousCollection(allFires);
-    setTimeBasis('utc'); setTimeScope('day'); setWindowStartOverride(null);
+  const datasetKey = explorerDatasetKey(archive.active, dataMeta.archive_platform, state.filters.startDate, state.filters.endDate, allFires);
+  const [previousCollection, setPreviousCollection] = useState(datasetKey);
+  if (previousCollection !== datasetKey) {
+    setPreviousCollection(datasetKey);
+    setTimeBasis('utc'); setTimeScope(archive.active ? 'file' : 'day'); setWindowStartOverride(null);
     setCursorMinute(1440); setIsPlaying(false); setAllHoursMode(true); setSelectedFire(null);
   }
   const [previousDay, setPreviousDay] = useState(state.filters.selectedDay);
@@ -67,11 +69,11 @@ export default function App() {
     });
   }, [allFires, mapReady, state.filters.area, archive.active]);
 
-  const hasDates = useMemo(() => allFires.some(fire => !!fire.properties.observed_at_utc), [allFires]);
+  const hasDates = archive.active || allFires.some(fire => !!fire.properties.observed_at_utc);
   const timelineFires = useMemo(() => selectRange(scope, { startDate, endDate, selectedDay: null }, false).map(row => row.feature), [scope, startDate, endDate]);
   const defaultStart = useMemo(() => defaultWindowStart(timelineFires, timeBasis), [timelineFires, timeBasis]);
   const timestamps = useMemo(() => new globalThis.Map(allFires.map(fire => [fire, observationTime(fire, timeBasis)])), [allFires, timeBasis]);
-  const fileBounds = useMemo(() => fileWindow(timelineFires, timeBasis), [timelineFires, timeBasis]);
+  const fileBounds = useMemo(() => archive.active ? archivePeriod(startDate, endDate) : fileWindow(timelineFires, timeBasis), [archive.active, startDate, endDate, timelineFires, timeBasis]);
   const durationMinutes = state.filters.selectedDay ? 1440 : timeScope === 'file' ? fileBounds.durationMinutes : 1440;
   const cursorPosition = Math.min(cursorMinute, durationMinutes);
   const windowStart = state.filters.selectedDay ? dateTime(state.filters.selectedDay) : timeScope === 'file' ? fileBounds.start : windowStartOverride ?? defaultStart;
@@ -90,7 +92,7 @@ export default function App() {
   const activeFire = selectedFire && filteredFires.includes(selectedFire) ? selectedFire : null;
   const switchTimeBasis = (basis: TimeBasis) => {
     dispatch({ type: 'filters', patch: { selectedDay: null } });
-    setTimeBasis(basis); setWindowStartOverride(null); setAllHoursMode(true); setIsPlaying(false); setCursorMinute(timeScope === 'file' ? fileWindow(timelineFires, basis).durationMinutes : 1440);
+    setTimeBasis(basis); setWindowStartOverride(null); setAllHoursMode(true); setIsPlaying(false); setCursorMinute(timeScope === 'file' ? (archive.active ? archivePeriod(startDate, endDate) : fileWindow(timelineFires, basis)).durationMinutes : 1440);
   };
   const switchTimeScope = (scope: 'day' | 'file') => {
     dispatch({ type: 'filters', patch: { selectedDay: null } });
@@ -180,7 +182,7 @@ export default function App() {
   };
 
   const compactTimeline = timelineSize === 'compact';
-  const timelineTime = allHoursMode ? (timeScope === 'file' ? 'Entire file' : 'Selected 24 hours') : clockFormat.format(cursorTime);
+  const timelineTime = allHoursMode ? (timeScope === 'file' ? (archive.active ? 'Selected period' : 'Entire file') : 'Selected 24 hours') : clockFormat.format(cursorTime);
   const timelineSources = [{ id: 'ALL', label: 'All' }, { id: 'MODIS', label: 'MODIS' }, { id: 'VIIRS', label: 'VIIRS' }, { id: 'Harmonized', label: 'AI Harmonized' }] as const;
 
   return (
@@ -321,7 +323,7 @@ export default function App() {
                     </select>
                     <select aria-label="Observation date range" value={timeScope} onChange={e => switchTimeScope(e.target.value === 'day' ? 'day' : 'file')}>
                       <option value="day">24 hours</option>
-                      <option value="file">Full filtered file</option>
+                      <option value="file">{archive.active ? 'Full selected period' : 'Full filtered file'}</option>
                     </select>
                     <select aria-label="Timeline size" title="Timeline size" value={timelineSize} onChange={e => setTimelineSize(e.target.value)}>
                       <option value="compact">Compact</option>

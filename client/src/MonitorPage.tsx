@@ -33,7 +33,7 @@ export default function MonitorPage() {
     return () => clearInterval(timer);
   }, [playing]);
   const features = feed.collection?.features;
-  const scoped = useMemo(() => selectScope(prepareObservations(features || []), { area: state.filters.area, sensor: 'ALL' }).map(row => row.feature), [features, state.filters.area]);
+  const scoped = useMemo(() => selectScope(prepareObservations(features || []), { area: state.filters.area, country: state.filters.country, sensor: 'ALL' }).map(row => row.feature), [features, state.filters.area, state.filters.country]);
   const live = anchor === null;
   const end = anchor ?? now;
   const visible = useMemo(() => live ? recentObservations(scoped, end) : playbackObservations(scoped, end, minute), [scoped, end, minute, live]);

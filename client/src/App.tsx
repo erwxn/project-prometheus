@@ -1,3 +1,5 @@
+import { readSharedExplore, shareExplore } from './explore-share';
+import { countryCode, countryName } from './country-filter';
 import { ExploreControls } from './ExploreControls';
 import { MapLoading } from './MapLoading';
 import { mapFeedback } from './map-feedback';
@@ -20,7 +22,9 @@ import type { Country } from './country-bounds';
 import orbitalStars from './assets/orbital-stars.svg';
 
 export default function App() {
-  const { state, dispatch, selected, scope, retry, archive, camera } = useDashboard();
+  const { state, dispatch, selected, scope, retry, archive, camera, shareNotice } = useDashboard();
+  const [sharedTimeline] = useState(() => readSharedExplore(window.location.search));
+  const [restoredTimeline,setRestoredTimeline] = useState(false);
   const allFires = state.collection.features;
   const dataMeta = state.collection.metadata;
   const backendStatus = state.status === 'loading' ? 'checking' : state.status === 'error' ? 'fallback' : 'online';
@@ -36,6 +40,7 @@ export default function App() {
   const [windowStartOverride, setWindowStartOverride] = useState<number | null>(null);
   const [cursorMinute, setCursorMinute] = useState(1440);
   const [allHoursMode, setAllHoursMode] = useState(true);
+  const [aggregated,setAggregated] = useState(false);
   const [selectedFire, setSelectedFire] = useState<FireFeature | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showTimeline, setShowTimeline] = useState(true);
@@ -59,6 +64,12 @@ export default function App() {
   const rangeKey = `${startDate}:${endDate}`;
   const [previousRange, setPreviousRange] = useState(rangeKey);
   if (previousRange !== rangeKey) { setPreviousRange(rangeKey); setWindowStartOverride(null); setIsPlaying(false); setAllHoursMode(true); }
+
+  if (!restoredTimeline && sharedTimeline?.timeline && state.status === 'ready' && allFires.length && (!sharedTimeline.platform || dataMeta.archive && dataMeta.archive_platform === sharedTimeline.platform)) {
+    setRestoredTimeline(true);
+    const t = sharedTimeline.timeline;
+    setTimeScope(t.scope); setTimeBasis(t.basis); setCursorMinute(t.cursorMinute); setAllHoursMode(t.allHours); setWindowStartOverride(t.windowStart);
+  }
 
   // Both the map and CSV load asynchronously; frame the loaded data once both are ready.
   useEffect(() => {
@@ -93,7 +104,7 @@ export default function App() {
   const filteredFires = useMemo(() => datasetFires.filter(fire => matchesTime(timestamps.get(fire) ?? NaN, windowStart, cursorPosition, allHoursMode, durationMinutes)), [datasetFires, timestamps, windowStart, cursorPosition, allHoursMode, durationMinutes]);
   const datasetTimes = useMemo(() => datasetFires.map(fire => timestamps.get(fire) ?? NaN), [datasetFires, timestamps]);
   const nextMinute = useMemo(() => nextDetectionMinute(datasetTimes, windowStart, cursorPosition, durationMinutes), [datasetTimes, windowStart, cursorPosition, durationMinutes]);
-  const activeFire = selectedFire && filteredFires.includes(selectedFire) ? selectedFire : null;
+  const activeFire = selectedFire ? filteredFires.find(f => selectedFire.id !== undefined ? f.id === selectedFire.id : f === selectedFire) ?? null : null;
   const switchTimeBasis = (basis: TimeBasis) => {
     dispatch({ type: 'filters', patch: { selectedDay: null } });
     setTimeBasis(basis); setWindowStartOverride(null); setAllHoursMode(true); setIsPlaying(false); setCursorMinute(timeScope === 'file' ? (archive.active ? archivePeriod(startDate, endDate) : fileWindow(timelineFires, basis)).durationMinutes : 1440);
@@ -128,7 +139,12 @@ export default function App() {
     });
   };
 
-  const locateCountry = ([name, , bounds]: Country) => {
+  const [countryError,setCountryError] = useState('');
+  const locateCountry = ([name, aliases, bounds]: Country) => {
+    const code = countryCode([name,...aliases]);
+    if (!code) { setCountryError('A country boundary is unavailable for this location. Draw a region instead.'); return false; }
+    setCountryError('');
+    dispatch({type:'filters',patch:{country:code,area:null}});
     const map = mapRef.current;
     if (!map) return false;
 
@@ -156,6 +172,13 @@ export default function App() {
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 700 });
   };
 
+  const [shareLink,setShareLink] = useState('');
+  const [shareStatus,setShareStatus] = useState('');
+  const copyView = async () => {
+    const link=shareExplore(window.location.href,{filters:state.filters,camera:camera.current,platform:archive.active?archive.platform:undefined,dataset:dataMeta.source_name||dataMeta.source,version:dataMeta.version,timeline:{scope:timeScope,basis:timeBasis,cursorMinute,allHours:allHoursMode,windowStart:windowStartOverride}});
+    setShareLink(link);
+    try { await navigator.clipboard.writeText(link); setShareStatus('Link copied. It restores your filters and map; available data may change.'); } catch { setShareStatus('Copy the link below to share this selection.'); }
+  };
   const [exportStatus, setExportStatus] = useState('');
   const [exporting, setExporting] = useState(false);
   const exportObservations = async () => {
@@ -168,7 +191,7 @@ export default function App() {
         scope: dataMeta.source === 'simulated' || dataMeta.source === 'demo' ? 'Illustrative / simulated observations' : 'Loaded map observations',
         period: hasDates ? `${new Date(rangeStart).toISOString()} to ${new Date(rangeEnd).toISOString()} (end exclusive; ${timeBasis} clock)` : `Undated observations; ${timeBasis} clock`,
         sensor: selectedSatellite,
-        region: state.filters.area ? JSON.stringify(state.filters.area.geometry) : 'All locations',
+        region: [state.filters.country ? countryName(state.filters.country) : '', state.filters.area ? JSON.stringify(state.filters.area.geometry) : ''].filter(Boolean).join(' / ') || 'All locations',
       });
       const blob = pdf.output('blob');
       const url = URL.createObjectURL(blob);
@@ -217,6 +240,7 @@ export default function App() {
             {backendStatus === 'fallback' && <button className="retry-data" onClick={() => void retry()}>Retry real data</button>}
           </div>
 
+          <section className="panel-section explore-share"><button className="fit-hotspots" onClick={() => void copyView()}>Share this view</button>{shareStatus && <p role="status">{shareStatus}</p>}{shareLink && <input aria-label="Shareable Explore link" readOnly value={shareLink} onFocus={e=>e.currentTarget.select()} />}{shareNotice && <p role="status">{shareNotice}</p>}</section>
           <ExploreControls onPeriodChange={() => { setTimeScope('file'); setAllHoursMode(true); setIsPlaying(false); setWindowStartOverride(null); }} />
           <details className="explore-advanced"><summary>Region and research controls</summary>
 
@@ -274,10 +298,10 @@ export default function App() {
           {mapState === 'loading' && <MapLoading />}
           {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry archive in the filters to try again.</p>}
           {mapState === 'empty' && drawMode === 'static' && <div className="map-empty" role="status"><strong>{!archive.mapBusy && selectedSatellite !== 'ALL' && !availableSensors(state.collection).includes(selectedSatellite) ? 'Selected sensor is unavailable in this slice' : 'No matching detections in this dataset'}</strong><span>This does not mean there were no fires. Try another dataset, time window, or Next detection.</span><button onClick={() => { showWholeWindow(); }}>{timeScope === 'file' ? 'View entire file' : 'View all selected 24 hours'}</button></div>}
-          <FireMap mapRef={mapRef} features={filteredFires} selectedFeature={activeFire} onSelectFeature={feature => { setSelectedFire(feature); setIsPlaying(false); }} theme={mapTheme} projection={mapProjection} mode={drawMode} onModeChange={changeDrawMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
+          <FireMap aggregate onAggregationChange={setAggregated} mapRef={mapRef} features={filteredFires} selectedFeature={activeFire} onSelectFeature={feature => { setSelectedFire(feature); setIsPlaying(false); }} theme={mapTheme} projection={mapProjection} mode={drawMode} onModeChange={changeDrawMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
           <div className="map-top-controls">
-            <div className="map-heading"><h2>{state.filters.area ? 'Selected area' : activeRegion === 'Global' ? 'Global fire activity' : activeRegion} <span>/ {mapProjection === 'globe' ? 'Globe' : 'Flat map'}</span></h2><span className="mobile-data-status">{dataMeta.source === 'simulated' ? 'SIMULATED HISTORY' : backendStatus === 'online' ? 'BACKEND CONNECTED' : backendStatus === 'checking' ? 'CONNECTING' : 'DEMO DATASET'}</span></div>
-            <CountrySearch onSelect={locateCountry} />
+            <div className="map-heading"><h2>{state.filters.country ? countryName(state.filters.country) : state.filters.area ? 'Selected area' : activeRegion === 'Global' ? 'Global fire activity' : activeRegion} <span>/ {mapProjection === 'globe' ? 'Globe' : 'Flat map'}</span></h2><span className="mobile-data-status">{dataMeta.source === 'simulated' ? 'SIMULATED HISTORY' : backendStatus === 'online' ? 'BACKEND CONNECTED' : backendStatus === 'checking' ? 'CONNECTING' : 'DEMO DATASET'}</span></div>
+            <CountrySearch onSelect={locateCountry} selectionDescription="Country boundary filter applied" />{countryError && <p className="country-search-feedback" role="alert">{countryError}</p>}
             <div className="projection-switch" role="group" aria-label="Map view">
               <button type="button" aria-pressed={mapProjection === 'mercator'} onClick={() => switchProjection('mercator')}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2zM9 3v16M15 5v16" /></svg>
@@ -295,9 +319,13 @@ export default function App() {
             <p>{activeFire.geometry.coordinates[1].toFixed(3)}°, {activeFire.geometry.coordinates[0].toFixed(3)}°</p>
             <dl><div><dt>{activeFire.properties.satellite.toLowerCase().includes('harmonized') ? 'Estimated FRP' : 'Measured FRP'}</dt><dd>{observationFrp(activeFire)?.toFixed(1) ?? 'Unavailable'} MW</dd></div>
             <div><dt>Acquired UTC</dt><dd>{activeFire.properties.observed_at_utc ? activeFire.properties.observed_at_utc.replace('T', ' ').slice(0, 16) : `${activeFire.properties.acq_time_utc} · Undated demo`}</dd></div></dl>
-            <p>Observation point, not a fire perimeter.</p>
+            <p><strong>What this means</strong><br />A satellite detected heat at this location. Nearby points may belong to the same fire.</p>
+            <p>FRP is the rate of energy released, measured in megawatts. It does not measure the burned area.</p>
+            <p>Confidence: {activeFire.properties.confidence || 'Not supplied'}{activeFire.properties.confidence_percent !== undefined ? ` (${activeFire.properties.confidence_percent}%)` : ''}. This is a detection-quality field, not a forecast.</p>
+            <p>Product: {activeFire.properties.product_version || 'Not supplied'} · {dataMeta.source_name || dataMeta.source}</p>
+            <p>Observation point, not a fire perimeter. Acquisition time above is UTC.</p>
           </section>}
-          <div className="thermal-legend" hidden={!!activeFire} aria-label="Fire radiative power color scale">
+          <div className="thermal-legend" hidden={!!activeFire || aggregated} aria-label="Fire radiative power color scale">
             <p className="marker-key"><span className="fire-dot" aria-hidden="true" /> {dataMeta.source === 'csv' ? `${selectedSatellite === 'ALL' ? 'Satellite' : selectedSatellite} detection` : dataMeta.source === 'simulated' ? 'SIMULATED observation' : 'Sample fire observation'}</p><div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Points are not fire size.</p>
           </div>
 

@@ -1,3 +1,4 @@
+import { countryContains } from './country-filter.ts';
 import type { FireFeature } from './fire-data.ts';
 import { areaPredicate } from './area-selection.ts';
 import { observationFrp, sensorOf, type ActivityBucket, type ActivityMetric, type DashboardFilters, type FireCollection, type FireMetadata, type PreparedObservation, type SensorFilter, type TrendPoint } from './analytics-model.ts';
@@ -36,9 +37,9 @@ export function datasetDateBounds(collection: FireCollection): [string, string] 
   return [dates[0] ?? '', dates.at(-1) ?? ''];
 }
 
-export function selectScope(rows: PreparedObservation[], filters: Pick<DashboardFilters, 'area' | 'sensor'>): PreparedObservation[] {
+export function selectScope(rows: PreparedObservation[], filters: Pick<DashboardFilters, 'area' | 'sensor' | 'country'>): PreparedObservation[] {
   const contains = areaPredicate(filters.area);
-  return rows.filter(row => (filters.sensor === 'ALL' || row.sensor === filters.sensor) && contains(row.feature.geometry.coordinates));
+  return rows.filter(row => (filters.sensor === 'ALL' || row.sensor === filters.sensor) && countryContains(filters.country, row.feature.geometry.coordinates) && contains(row.feature.geometry.coordinates));
 }
 
 export function selectRange(rows: PreparedObservation[], filters: Pick<DashboardFilters, 'startDate' | 'endDate' | 'selectedDay'>, focusDay = true): PreparedObservation[] {

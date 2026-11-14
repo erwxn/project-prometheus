@@ -1,3 +1,4 @@
+const countries=require('../shared/countries.json');
 const {booleanPointInPolygon}=require('@turf/boolean-point-in-polygon');
 const {ValidateNotSelfIntersecting}=require('terra-draw');
 const DAY=86400000;
@@ -13,12 +14,16 @@ function validateQuery(q,platforms,kind){
  if(!q||typeof q!=='object')throw Error('Supply archive filters.');
  const platform=q.platform??platforms[0];if(platform!=='ALL'&&!platforms.includes(platform))throw Error('Unknown satellite.');
  if(!validDate(q.startDate)||!validDate(q.endDate)||q.startDate>q.endDate||Date.parse(q.endDate)-Date.parse(q.startDate)>DAY*36600)throw Error('Supply a valid inclusive UTC date range (maximum 100 years).');
+ if(q.country && (typeof q.country!=='string'||!Object.hasOwn(countries,q.country)))throw Error('Unknown country boundary.');
  if(q.area)validateArea(q.area);
  if(q.viewport && (!Array.isArray(q.viewport)||q.viewport.length!==4||!q.viewport.every(Number.isFinite)||q.viewport[0]<-180||q.viewport[2]>180||q.viewport[1]<-90||q.viewport[3]>90||q.viewport[0]>=q.viewport[2]||q.viewport[1]>=q.viewport[3]))throw Error('Invalid viewport bounds.');
  if(q.selectedDay && (!validDate(q.selectedDay)||q.selectedDay<q.startDate||q.selectedDay>q.endDate))throw Error('Selected day is outside the date range.');
  const cursor=q.cursor??0;if(!Number.isSafeInteger(cursor)||cursor<0||cursor>1e8)throw Error('Invalid observation cursor.');
  if(kind==='comparison' && (platform==='ALL'||!Array.isArray(q.years)||!q.years.length||q.years.length>10||q.years.some(y=>!Number.isInteger(y)||y<1900||y>2200)))throw Error('Choose one satellite and up to ten comparison years.');
- return {platform,startDate:q.startDate,endDate:q.endDate,area:q.area||null,viewport:kind==='observations'?q.viewport||null:null,selectedDay:kind==='observations'?q.selectedDay||null:null,cursor:kind==='observations'?cursor:0,...(kind==='comparison'?{years:[...new Set(q.years)].sort()}: {})};
+ return {country:q.country||null,platform,startDate:q.startDate,endDate:q.endDate,area:q.area||null,viewport:kind==='observations'?q.viewport||null:null,selectedDay:kind==='observations'?q.selectedDay||null:null,cursor:kind==='observations'?cursor:0,...(kind==='comparison'?{years:[...new Set(q.years)].sort()}: {})};
 }
 function contains(area,lon,lat){return !area||booleanPointInPolygon([lon,lat],area,{ignoreBoundary:false});}
-module.exports={validDate,validateArea,validateQuery,bounds,contains};
+const countryBoxes=Object.fromEntries(Object.entries(countries).map(([code,f])=>{const p=f.geometry.type==='Polygon'?f.geometry.coordinates.flat():f.geometry.coordinates.flat(2);return [code,[Math.min(...p.map(x=>x[0])),Math.min(...p.map(x=>x[1])),Math.max(...p.map(x=>x[0])),Math.max(...p.map(x=>x[1]))]];}));
+function countryContains(code,lon,lat){if(!code)return true;const b=countryBoxes[code];return !!b&&lon>=b[0]&&lon<=b[2]&&lat>=b[1]&&lat<=b[3]&&booleanPointInPolygon([lon,lat],countries[code],{ignoreBoundary:false});}
+function countryBounds(code){return countryBoxes[code];}
+module.exports={countryBounds,countryContains,validDate,validateArea,validateQuery,bounds,contains};

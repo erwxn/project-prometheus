@@ -21,6 +21,7 @@ export interface CoverageInterval {
 export interface FireMetadata {
   source: string;
   live?: boolean;
+  version?: string;
   temporary?: boolean;
   archive?: boolean;
   archive_platform?: string;
@@ -55,6 +56,7 @@ export interface FireCollection {
 }
 
 export interface DashboardFilters {
+  country?: string | null;
   area: AreaFeature | null;
   startDate: string;
   endDate: string;

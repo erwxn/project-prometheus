@@ -6,7 +6,7 @@ import type {DashboardState,DashboardAction} from './dashboard-state';
 import type {DatasetRequests} from './fire-api';
 import {archiveDefaults,archiveSensor,type ArchiveCatalog,type ArchiveMap,type ArchiveSelection,type ArchiveSummary} from './archive-model';
 import type {TrendGrouping} from './historical-chart';
-export function useArchive(state:DashboardState,dispatch:Dispatch<DashboardAction>,requests:DatasetRequests){
+export function useArchive(state:DashboardState,dispatch:Dispatch<DashboardAction>,requests:DatasetRequests,autoArchive=true){
  const [catalog,setCatalog]=useState<ArchiveCatalog|null>(null);
  const [data,setData]=useState<ArchiveSummary|null>(null),[comparison,setComparison]=useState<ArchiveSummary|null>(null);
  const [applyRevision,setApplyRevision]=useState(0);
@@ -27,11 +27,11 @@ export function useArchive(state:DashboardState,dispatch:Dispatch<DashboardActio
  dispatch({type:'archive-apply',selection,sensor:archiveSensor(selection.platform,catalog),reset});
  },[catalog,dispatch,requests]);
  const auto=useRef(false);
- useEffect(()=>{if(catalog&&!auto.current&&state.collection.metadata.temporary&&!active){auto.current=true;apply(archiveDefaults(catalog,state.collection.metadata.test_platform));}},[catalog,active,apply,state.collection.metadata]);
+ useEffect(()=>{if(autoArchive&&catalog&&!auto.current&&state.collection.metadata.temporary&&!active){auto.current=true;apply(archiveDefaults(catalog,state.collection.metadata.test_platform));}},[autoArchive,catalog,active,apply,state.collection.metadata]);
  // The map page is scoped to the applied range/day and must reset when that scope changes.
  // eslint-disable-next-line react/set-state-in-effect
- useEffect(()=>{setCursor(0);},[state.filters.selectedDay,state.filters.area,state.filters.startDate,state.filters.endDate]);
- const query=useMemo(()=>({platform,startDate:state.filters.startDate,endDate:state.filters.endDate,area:state.filters.area}),[platform,state.filters.startDate,state.filters.endDate,state.filters.area]);
+ useEffect(()=>{setCursor(0);},[state.filters.selectedDay,state.filters.country,state.filters.area,state.filters.startDate,state.filters.endDate]);
+ const query=useMemo(()=>({country:state.filters.country,platform,startDate:state.filters.startDate,endDate:state.filters.endDate,area:state.filters.area}),[state.filters.country,platform,state.filters.startDate,state.filters.endDate,state.filters.area]);
  // Loading state synchronizes with the external archive request.
  // eslint-disable-next-line react/set-state-in-effect
  useEffect(()=>{if(!active)return;const c=new AbortController(),rev=++revision.current;setBusy(true);setData(null);setComparison(null);setError('');

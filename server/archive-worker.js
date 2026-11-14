@@ -1,7 +1,7 @@
 const {parentPort,workerData}=require('node:worker_threads');
 const {DatabaseSync}=require('node:sqlite');
 const fs=require('node:fs');
-const {validateQuery,bounds,contains}=require('./archive-validation');
+const {validateQuery,bounds,contains,countryContains,countryBounds}=require('./archive-validation');
 const {solarTime}=require('./modis-csv');
 const filename=workerData.filename,stat=fs.statSync(filename),identity=`v2:${stat.size}:${stat.mtimeMs}`;
 const db=new DatabaseSync(filename,{readOnly:true});
@@ -31,7 +31,7 @@ side.prepare('ATTACH DATABASE ? AS source').run(filename);
 const platforms=db.prepare('SELECT DISTINCT platform FROM observations').all().map(r=>r.platform);
 function check(cancel){if(Atomics.load(cancel,0))throw Object.assign(Error('Archive request cancelled.'),{status:499});}
 function rows(q,ordered=true){let sql='SELECT o.* FROM source.observations o',args=[];let where=[];
- const box=q.area?bounds(q.area):q.viewport;
+ const box=q.area?bounds(q.area):q.country?countryBounds(q.country):q.viewport;
  const spatial=box && (box[2]-box[0])*(box[3]-box[1])<1200;
  if(spatial){sql='SELECT o.* FROM spatial s CROSS JOIN keys k ON k.id=s.id CROSS JOIN source.observations o ON o.platform=k.platform AND o.lat=k.lat AND o.lon=k.lon AND o.date=k.date AND o.time=k.time';where.push('s.east>=? AND s.west<=? AND s.north>=? AND s.south<=?');args.push(box[0],box[2],box[1],box[3]);}
  if(box&&!spatial){where.push('o.lon>=? AND o.lon<=? AND o.lat>=? AND o.lat<=?');args.push(box[0],box[2],box[1],box[3]);}
@@ -40,11 +40,11 @@ function rows(q,ordered=true){let sql='SELECT o.* FROM source.observations o',ar
  where.push(alias+'.date>=? AND '+alias+'.date<?');args.push(q.selectedDay||q.startDate,new Date(Date.parse((q.selectedDay||q.endDate)+'T00:00:00Z')+86400000).toISOString().slice(0,10));
  return side.prepare(sql+' WHERE '+where.join(' AND ')+(ordered?' ORDER BY o.platform,o.date,o.time,o.lat,o.lon':'')).iterate(...args);
 }
-function dailyFor(q,cancel){const result=new Map();if(!q.area){let sql='SELECT value FROM daily WHERE date>=? AND date<=?',args=[q.startDate,q.endDate];if(q.platform!=='ALL'){sql+=' AND platform=?';args.push(q.platform);}for(const r of side.prepare(sql).iterate(...args)){check(cancel);const b=JSON.parse(r.value);result.set(b.date,merge(result.get(b.date)||empty(b.date),b));}}else{let i=0;for(const r of rows(q,false)){if(!(i++%512))check(cancel);if(contains(q.area,r.lon,r.lat)){const a=result.get(r.date)||empty(r.date);add(a,r);result.set(r.date,a);}}}return [...result.values()].sort((a,b)=>a.date.localeCompare(b.date));}
+function dailyFor(q,cancel){const result=new Map();if(!q.area&&!q.country){let sql='SELECT value FROM daily WHERE date>=? AND date<=?',args=[q.startDate,q.endDate];if(q.platform!=='ALL'){sql+=' AND platform=?';args.push(q.platform);}for(const r of side.prepare(sql).iterate(...args)){check(cancel);const b=JSON.parse(r.value);result.set(b.date,merge(result.get(b.date)||empty(b.date),b));}}else{let i=0;for(const r of rows(q,false)){if(!(i++%512))check(cancel);if(contains(q.area,r.lon,r.lat)&&countryContains(q.country,r.lon,r.lat)){const a=result.get(r.date)||empty(r.date);add(a,r);result.set(r.date,a);}}}return [...result.values()].sort((a,b)=>a.date.localeCompare(b.date));}
 function summary(daily){const all=empty(null),monthly=new Map(),yearly=new Map();for(const d of daily){merge(all,d);for(const [map,key]of [[monthly,d.date.slice(0,7)],[yearly,d.date.slice(0,4)]])map.set(key,merge(map.get(key)||empty(key),d));}const peakCount= daily.length?Math.max(...daily.map(d=>d.count)):null;const means=daily.filter(d=>d.frpCount);const peakFrp=means.length?Math.max(...means.map(d=>d.frpSum/d.frpCount)):null;return {peaks:{detections:{value:peakCount,days:daily.filter(d=>d.count===peakCount).map(d=>d.date)},meanFrp:{value:peakFrp,days:means.filter(d=>d.frpSum/d.frpCount===peakFrp).map(d=>d.date)}},daily,monthly:[...monthly.values()],yearly:[...yearly.values()],totals:all,coverage:'unknown',baseline:null,baselineReason:'The archive does not establish complete satellite coverage. Three preceding complete comparable years are required.'};}
 const cache=new Map();let bytes=0;
 function query(kind,q,cancel){if(kind==='catalog'){const p=side.prepare('SELECT platform,min(date) observedFrom,max(date) observedTo FROM daily GROUP BY platform').all();return {platforms:p,identity};}
- if(kind==='observations'){let total=0,features=[],i=0;for(const r of rows(q)){if(!(i++%512))check(cancel);if(q.viewport&&(r.lon<q.viewport[0]||r.lon>q.viewport[2]||r.lat<q.viewport[1]||r.lat>q.viewport[3]))continue;if(!contains(q.area,r.lon,r.lat))continue;if(total>=q.cursor&&features.length<10000)features.push(feature(r));total++;}return {type:'FeatureCollection',features,total,nextCursor:q.cursor+features.length<total?q.cursor+features.length:null,scope:'loaded map observations',metadata:{source:'csv',temporary:true,source_name:'Temporary NASA FIRMS archive',total_features:features.length,has_harmonized:false}};}
+ if(kind==='observations'){let total=0,features=[],i=0;for(const r of rows(q)){if(!(i++%512))check(cancel);if(q.viewport&&(r.lon<q.viewport[0]||r.lon>q.viewport[2]||r.lat<q.viewport[1]||r.lat>q.viewport[3]))continue;if(!contains(q.area,r.lon,r.lat)||!countryContains(q.country,r.lon,r.lat))continue;if(total>=q.cursor&&features.length<10000)features.push(feature(r));total++;}return {type:'FeatureCollection',features,total,nextCursor:q.cursor+features.length<total?q.cursor+features.length:null,scope:'loaded map observations',metadata:{source:'csv',temporary:true,source_name:'Temporary NASA FIRMS archive',total_features:features.length,has_harmonized:false}};}
  const key=JSON.stringify([kind,q]);if(cache.has(key)){const value=cache.get(key);cache.delete(key);cache.set(key,value);return value.data;}
  const data=kind==='comparison'?{...summary(dailyFor({...q,startDate:`${Math.min(...q.years)}-01-01`,endDate:`${Math.max(...q.years)}-12-31`},cancel).filter(d=>q.years.includes(Number(d.date.slice(0,4))))),years:q.years}:summary(dailyFor(q,cancel));
  const size=Buffer.byteLength(JSON.stringify(data));if(size<16*1024*1024){while(cache.size>=24||bytes+size>32*1024*1024){const k=cache.keys().next().value;if(k===undefined)break;bytes-=cache.get(k).size;cache.delete(k);}cache.set(key,{size,data});bytes+=size;}return data;

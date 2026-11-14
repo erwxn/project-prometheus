@@ -261,3 +261,11 @@
 .explore-selection small { display: block; color: var(--muted); margin-top: 5px; }
 .explore-selection button { display: block; margin-top: 8px; }
 .explore-next { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+.explore-share input { width: 100%; min-width: 0; padding: 10px; margin-top: 10px; border: 1px solid var(--control-rule); border-radius: 4px; background: var(--panel); color: var(--text); }
+.explore-share p { font-size: 12px; line-height: 1.65; color: var(--muted); }
+.map-aggregation-note { position: absolute; z-index: 2; left: 20px; bottom: 24px; padding: 6px 10px; background: var(--map-tool); color: var(--map-tool-text); font-size: 11px; max-width: calc(100% - 40px); pointer-events: none; }
+.observation-detail { max-height: calc(100% - 190px); overflow-y: auto; }
+@media (max-width: 480px) { .observation-detail { top: 175px; max-height: calc(100% - 200px); } .map-aggregation-note { bottom: 20px; left: 10px; font-size: 10px; } }
+.map-aggregation-note { top: 205px; bottom: auto; max-width: 230px; line-height: 1.6; }
+@media (max-width: 480px) { .map-aggregation-note { top: 190px; bottom: auto; max-width: 180px; } }

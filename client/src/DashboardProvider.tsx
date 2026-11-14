@@ -1,3 +1,4 @@
+import { readSharedExplore } from './explore-share';
 import { useArchive } from './useArchive';
 import { useCallback, useEffect, useMemo, useReducer, useState, useRef, type ReactNode } from 'react';
 import { DashboardContext } from './dashboard-context';
@@ -8,10 +9,22 @@ import { dailyBuckets, prepareObservations, selectRange, selectScope, summarizeR
 
 function useDashboardValue() {
   const [state, dispatch] = useReducer(dashboardReducer, { type: 'FeatureCollection', features: FALLBACK_FIRES, metadata: { source: 'demo', source_name: 'Undated illustrative demo' } }, initialDashboardState);
-  const camera = useRef<{ longitude: number; latitude: number; zoom: number; pitch: number; bearing: number } | null>(null);
+  const [sharedView] = useState(() => readSharedExplore(window.location.search));
+  const shareNotice = sharedView ? 'Shared selection requested. Available observations may have changed; this link does not store the dataset.' : '';
+  const shareRestored = useRef(false);
+  const camera = useRef<{ longitude: number; latitude: number; zoom: number; pitch: number; bearing: number } | null>(sharedView?.camera ?? null);
   const saveCamera = useCallback((value: NonNullable<typeof camera.current>) => { camera.current = value; }, []);
   const [requests] = useState(() => new DatasetRequests());
-  const archive = useArchive(state, dispatch, requests);
+  const archive = useArchive(state, dispatch, requests, !sharedView || !!sharedView.platform);
+  useEffect(() => {
+    if (!sharedView || shareRestored.current || state.status !== 'ready') return;
+    if (sharedView.platform && !archive.catalog && state.collection.metadata.temporary) return;
+    shareRestored.current = true;
+    if (sharedView.platform && archive.catalog?.partitions.some(p => sharedView.platform === 'ALL' || p.platform === sharedView.platform)) {
+      archive.apply({ platform: sharedView.platform, year: sharedView.filters.endDate.slice(0,4), month:'ALL', startDate:sharedView.filters.startDate, endDate:sharedView.filters.endDate });
+    }
+    dispatch({type:'filters',patch:sharedView.filters});
+  }, [sharedView,state.status,state.collection.metadata.temporary,archive]);
   const retry = useCallback(async () => {
     const request = requests.begin();
     dispatch({ type: 'upload', status: 'idle', message: '' });
@@ -71,8 +84,8 @@ function useDashboardValue() {
   }, [requests]);
   const returnToLoaded = useCallback(() => { requests.cancel(); dispatch({ type: 'return-loaded' }); }, [requests]);
   const prepared = useMemo(() => prepareObservations(state.collection.features), [state.collection]);
-  const { area, sensor, startDate, endDate, selectedDay } = state.filters;
-  const scope = useMemo(() => selectScope(prepared, { area, sensor }), [prepared, area, sensor]);
+  const { country, area, sensor, startDate, endDate, selectedDay } = state.filters;
+  const scope = useMemo(() => selectScope(prepared, { area, sensor, country }), [prepared, area, sensor, country]);
   const index = useMemo(() => archive.active ? new Map((archive.data?.daily||[]).map(d=>[d.date,{count:d.count,frpSum:d.frpSum,frpCount:d.frpCount,methodIds:new Set(d.methods)}])) : dailyBuckets(scope), [scope, archive.data, archive.active]);
   const selected = useMemo(() => selectRange(scope, { startDate, endDate, selectedDay }), [scope, startDate, endDate, selectedDay]);
   const localSummary = useMemo(() => summarizeRange(selected, state.filters, index, state.collection.metadata), [selected, state.filters, index, state.collection.metadata]);
@@ -84,7 +97,7 @@ function useDashboardValue() {
     const peak=values.length?Math.max(...values):null;
     return {count,activeDays:days.length,meanFrp:frpCount?frpSum/frpCount:null,frpCount,maxFrp:frpCount?Math.max(...days.filter(d=>d.maxFrp!==null).map(d=>d.maxFrp!)):null,peak,peakDays:days.filter(d=>peak!==null&&(state.filters.metric==='detections'?d.count:d.frpCount?d.frpSum/d.frpCount:null)===peak).map(d=>d.date)};
   },[archive.active,archive.data,localSummary,selectedDay,state.filters.metric]);
-  return { saveCamera, camera, archive, state, dispatch, retry, uploadCsv, showSimulatedHistory, returnToLoaded, loadTemporary, prepared, scope, index, selected, summary };
+  return { shareNotice, saveCamera, camera, archive, state, dispatch, retry, uploadCsv, showSimulatedHistory, returnToLoaded, loadTemporary, prepared, scope, index, selected, summary };
 }
 
 export type DashboardContextValue = ReturnType<typeof useDashboardValue>;

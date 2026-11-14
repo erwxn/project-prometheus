@@ -1,3 +1,4 @@
+import { countryName } from './country-filter';
 import { useId, useMemo, useRef, useState, type RefObject } from 'react';
 import type { MapRef } from 'react-map-gl/maplibre';
 import { useDashboard } from './dashboard-context';
@@ -74,7 +75,8 @@ export function AreaControls({ mapRef, mode, onModeChange, error, onError }: Are
   const zoom = () => { if (area) mapRef.current?.fitBounds(areaBounds(area), { padding: 70, maxZoom: 12, pitch: 0, duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 600 }); };
   return <div className="area-controls">
     <h3>Select an area</h3>
-    <p>Draw a region or select a location and radius. Country search moves the camera.</p>
+    {state.filters.country && <p>Country boundary: {countryName(state.filters.country)} <button onClick={() => dispatch({type:'filters',patch:{country:null}})}>Clear country filter</button></p>}
+    <p>Draw a region or select a location and radius. In Explore, country search also filters by its boundary.</p>
     <div className="area-tools" role="group" aria-label="Area drawing tools">
       <button aria-pressed={mode === 'rectangle'} onClick={() => { onError(''); onModeChange('rectangle'); }}>Rectangle</button>
       <button aria-pressed={mode === 'polygon'} onClick={() => { onError(''); onModeChange('polygon'); }}>Polygon</button>

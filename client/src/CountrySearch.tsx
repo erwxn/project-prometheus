@@ -30,7 +30,7 @@ function matchCountries(query: string) {
   };
 }
 
-export function CountrySearch({ onSelect }: { onSelect: (country: Country) => boolean }) {
+export function CountrySearch({ onSelect, selectionDescription = 'Map centered' }: { onSelect: (country: Country) => boolean; selectionDescription?: string }) {
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
@@ -60,7 +60,7 @@ export function CountrySearch({ onSelect }: { onSelect: (country: Country) => bo
     }
     setQuery(country[0]);
     setError('');
-    setStatus(`Map centered on ${country[0]}.`);
+    setStatus(`${selectionDescription}: ${country[0]}.`);
   }
 
   return (

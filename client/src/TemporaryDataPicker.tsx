@@ -12,7 +12,7 @@ export function TemporaryDataPicker(){
   setExporting(true);setExportMessage('Preparing archive PDF...');
   try {
    const {archivePdf}=await import('./archive-pdf');
-   const pdf=archivePdf(archive.data,archive.comparison,{platform:archive.platform,startDate:state.filters.startDate,endDate:state.filters.endDate,area:state.filters.area},{grouping:archive.trendGrouping,metric:state.filters.metric,comparisonYears:archive.comparisonYears});
+   const pdf=archivePdf(archive.data,archive.comparison,{platform:archive.platform,startDate:state.filters.startDate,endDate:state.filters.endDate,area:state.filters.area,country:state.filters.country},{grouping:archive.trendGrouping,metric:state.filters.metric,comparisonYears:archive.comparisonYears});
    const url=URL.createObjectURL(pdf.output('blob'));
    const link=document.createElement('a');link.href=url;link.download='prometheus-archive-report.pdf';document.body.appendChild(link);link.click();link.remove();
    window.setTimeout(()=>URL.revokeObjectURL(url),60000);setExportMessage('Archive PDF download started.');

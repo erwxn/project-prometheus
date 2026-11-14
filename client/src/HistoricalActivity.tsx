@@ -1,3 +1,4 @@
+import { ArchiveHistory } from './ArchiveHistory';
 import { useMemo, useState } from 'react';
 import { useDashboard } from './dashboard-context';
 import { historicalTrends } from './analytics-engine';
@@ -10,7 +11,8 @@ const months = Array.from({ length: 12 }, (_, i) => new Intl.DateTimeFormat('en'
 const colors = ['#365f76', '#8b4f76', '#277569', '#9a641d', '#5151a3'];
 const dashes = ['', '7 4', '2 4', '10 3 2 3', '4 2'];
 
-export function HistoricalActivity() {
+export function HistoricalActivity() { const {archive}=useDashboard(); return archive.active ? <ArchiveHistory /> : <LocalHistoricalActivity />; }
+function LocalHistoricalActivity() {
   const { state, index } = useDashboard();
   const { filters, collection } = state;
   const [grain, setGrain] = useState<'month' | 'year'>('month');

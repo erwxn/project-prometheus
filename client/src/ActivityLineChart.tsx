@@ -26,7 +26,7 @@ export function ActivityLineChart({ title, labels, series, unit, selectedIndex =
           if (segment) segments.push(segment);
           return <g key={s.id}>
             {segments.map((d, i) => <path key={i} d={d} fill="none" stroke={s.color} strokeWidth="2.3" strokeDasharray={s.dash} />)}
-            {s.values.map((value, i) => value === null ? null : <circle key={i} cx={x(i)} cy={y(value)} r="4" fill={s.complete?.[i] === false ? '#fcfcfa' : s.color} stroke={s.color} strokeWidth="2" tabIndex={0} role="img" aria-label={`${s.label}, ${labels[i]}: ${number.format(value)} ${unit}${s.complete?.[i] === false ? '; partial coverage' : ''}`} onMouseEnter={() => setDetail(`${s.label} · ${labels[i]} · ${number.format(value)} ${unit}${s.complete?.[i] === false ? ' · partial coverage' : ''}`)} onFocus={() => setDetail(`${s.label} · ${labels[i]} · ${number.format(value)} ${unit}${s.complete?.[i] === false ? ' · partial coverage' : ''}`)}><title>{s.label} · {labels[i]} · {number.format(value)} {unit}</title></circle>)}
+            {s.values.map((value, i) => value === null ? null : <circle key={i} cx={x(i)} cy={y(value)} r="4" fill={s.complete?.[i] === false ? '#fcfcfa' : s.color} stroke={s.color} strokeWidth="2" tabIndex={0} role="img" aria-label={`${s.label}, ${labels[i]}: ${value} ${unit}${s.complete?.[i] === false ? '; partial coverage' : ''}`} onMouseEnter={() => setDetail(`${s.label} · ${labels[i]} · ${value} ${unit}${s.complete?.[i] === false ? ' · partial coverage' : ''}`)} onFocus={() => setDetail(`${s.label} · ${labels[i]} · ${value} ${unit}${s.complete?.[i] === false ? ' · partial coverage' : ''}`)}><title>{s.label} · {labels[i]} · {value} {unit}</title></circle>)}
           </g>;
         })}
       </svg></div>

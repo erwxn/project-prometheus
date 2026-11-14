@@ -741,6 +741,16 @@ app.get('/api/v1/fires', (req, res) => {
   res.json(res.locals.fireData);
 });
 
+const archiveService = require('./archive-service').createArchiveService();
+for (const kind of ['summary', 'comparison', 'observations']) app.post(`/api/v1/fires/archive/${kind}`, async (req, res) => {
+  if (!archiveService) return res.status(404).json({error:'Local archive index unavailable. Run npm run test-data:ingest first.'});
+  const controller = new AbortController();
+  const closed = () => { if (!res.writableEnded) controller.abort(); };
+  res.on('close', closed);
+  try { const result = await archiveService.query(kind, req.body, controller.signal); if (!controller.signal.aborted) res.set('Cache-Control','no-store').json(result); }
+  catch (error) { if (!controller.signal.aborted) res.status(error.status || 500).json({error:error.message}); }
+  finally { res.off('close', closed); }
+});
 app.get('/api/v1/fires/test/catalog', (req, res) => res.json(testData ? testData.catalog : {temporary:false,total:0,partitions:[]}));
 app.get('/api/v1/fires/test', (req, res) => {
   if (!testData) return res.status(404).json({error:'Temporary test index is not loaded.'});
@@ -829,6 +839,7 @@ app.get('/api/v1/fires/diurnal', (req, res) => {
 
 // Return actionable JSON for body-parser upload errors instead of an HTML page.
 app.use((error, req, res, next) => {
+  if (req.path.startsWith('/api/v1/fires/archive/')) return res.status(error.type === 'entity.too.large' ? 413 : 400).json({error:'Supply a valid JSON archive query within the request size limit.'});
   if (req.path !== '/api/v1/fires/upload') return next(error);
   const oversized = error.type === 'entity.too.large';
   res.status(oversized ? 413 : 400).json({ error: oversized ? 'CSV exceeds the 3 MB testing limit. Choose a smaller file.' : 'Could not read this CSV. Save it as UTF-8 and try again.' });

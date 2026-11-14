@@ -8,14 +8,18 @@ const months = Array.from({ length: 12 }, (_, month) => new Intl.DateTimeFormat(
 const availabilityLabels = { complete: 'Complete coverage', partial: 'Detections recorded; coverage incomplete or unknown', unknown: 'No records; coverage unknown', unavailable: 'No data available' };
 
 export function ActivityCalendar() {
-  const { state, dispatch, index } = useDashboard();
+  const { state, dispatch, index, archive } = useDashboard();
   const { filters, collection } = state;
   const [view, setView] = useState<'year' | 'month'>('year');
   const [year, setYear] = useState(''), [month, setMonth] = useState('01');
+  const [previousRange, setPreviousRange] = useState('');
+  const rangeKey = `${filters.startDate}:${filters.endDate}`;
+  if(archive.active && previousRange!==rangeKey){setPreviousRange(rangeKey);setMonth(filters.startDate.slice(5,7)||'01');}
   const [focused, setFocused] = useState(''), [hovered, setHovered] = useState('');
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const tooltipId = useId();
   const years = useMemo(() => filters.startDate && filters.endDate ? Array.from({ length: Number(filters.endDate.slice(0, 4)) - Number(filters.startDate.slice(0, 4)) + 1 }, (_, index) => String(Number(filters.startDate.slice(0, 4)) + index)) : [], [filters.startDate, filters.endDate]);
+  const calendarYears = archive.active && archive.catalog ? [...new Set(archive.catalog.partitions.filter(p=>archive.platform==='ALL'||p.platform===archive.platform).map(p=>p.month.slice(0,4)))].sort().reverse() : years;
   const visibleYear = years.includes(year) ? year : years.at(-1) ?? '2025';
   const start = view === 'year' ? `${visibleYear}-01-01` : `${visibleYear}-${month}-01`;
   const end = view === 'year' ? `${visibleYear}-12-31` : isoDate(Date.UTC(Number(visibleYear), Number(month), 0));
@@ -42,13 +46,14 @@ export function ActivityCalendar() {
   }
   const dayLabel = (day: typeof days[number]) => `${day.date} · ${metricLabel(filters.metric)}: ${day.value === null ? 'unavailable' : `${number.format(day.value)} ${metricUnit(filters.metric)}`} · ${day.count} hotspot detections · ${filters.sensor} · ${availabilityLabels[day.availability]}${day.method ? ` · ${day.method}` : ''}`;
 
-  return <section className="dashboard-section activity-calendar" aria-labelledby="calendar-title">
+  return <section className="dashboard-section activity-calendar" aria-labelledby="calendar-title" aria-busy={archive.busy}>
     <div className="section-toolbar"><div><span className="section-number">01 / DAILY OBSERVATIONS</span><h2 id="calendar-title">Burning activity calendar</h2><p>Satellite-observed activity by UTC day. Select a day to focus the map and summaries.</p></div>
       <div className="inline-controls"><label>View<select value={view} onChange={e => setView(e.target.value as typeof view)}><option value="year">Yearly</option><option value="month">Monthly</option></select></label>
-        {years.length > 0 && <label>Calendar year<select value={visibleYear} onChange={e => setYear(e.target.value)}>{years.map(year => <option key={year}>{year}</option>)}</select></label>}
+        {years.length > 0 && <label>Calendar year<select value={visibleYear} onChange={e => {setYear(e.target.value); if(archive.active) archive.changeYear(e.target.value);}}>{calendarYears.map(year => <option key={year}>{year}</option>)}</select></label>}
         {view === 'month' && <label>Calendar month<select value={month} onChange={e => setMonth(e.target.value)}>{months.map((name, i) => <option key={name} value={String(i + 1).padStart(2, '0')}>{name}</option>)}</select></label>}
       </div>
     </div>
+    {archive.busy && <p role="status">Loading daily aggregates for the applied archive selection…</p>}
     {!years.length ? <p className="dashboard-unavailable">Dated observations are needed for a calendar. Load a MODIS CSV or explicitly choose simulated history.</p> : <>
       <div className="calendar-scroll" role="region" aria-label={`${view === 'year' ? visibleYear : `${months[Number(month) - 1]} ${visibleYear}`} activity calendar`} tabIndex={0}>
         {view === 'year' && <div className="calendar-month-labels">{months.map((label, i) => <span key={label} style={{ gridColumn: `${Math.floor(((dateTime(`${visibleYear}-${String(i + 1).padStart(2, '0')}-01`) - dateTime(start)) / UTC_DAY + offset) / 7) + 1} / span 1` }}>{label}</span>)}</div>}

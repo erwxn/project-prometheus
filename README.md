@@ -252,3 +252,11 @@ dependencies, launch commands, feature walkthrough, limitations, and validation.
 ## Production harmonized results
 
 The service supports configurable API or private Google Cloud Storage snapshots in CSV, Parquet, or tabular JSON. See [the integration and teammate handoff guide](docs/harmonized-feed.md) for environment settings, column mapping, credentials, local fixtures, validation commands, and cache limitations. The MODIS upload remains a separate temporary testing tool.
+
+## Historical archive explorer
+
+The local NASA FIRMS archive supports platform/year/month/date/area filters,
+full-selection calendar and statistics, and separately paginated map points.
+See [HISTORICAL_ARCHIVE.md](HISTORICAL_ARCHIVE.md) for launch/cache commands,
+API contracts, scientific limits, and the walkthrough. Original ZIP inputs stay
+unchanged; generated indexes and caches remain Git-ignored.

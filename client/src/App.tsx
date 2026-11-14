@@ -16,12 +16,12 @@ import type { Country } from './country-bounds';
 import orbitalStars from './assets/orbital-stars.svg';
 
 export default function App() {
-  const { state, dispatch, selected, scope, retry } = useDashboard();
+  const { state, dispatch, selected, scope, retry, archive } = useDashboard();
   const allFires = state.collection.features;
   const dataMeta = state.collection.metadata;
   const backendStatus = state.status === 'loading' ? 'checking' : state.status === 'error' ? 'fallback' : 'online';
   const selectedSatellite = state.filters.sensor;
-  const setSelectedSatellite = (sensor: SensorFilter) => dispatch({ type: 'filters', patch: { sensor } });
+  const setSelectedSatellite = (sensor: SensorFilter) => !archive.active && dispatch({ type: 'filters', patch: { sensor } });
   const mapRef = useRef<MapRef>(null);
   const [mapReady, setMapReady] = useState(false);
   const [drawMode, setDrawMode] = useState<DrawMode>('static');
@@ -56,7 +56,7 @@ export default function App() {
 
   // Both the map and CSV load asynchronously; frame the loaded data once both are ready.
   useEffect(() => {
-    if (!mapReady || !allFires.length) return;
+    if (!mapReady || !allFires.length || archive.active) return;
     if (state.filters.area) { mapRef.current?.fitBounds(areaBounds(state.filters.area), { padding: { top: 130, bottom: 180, left: 40, right: 60 }, pitch: 0, maxZoom: 12, duration: 0 }); return; }
     const coordinates = allFires.map(fire => fire.geometry.coordinates);
     const lngs = coordinates.map(point => point[0]);
@@ -65,7 +65,7 @@ export default function App() {
       padding: { top: 140, bottom: Math.min((document.querySelector<HTMLElement>('.timeline-panel')?.offsetHeight ?? 320) + 48, (mapRef.current?.getMap().getContainer().clientHeight ?? 600) * .65), left: 35, right: 55 },
       maxZoom: 7, pitch: 0, duration: 0
     });
-  }, [allFires, mapReady, state.filters.area]);
+  }, [allFires, mapReady, state.filters.area, archive.active]);
 
   const hasDates = useMemo(() => allFires.some(fire => !!fire.properties.observed_at_utc), [allFires]);
   const timelineFires = useMemo(() => selectRange(scope, { startDate, endDate, selectedDay: null }, false).map(row => row.feature), [scope, startDate, endDate]);
@@ -152,7 +152,7 @@ export default function App() {
 
   const exportObservations = () => {
     const windowMetadata = hasDates ? { explorer_from: new Date(rangeStart).toISOString(), explorer_to_exclusive: new Date(rangeEnd).toISOString() } : { undated: true, relative_minutes: [rangeStart / MINUTE, rangeEnd / MINUTE] };
-    const blob = new Blob([JSON.stringify({ type: 'FeatureCollection', metadata: { ...dataMeta, total_features: filteredFires.length, filters: state.filters, explorer_clock: timeBasis, ...windowMetadata }, features: filteredFires }, null, 2)], { type: 'application/geo+json' });
+    const blob = new Blob([JSON.stringify({ type: 'FeatureCollection', metadata: { ...dataMeta, total_features: filteredFires.length, filters: state.filters, archive_selection: archive.active ? {platform:archive.platform,startDate:state.filters.startDate,endDate:state.filters.endDate} : undefined, export_scope: 'loaded map observations', explorer_clock: timeBasis, ...windowMetadata }, features: filteredFires }, null, 2)], { type: 'application/geo+json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -229,7 +229,7 @@ export default function App() {
                 { id: 'VIIRS', label: 'Raw VIIRS (375 m)', detail: 'High resolution · 375 m', badge: 'V' },
                 { id: 'Harmonized', label: 'AI harmonized', detail: 'Normalized estimates', badge: 'AI' }
               ] as const).map(source => (
-                <button key={source.id} className={`source-option ${selectedSatellite === source.id ? 'selected' : ''}`} aria-pressed={selectedSatellite === source.id} onClick={() => setSelectedSatellite(source.id)}>
+                <button key={source.id} disabled={archive.active} className={`source-option ${selectedSatellite === source.id ? 'selected' : ''}`} aria-pressed={selectedSatellite === source.id} onClick={() => setSelectedSatellite(source.id)}>
                   <span className="source-badge">{source.badge}</span><span className="source-text"><strong>{source.label}</strong><small>{source.detail}</small></span><span className="selection-dot" />
                 </button>
               ))}
@@ -317,7 +317,7 @@ export default function App() {
                   <div className="timeline-readout">
                     <p className="window-readout">{formatInstant(rangeStart)} – {formatInstant(rangeEnd)} {timeBasis === 'utc' ? 'UTC' : '(local solar clock)'}</p>
                     <span className="hotspot-count" role="status" aria-live={isPlaying ? 'off' : 'polite'}>Matching detections: <strong>{stats.count.toLocaleString()}</strong></span>
-                    {compactTimeline && <select aria-label="Satellite dataset layers" value={selectedSatellite} onChange={e => {
+                    {compactTimeline && <select disabled={archive.active} aria-label="Satellite dataset layers" value={selectedSatellite} onChange={e => {
                         const source = timelineSources.find(source => source.id === e.target.value);
                         if (source) setSelectedSatellite(source.id);
                       }}>
@@ -325,7 +325,7 @@ export default function App() {
                       </select>}
                   </div>
                   {!compactTimeline && <div className="dataset-pills" role="group" aria-label="Satellite dataset layers">
-                    {timelineSources.map(source => <button key={source.id} aria-pressed={selectedSatellite === source.id} onClick={() => setSelectedSatellite(source.id)}>{source.label}</button>)}
+                    {timelineSources.map(source => <button disabled={archive.active} key={source.id} aria-pressed={selectedSatellite === source.id} onClick={() => setSelectedSatellite(source.id)}>{source.label}</button>)}
                   </div>}
                 </div>
               </div>

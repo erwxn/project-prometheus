@@ -18,12 +18,12 @@ provenance stays attached to observations. MODIS and VIIRS remain separate raw
 sensors; normalized FRP is unavailable and coverage/baselines are not invented.
 
 While the index exists, the default server dataset is its latest MODIS month.
-Refresh the app and use **Temporary archive test data → Test dataset** to select
-Terra, Aqua, SNPP, N20 or N21 and a month. All indexed records are accessible.
-Each response contains at most 50,000 observations; unusually large months have
-Previous/Next slice buttons. The map, calendar, statistics and charts describe
-only the loaded slice, explicitly labeled in the interface. Explorer playback
-can use **Full filtered file** to show the whole loaded month instead of 24 hours.
+Refresh the app and use **Historical Fire Archive Explorer** to choose a satellite,
+year, month, or UTC date range. The dashboard now aggregates the entire applied
+selection on the backend; map observations are loaded separately in pages of up
+to 10,000. Original month/page endpoints remain available for compatibility.
+See [HISTORICAL_ARCHIVE.md](HISTORICAL_ARCHIVE.md) for the current walkthrough,
+query APIs, sidecar preparation, scientific limitations, and validation.
 
 Rebuild (stop the API server first if replacing an existing index):
 

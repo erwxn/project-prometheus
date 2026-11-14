@@ -31,9 +31,13 @@ interface FireMapProps {
 }
 
 export function FireMap({ mapRef, features, theme, projection, selectedFeature, onSelectFeature, mode, onModeChange, onDrawingError, onLoad }: FireMapProps) {
-  const { state, dispatch } = useDashboard();
-  const area = state.filters.area;
+  const { state, dispatch, archive } = useDashboard();
   const [ready, setReady] = useState(false);
+  const area = state.filters.area;
+  const {active:archiveActive,updateViewport}=archive;
+  useEffect(()=>{if(!ready || !archiveActive)return;const map=mapRef.current!.getMap();const update=()=>{const b=map.getBounds();if(b && b.getWest()>=-180 && b.getEast()<=180 && b.getWest()<b.getEast())updateViewport([b.getWest(),Math.max(-90,b.getSouth()),b.getEast(),Math.min(90,b.getNorth())]);};map.on('moveend',update);update();return()=>{map.off('moveend',update);};},[ready,archiveActive,updateViewport,mapRef]);
+
+
   const [styleRevision, setStyleRevision] = useState(0);
   const appliedTheme = useRef<'dark' | 'light'>('dark');
   const appliedProjection = useRef<'mercator' | 'globe'>('mercator');

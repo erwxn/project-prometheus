@@ -21,6 +21,13 @@ export interface CoverageInterval {
 export interface FireMetadata {
   source: string;
   temporary?: boolean;
+  archive?: boolean;
+  archive_platform?: string;
+  archive_year?: string;
+  archive_month?: string;
+  archive_startDate?: string;
+  archive_endDate?: string;
+  archive_sensor?: SensorFilter;
   indexed_total?: number;
   partition_total?: number;
   test_platform?: string;

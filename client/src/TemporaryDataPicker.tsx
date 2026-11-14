@@ -1,23 +1,37 @@
-import { useEffect, useState } from 'react';
-import { API_BASE } from './fire-data';
-import { useDashboard } from './dashboard-context';
+import {useState} from 'react';
+import {useDashboard} from './dashboard-context';
+import {archiveDefaults,type ArchiveSelection} from './archive-model';
+import {dateRangeError} from './analytics-engine';
+const names:Record<string,string>={Terra:'MODIS — Terra',Aqua:'MODIS — Aqua',SNPP:'VIIRS — Suomi NPP',N20:'VIIRS — NOAA-20',N21:'VIIRS — NOAA-21',ALL:'All available satellites · overview'};
+export function TemporaryDataPicker(){
+ const {archive,state,selected}=useDashboard();const c=archive.catalog;
+ const [draft,setDraft]=useState<ArchiveSelection|null>(null),[error,setError]=useState('');
+ const key=`${state.collection.metadata.archive_platform}|${state.filters.startDate}|${state.filters.endDate}`;
+ const [previousKey,setPreviousKey]=useState('');
+ const draftKey=`${key}|${archive.active}|${c?.total}`;
+ if(c && previousKey!==draftKey){setPreviousKey(draftKey);setDraft(archive.active?{platform:archive.platform,year:state.collection.metadata.archive_year||state.filters.startDate.slice(0,4),month:state.collection.metadata.archive_month||'ALL',startDate:state.filters.startDate,endDate:state.filters.endDate}:archiveDefaults(c,state.collection.metadata.test_platform));}
 
-interface Partition { sensor: string; platform: string; month: string; count: number }
-export function TemporaryDataPicker() {
-  const {state,loadTemporary} = useDashboard();
-  const [catalog,setCatalog] = useState<{total:number;partitions:Partition[]} | null>(null);
-  useEffect(() => { const controller = new AbortController(); void fetch(`${API_BASE}/api/v1/fires/test/catalog`,{signal:controller.signal}).then(r=>r.ok?r.json():null).then(data=>{if(data?.temporary) setCatalog(data);}).catch(()=>{}); return ()=>controller.abort(); }, []);
-  if (!catalog) return null;
-  const meta = state.collection.metadata;
-  const active = catalog.partitions.find(p=>p.platform===meta.test_platform && p.month===meta.test_month) || catalog.partitions[0];
-  return <div className="temporary-data-picker">
-    <strong>Temporary archive test data</strong>
-    <p>{catalog.total.toLocaleString()} unique observation records indexed locally. Select a platform and month; analytics describe only the loaded slice. No harmonized predictions or coverage guarantees are supplied.</p>
-    <label>Test dataset<select aria-label="Test dataset" value={meta.temporary ? `${active.platform}|${active.month}` : ''} disabled={state.status==='loading'} onChange={event=>{const [platform,month]=event.target.value.split('|'); if(platform) void loadTemporary(platform,month);}}>
-      <option value="" disabled>Choose archived observations</option>
-      {catalog.partitions.map(p=><option key={`${p.platform}|${p.month}`} value={`${p.platform}|${p.month}`}>{p.sensor} / {p.platform} · {p.month} · {p.count.toLocaleString()} records</option>)}
-    </select></label>
-    {meta.temporary && <p role="status">Loaded {state.collection.features.length.toLocaleString()} of {meta.partition_total?.toLocaleString()} records for this month.{(meta.test_pages || 1)>1 && <> Page {(meta.test_page || 0)+1} of {meta.test_pages}. <button disabled={!meta.test_page || state.status==='loading'} onClick={()=>void loadTemporary(active.platform,active.month,(meta.test_page || 0)-1)}>Previous slice</button> <button disabled={(meta.test_page || 0)+1 >= (meta.test_pages || 1) || state.status==='loading'} onClick={()=>void loadTemporary(active.platform,active.month,(meta.test_page || 0)+1)}>Next slice</button> Statistics cover this page only.</>}</p>}
-    <small>Removable local test index. Original ZIP files remain unchanged.</small>
-  </div>;
+ if(!c||!draft)return null;
+ const available=c.partitions.filter(p=>draft.platform==='ALL'||p.platform===draft.platform),years=[...new Set(available.map(p=>p.month.slice(0,4)))].sort().reverse();
+ const months=new Set(available.filter(p=>p.month.startsWith(draft.year)).map(p=>p.month.slice(5)));
+ const setPeriod=(year:string,month:string)=>setDraft({...draft,year,month,startDate:`${year}-${month==='ALL'?'01':month}-01`,endDate:month==='ALL'?`${year}-12-31`:new Date(Date.UTC(Number(year),Number(month),0)).toISOString().slice(0,10)});
+ const totals=archive.data?.totals;
+ return <section className="temporary-data-picker" aria-labelledby="archive-title" aria-busy={archive.busy}>
+ <h2 id="archive-title">Historical Fire Archive Explorer</h2><p>{c.total.toLocaleString()} unique observations indexed locally. Raw NASA FIRMS records for temporary testing; satellite coverage is unknown. Original ZIP files remain unchanged.</p>
+ <form className="archive-toolbar" onSubmit={e=>{e.preventDefault();const message=dateRangeError(draft.startDate,draft.endDate);if(message){setError(message);return;}setError('');archive.apply(draft);}}>
+ <label>Satellite<select value={draft.platform} onChange={e=>{const platform=e.target.value;const next=archiveDefaults(c,platform==='ALL'?undefined:platform);setDraft({...next,platform});}}>{[...new Set(c.partitions.map(p=>p.platform))].map(p=><option key={p} value={p}>{names[p]||p}</option>)}<option value="ALL">{names.ALL}</option></select></label>
+ <label>Year<select value={draft.year} onChange={e=>setPeriod(e.target.value,'ALL')}>{years.map(y=><option key={y}>{y}</option>)}</select></label>
+ <label>Month<select value={draft.month} onChange={e=>setPeriod(draft.year,e.target.value)}><option value="ALL">All available months</option>{Array.from({length:12},(_,i)=>String(i+1).padStart(2,'0')).map(m=><option key={m} value={m} disabled={!months.has(m)}>{new Date(`2000-${m}-01T00:00:00Z`).toLocaleString('en',{month:'long',timeZone:'UTC'})}{months.has(m)?'':' · no indexed records'}</option>)}</select></label>
+ <label>Start date (UTC)<input type="date" required value={draft.startDate} onChange={e=>setDraft({...draft,startDate:e.target.value})}/></label><label>End date (UTC)<input type="date" required value={draft.endDate} onChange={e=>setDraft({...draft,endDate:e.target.value})}/></label>
+ <button>Apply Filters</button><button type="button" onClick={()=>{const next=archiveDefaults(c);setDraft(next);setError('');archive.apply(next,true);}}>Reset Filters</button>
+ </form>
+ {error&&<p role="alert">{error}</p>}{archive.error&&<p role="alert" className="dashboard-error">{archive.error} <button onClick={()=>archive.apply(draft)}>Retry archive</button></p>}
+ {archive.active&&<div className="archive-summary" role="status"><strong>{names[archive.platform]||archive.platform} · {state.filters.startDate} – {state.filters.endDate} UTC</strong>
+ <p>{archive.busy?'Calculating the entire selection…':totals?`${totals.count.toLocaleString()} indexed matches · ${archive.data!.daily.length} observed active days · mean FRP ${totals.frpCount?(totals.frpSum/totals.frpCount).toFixed(2)+' MW':'unavailable'} (${totals.frpCount.toLocaleString()} readings)`:'No aggregate result available.'}</p>
+ <p>{totals?.first?`Recorded observation bounds: ${totals.first.slice(0,10)} – ${totals.last?.slice(0,10)}. These are not coverage guarantees.`:archive.busy?'Recorded observation bounds pending.':'No recorded observations in the selected scope.'}</p>
+ <p>{archive.mapBusy?'Loading map observations…':`${state.collection.features.length.toLocaleString()} loaded map records · ${selected.length.toLocaleString()} displayed by shared filters · ${archive.mapInfo.total.toLocaleString()} map matches in the current viewport/day.`} Statistics use the entire applied selection, independently of map pagination. Explorer playback uses loaded points only.</p>
+ <div className="control-actions"><button disabled={!archive.data||archive.busy} onClick={()=>{const blob=new Blob([JSON.stringify({scope:'entire applied archive selection',filters:{platform:archive.platform,...state.filters},coverage:'unknown',summary:archive.data,comparison:archive.comparison},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='prometheus-archive-aggregates.json';link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);}}>Export aggregate results</button><button disabled={!archive.cursor||archive.mapBusy} onClick={()=>archive.setCursor(Math.max(0,archive.cursor-10000))}>Previous map page</button><button disabled={archive.mapInfo.nextCursor===null||archive.mapBusy} onClick={()=>archive.setCursor(archive.mapInfo.nextCursor!)}>Next map page</button></div>
+ </div>}
+ <small>No harmonized predictions or complete-coverage guarantees are supplied. Missing records are not zero activity.</small>
+ </section>;
 }

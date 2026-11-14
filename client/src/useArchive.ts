@@ -5,6 +5,7 @@ import {API_BASE} from './fire-data';
 import type {DashboardState,DashboardAction} from './dashboard-state';
 import type {DatasetRequests} from './fire-api';
 import {archiveDefaults,archiveSensor,type ArchiveCatalog,type ArchiveMap,type ArchiveSelection,type ArchiveSummary} from './archive-model';
+import type {TrendGrouping} from './historical-chart';
 export function useArchive(state:DashboardState,dispatch:Dispatch<DashboardAction>,requests:DatasetRequests){
  const [catalog,setCatalog]=useState<ArchiveCatalog|null>(null);
  const [data,setData]=useState<ArchiveSummary|null>(null),[comparison,setComparison]=useState<ArchiveSummary|null>(null);
@@ -12,6 +13,7 @@ export function useArchive(state:DashboardState,dispatch:Dispatch<DashboardActio
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  const [mapInfo,setMapInfo]=useState<{total:number;nextCursor:number|null;cursor:number}>({total:0,nextCursor:null,cursor:0});
  const [viewport,setViewport]=useState<number[]|null>(null),[cursor,setCursor]=useState(0),[comparisonYears,setComparisonYears]=useState<number[]>([]);
+ const [trendGrouping,setTrendGrouping]=useState<TrendGrouping>('monthly');
  const active=state.collection.metadata.archive===true;
  const platform=state.collection.metadata.archive_platform||'Aqua';
  const [mapBusy,setMapBusy]=useState(false);
@@ -43,5 +45,5 @@ export function useArchive(state:DashboardState,dispatch:Dispatch<DashboardActio
  },[active,query,viewport,cursor,state.filters.selectedDay,dispatch,applyRevision]);
  const updateViewport=useCallback((bounds:number[])=>{setViewport(old=>JSON.stringify(old)===JSON.stringify(bounds)?old:bounds);setCursor(0);},[]);
  const changeYear=useCallback((year:string)=>{if(!catalog)return;apply({...archiveDefaults(catalog,platform),platform,year,startDate:`${year}-01-01`,endDate:`${year}-12-31`});},[catalog,platform,apply]);
- return {active,catalog,apply,data:active?data:null,comparison:active?comparison:null,busy:active&&busy,mapBusy:active&&mapBusy,mapLoading:active&&mapLoading,error:active?error:'',platform,mapInfo,cursor,setCursor,updateViewport,comparisonYears,setComparisonYears,changeYear};
+ return {active,catalog,apply,data:active?data:null,comparison:active?comparison:null,busy:active&&busy,mapBusy:active&&mapBusy,mapLoading:active&&mapLoading,error:active?error:'',platform,mapInfo,cursor,setCursor,updateViewport,comparisonYears,setComparisonYears,trendGrouping,setTrendGrouping,changeYear};
 }

@@ -99,6 +99,9 @@
 .activity-line-chart .chart-grid { stroke: #d7dfdf; stroke-width: 1; }
 .activity-line-chart .chart-selection { stroke: #b67738; stroke-width: 2; stroke-dasharray: 3 3; }
 .activity-line-chart circle { cursor: help; }
+.activity-line-chart .chart-bar { cursor: pointer; opacity: .84; transition: opacity 160ms ease; }
+.activity-line-chart .chart-bar:hover, .activity-line-chart .chart-bar:focus { opacity: 1; outline: none; stroke: var(--text); stroke-width: 2; }
+.activity-line-chart .chart-value { fill: var(--text); font-weight: 600; }
 .chart-legend { display: flex; flex-wrap: wrap; gap: 10px 20px; font-size: 12px; color: var(--muted); padding: 10px 0 0; }
 .chart-legend span { display: inline-flex; gap: 7px; align-items: center; }
 .chart-point-detail { min-height: 20px; color: #365f76; font-size: 12px; line-height: 1.6; margin: 10px 0; }
@@ -108,6 +111,10 @@
 .year-toggles { display: flex; flex-wrap: wrap; gap: 10px 16px; border: 0; padding: 0; margin: 16px 0 22px; font-size: 13px; color: var(--muted); }
 .year-toggles legend { font-size: 11px; padding: 0; margin-bottom: 10px; }
 .year-toggles label { display: inline-flex; align-items: center; gap: 5px; }
+.comparison-limitation > p { margin: 0; }
+.comparison-limitation details { margin-top: 10px; }
+.comparison-limitation summary { width: fit-content; color: var(--accent); font-weight: 600; cursor: pointer; }
+.comparison-limitation details p { margin: 8px 0 0; font-size: 12px; }
 .anomaly-heading { margin-top: 32px; padding-top: 26px; border-top: 1px solid var(--border); }
 .anomaly-heading h3 { margin-bottom: 8px; }
 .anomaly-table { max-height: 420px; }

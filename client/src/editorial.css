@@ -63,6 +63,7 @@
 [data-theme='light'] .map-stage { --map-tool: #fafbf8; --map-tool-text: #294653; --map-tool-muted: #516b78; --map-tool-rule: #a9bdc7; }
 .country-search { --search-text: var(--map-tool-text); --search-hint: var(--map-tool-muted); }
 .country-search-field { padding: 0; border: 1px solid var(--map-tool-rule); border-radius: 4px; background: var(--map-tool); color: var(--map-tool-text); box-shadow: none; }
+.country-search :is(.country-search-suggestions, .country-search-feedback) { background: var(--map-tool); border-color: var(--map-tool-rule); border-radius: 4px; }
 .country-search input { color: var(--map-tool-text); }
 .country-search input::placeholder { color: var(--map-tool-muted); }
 .projection-switch, [data-theme='light'] .projection-switch { border: 1px solid var(--map-tool-rule); border-radius: 4px; background: var(--map-tool); color: var(--map-tool-text); padding: 3px; gap: 3px; box-shadow: none; }

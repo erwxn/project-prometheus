@@ -150,15 +150,33 @@ export default function App() {
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 700 });
   };
 
-  const exportObservations = () => {
-    const windowMetadata = hasDates ? { explorer_from: new Date(rangeStart).toISOString(), explorer_to_exclusive: new Date(rangeEnd).toISOString() } : { undated: true, relative_minutes: [rangeStart / MINUTE, rangeEnd / MINUTE] };
-    const blob = new Blob([JSON.stringify({ type: 'FeatureCollection', metadata: { ...dataMeta, total_features: filteredFires.length, filters: state.filters, archive_selection: archive.active ? {platform:archive.platform,startDate:state.filters.startDate,endDate:state.filters.endDate} : undefined, export_scope: 'loaded map observations', explorer_clock: timeBasis, ...windowMetadata }, features: filteredFires }, null, 2)], { type: 'application/geo+json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'prometheus-observations.geojson';
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const [exportStatus, setExportStatus] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const exportObservations = async () => {
+    setExporting(true);
+    setExportStatus('Preparing PDF...');
+    try {
+      const { observationPdf } = await import('./observation-pdf');
+      const pdf = observationPdf(filteredFires, {
+        source: dataMeta.source_name || dataMeta.source,
+        scope: dataMeta.source === 'simulated' || dataMeta.source === 'demo' ? 'Illustrative / simulated observations' : 'Loaded map observations',
+        period: hasDates ? `${new Date(rangeStart).toISOString()} to ${new Date(rangeEnd).toISOString()} (end exclusive; ${timeBasis} clock)` : `Undated observations; ${timeBasis} clock`,
+        sensor: selectedSatellite,
+        region: state.filters.area ? JSON.stringify(state.filters.area.geometry) : 'All locations',
+      });
+      const blob = pdf.output('blob');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'prometheus-observations.pdf';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setExportStatus('PDF download started.');
+    } catch {
+      setExportStatus('PDF could not be created. Please try exporting again.');
+    } finally { setExporting(false); }
   };
 
   const compactTimeline = timelineSize === 'compact';
@@ -171,10 +189,11 @@ export default function App() {
         <SiteBrand heading />
         <SiteNavigation current="explorer" />
         <div className="challenge-tag"><span className="tiny-orbit" aria-hidden="true" />NASA Space Apps</div>
-        <button className="export-button" aria-label="Export data" title="Export data" onClick={exportObservations}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4" /></svg><span>Export data</span></button>
+        <button className="export-button" aria-label="Download PDF report" title="Download PDF report" disabled={exporting} onClick={() => void exportObservations()}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4" /></svg><span>{exporting ? 'Preparing...' : 'Export PDF'}</span></button>
         <MapAppearance value={mapTheme} onChange={setMapTheme} />
       </header>
 
+      <p className="visually-hidden" role="status">{exportStatus}</p>
       {dataMeta.source === 'simulated' && <div className="simulation-banner" role="status">SIMULATED HISTORY · Synthetic examples, not NASA observations.</div>}
       <main className="mission-workspace">
         <aside className="analysis-panel" aria-label="Fire analysis controls">

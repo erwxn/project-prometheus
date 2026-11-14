@@ -238,3 +238,13 @@ server persistence. Set `ENABLE_CSV_UPLOAD=false` and build with
 Post-deployment smoke checks: open `/`, `/about`, `/health`, and `/api/v1/fires`, then
 upload a small valid MODIS CSV. This configuration task does not itself publish a
 Vercel deployment or change the account's project settings.
+
+## Fire analytics dashboard
+
+The connected Explorer and `/analytics/` workspace now includes shared GeoJSON area
+selection, UTC date/sensor/metric filters, a daily burning calendar, fire statistics,
+and historical comparisons. Temporary CSV uploads remain available when navigating
+between these two pages; refreshing loads the server dataset again.
+
+See [FIRE_ANALYTICS.md](FIRE_ANALYTICS.md) for the architecture, scientific rules,
+dependencies, launch commands, feature walkthrough, limitations, and validation.

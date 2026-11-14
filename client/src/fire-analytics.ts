@@ -1,5 +1,5 @@
 import { type FireFeature } from './fire-data';
-import { DAY, matchesDataset, observationTime, type TimeBasis } from './timeline';
+import { DAY, matchesDataset, observationTime, type TimeBasis } from './timeline.ts';
 
 export const sensors = [
   { id: 'MODIS', label: 'MODIS' },
@@ -30,7 +30,7 @@ export function summarizeObservations(features: FireFeature[], source: string, d
     bucket.count += 1;
 
     const frp = matchesDataset(feature, 'Harmonized') ? feature.properties.normalized_frp : feature.properties.raw_frp;
-    if (frp === null || !Number.isFinite(frp) || frp < 0) continue;
+    if (typeof frp !== 'number' || !Number.isFinite(frp) || frp < 0) continue;
     totalFrp += frp;
     bands[frp < 50 ? 0 : frp <= 150 ? 1 : 2].count += 1;
     readings.push({ feature, frp, label: bucket.label });

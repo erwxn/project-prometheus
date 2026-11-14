@@ -1,15 +1,16 @@
 // Production uses Vercel's same-origin API routes; Vite dev talks to Express.
-export const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:5000';
+export const API_BASE = import.meta.env?.PROD ? '' : 'http://localhost:5000';
 
 export interface FireFeature {
   type: string;
+  id?: string | number;
   geometry: {
     type: string;
     coordinates: [number, number];
   };
   properties: {
     satellite: string;
-    raw_frp: number;
+    raw_frp: number | null;
     normalized_frp: number | null;
     platform?: string;
     observed_at_utc?: string;
@@ -18,6 +19,8 @@ export interface FireFeature {
     acq_time_utc: string;
     local_solar_time: string;
     confidence: string;
+    product_version?: string | null;
+    method_id?: string;
   };
 }
 
@@ -713,5 +716,5 @@ export const FALLBACK_FIRES = [...MOCK_FALLBACK, ...MOROCCO_DEMO];
 // Raw sensor views use measured FRP; harmonized estimates use normalized FRP.
 export function getDisplayFRP(feature: FireFeature): number {
   return feature.properties.satellite.toLowerCase().includes('harmonized')
-    ? feature.properties.normalized_frp ?? 0 : feature.properties.raw_frp;
+    ? feature.properties.normalized_frp ?? 0 : feature.properties.raw_frp ?? 0;
 }

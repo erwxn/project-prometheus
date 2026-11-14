@@ -1,0 +1,5 @@
+export const feature = (date, frp = 10, sensor = 'MODIS', coordinates = [-5.8, 35.75]) => ({ type: 'Feature', geometry: { type: 'Point', coordinates }, properties: { satellite: sensor, raw_frp: frp, normalized_frp: sensor === 'Harmonized' ? frp : null, observed_at_utc: date ? `${date}T12:00:00.000Z` : undefined, acq_time_utc: '12:00', local_solar_time: '11:37', local_solar_date: date, confidence: 'nominal' } });
+export const metadata = { source: 'simulated', coverage_scope: 'global', coverage: [{ sensor: 'MODIS', startDate: '2021-01-01', endDate: '2025-12-31', status: 'complete', method: 'test-modis-v1' }] };
+export const collection = (features = [], meta = metadata) => ({ type: 'FeatureCollection', features, metadata: meta });
+export const filters = (patch = {}) => ({ area: null, startDate: '2025-01-01', endDate: '2025-12-31', sensor: 'MODIS', metric: 'detections', selectedDay: null, ...patch });
+export const polygon = ring => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: { kind: 'polygon' } });

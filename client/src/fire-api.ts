@@ -1,0 +1,52 @@
+import type { FireCollection, FireMetadata } from './analytics-model.ts';
+import { SENSOR_IDS } from './analytics-model.ts';
+import { validDate } from './analytics-engine.ts';
+import type { FireFeature } from './fire-data.ts';
+
+export function parseCollection(data: unknown): FireCollection {
+  const collection = data as FireCollection;
+  if (collection?.type !== 'FeatureCollection' || !Array.isArray(collection.features)) throw new Error('The API returned an invalid observation collection.');
+  const valid = (f: FireFeature) => f?.type === 'Feature' && f.geometry?.type === 'Point' && Array.isArray(f.geometry.coordinates) && f.geometry.coordinates.length === 2 && f.geometry.coordinates.every(Number.isFinite) && Math.abs(f.geometry.coordinates[0]) <= 180 && Math.abs(f.geometry.coordinates[1]) <= 90 && typeof f.properties?.satellite === 'string';
+  if (!collection.features.every(valid)) throw new Error('The API returned invalid observation coordinates or properties.');
+  const metadata: FireMetadata = { ...collection.metadata, source: typeof collection.metadata?.source === 'string' ? collection.metadata.source : 'unknown' };
+  if (metadata.coverage && (!Array.isArray(metadata.coverage) || !metadata.coverage.every(i => SENSOR_IDS.includes(i.sensor) && validDate(i.startDate) && validDate(i.endDate) && i.startDate <= i.endDate && ['complete', 'unavailable'].includes(i.status) && typeof i.method === 'string' && i.method.length > 0))) throw new Error('The API returned invalid coverage metadata.');
+  return { type: 'FeatureCollection', features: collection.features, metadata };
+}
+
+export function validateUpload(file: Pick<File, 'name' | 'size'>): string | null {
+  if (!file.name.toLowerCase().endsWith('.csv')) return 'Choose a NASA FIRMS MODIS .csv file.';
+  if (file.size === 0) return 'This file is empty. Choose a CSV containing observations.';
+  if (file.size > 3 * 1024 * 1024) return 'Choose a CSV smaller than 3 MB for this testing tool.';
+  return null;
+}
+
+export async function loadObservations(base: string, signal: AbortSignal, request: typeof fetch = fetch): Promise<FireCollection> {
+  const response = await request(`${base}/api/v1/fires`, { signal, cache: 'no-store' });
+  if (!response.ok) throw new Error(`Could not load observations (HTTP ${response.status}).`);
+  return parseCollection(await response.json());
+}
+
+export async function uploadObservations(base: string, file: File, signal: AbortSignal, request: typeof fetch = fetch): Promise<FireCollection> {
+  const error = validateUpload(file);
+  if (error) throw new Error(error);
+  const response = await request(`${base}/api/v1/fires/upload`, { method: 'POST', headers: { 'Content-Type': 'text/csv; charset=utf-8', 'X-CSV-Filename': encodeURIComponent(file.name) }, body: file, signal });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(typeof data?.error === 'string' ? data.error : `Upload failed (HTTP ${response.status}).`);
+  const collection = parseCollection(data);
+  if (!collection.features.length || collection.metadata.source !== 'csv') throw new Error('No valid MODIS observations were returned.');
+  return collection;
+}
+
+// Shared by server fetch, upload, and demo switches. A late network response
+// must never replace a newer upload or an explicitly selected demo.
+export class DatasetRequests {
+  private revision = 0;
+  private controller: AbortController | null = null;
+  begin() {
+    this.cancel();
+    this.controller = new AbortController();
+    return { revision: this.revision, controller: this.controller };
+  }
+  current(revision: number) { return revision === this.revision; }
+  cancel() { this.revision++; this.controller?.abort(); this.controller = null; }
+}

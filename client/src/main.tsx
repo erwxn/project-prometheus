@@ -1,12 +1,11 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
-import './index.css'
-import 'maplibre-gl/dist/maplibre-gl.css'
-import './editorial.css'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import DashboardApp from './DashboardApp';
+import './index.css';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import './analytics.css';
+import './editorial.css';
+import './fire-dashboard.css';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+
+ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><DashboardApp /></React.StrictMode>);

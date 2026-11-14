@@ -8,6 +8,8 @@
     "server"
   ],
   "scripts": {
+    "test-data:ingest": "python server/import-test-data.py",
+    "test-data:clear": "node server/clear-test-data.js",
     "prepare": "node .husky/install.mjs",
     "lint:secrets": "secretlint \"**/*\"",
     "lint-staged": "lint-staged",

@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { gzipSync } = require('node:zlib');
 const { loadModisCsv, parseModisCsv } = require('./modis-csv');
+const testData = require('./test-data').openTestData();
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -717,11 +718,20 @@ const FIRES_DATASET = [
 // Import once at startup. An explicitly configured bad path fails visibly rather than serving demos.
 const csvPath = process.env.FIRES_CSV_PATH || path.join(__dirname, 'data', 'modis.csv');
 const imported = process.env.FIRES_CSV_PATH || fs.existsSync(csvPath) ? loadModisCsv(csvPath) : null;
-const activeData = imported || { type: 'FeatureCollection', metadata: { source: 'demo', source_name: 'Illustrative demo dataset', total_features: FIRES_DATASET.length }, features: FIRES_DATASET };
+const activeData = (testData && testData.collection()) || imported || { type: 'FeatureCollection', metadata: { source: 'demo', source_name: 'Illustrative demo dataset', total_features: FIRES_DATASET.length }, features: FIRES_DATASET };
 if (imported) console.log(`Loaded ${imported.features.length} MODIS observations (${imported.metadata.rejected_rows} rejected rows)`);
 app.get('/api/v1/fires', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json(activeData);
+});
+
+app.get('/api/v1/fires/test/catalog', (req, res) => res.json(testData ? testData.catalog : {temporary:false,total:0,partitions:[]}));
+app.get('/api/v1/fires/test', (req, res) => {
+  if (!testData) return res.status(404).json({error:'Temporary test index is not loaded.'});
+  const result = testData.collection(req.query.platform, req.query.month, Number(req.query.page || 0));
+  if (!result) return res.status(400).json({error:'Choose a valid test platform, month, and page.'});
+  res.set('Cache-Control','no-store');
+  res.json(result);
 });
 
 // Temporary testing endpoint. Parse in memory and return to the uploader only;

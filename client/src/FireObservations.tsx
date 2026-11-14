@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { getDisplayFRP, type FireFeature } from './fire-data';
+import { observationFrp } from './analytics-model';
 import { observationTime, type TimeBasis } from './timeline';
 import { observationPage } from './observation-list';
 
@@ -41,11 +42,11 @@ export function FireObservations({ fires, timeBasis, selected, onSelect, onFit }
       {rows.map((fire, index) => {
         const [lng, lat] = fire.geometry.coordinates;
         const p = fire.properties;
-        const frp = getDisplayFRP(fire);
-        return <button type="button" key={start + index} className="hotspot-row" aria-pressed={fire === selected} onClick={() => onSelect(fire)} aria-label={`Inspect ${p.satellite} at ${lat.toFixed(3)}, ${lng.toFixed(3)}, ${frp.toFixed(1)} megawatts`}>
-          <span className="observation-swatch" style={{ backgroundColor: frp < 50 ? '#ffeb3b' : frp <= 150 ? '#ff9800' : '#ff2d00' }} aria-hidden="true" />
+        const frp = observationFrp(fire);
+        return <button type="button" key={start + index} className="hotspot-row" aria-pressed={fire === selected} onClick={() => onSelect(fire)} aria-label={`Inspect ${p.satellite} at ${lat.toFixed(3)}, ${lng.toFixed(3)}, ${frp === null ? 'FRP unavailable' : `${frp.toFixed(1)} megawatts`}`}>
+          <span className="observation-swatch" style={{ backgroundColor: frp === null ? '#9aabb9' : frp < 50 ? '#ffeb3b' : frp <= 150 ? '#ff9800' : '#ff2d00' }} aria-hidden="true" />
           <span><strong>{p.platform || p.satellite}</strong><small>{Math.abs(lat).toFixed(3)}°{lat >= 0 ? 'N' : 'S'}, {Math.abs(lng).toFixed(3)}°{lng >= 0 ? 'E' : 'W'}</small><small>{timeBasis === 'utc' ? `${p.observed_at_utc?.slice(0, 10) || 'Undated'} ${p.acq_time_utc} UTC` : `${p.local_solar_date || 'Undated'} ${p.local_solar_time} solar`}</small></span>
-          <span className="observation-frp">{frp.toFixed(1)}</span>
+          <span className="observation-frp">{frp?.toFixed(1) ?? '—'}</span>
         </button>;
       })}
       {!fires.length && <p className="hotspot-hint">No matching observations. Try another source or show the full time range.</p>}

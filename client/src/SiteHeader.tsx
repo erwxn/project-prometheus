@@ -1,3 +1,5 @@
+import { navigateDashboard } from './dashboard-navigation';
+
 const pages = [
   { id: 'explorer', href: '/', label: 'Fire explorer' },
   { id: 'analytics', href: '/analytics/', label: 'Analytics' },
@@ -19,7 +21,7 @@ export function SiteBrand({ heading = false }: { heading?: boolean }) {
 }
 
 export function SiteNavigation({ current }: { current: (typeof pages)[number]['id'] }) {
-  const links = pages.map(page => <a key={page.id} href={page.href} className={current === page.id ? 'active' : undefined} aria-current={current === page.id ? 'page' : undefined}>{page.label}</a>);
+  const links = pages.map(page => <a key={page.id} href={page.href} onClick={event => navigateDashboard(event, page.href)} className={current === page.id ? 'active' : undefined} aria-current={current === page.id ? 'page' : undefined}>{page.label}</a>);
 
   return (
     <>

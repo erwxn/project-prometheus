@@ -1,0 +1,42 @@
+name: Project Prometheus CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Lint, Secret Scanning & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm ci
+
+      - name: Install Client Dependencies
+        run: npm --prefix client ci
+
+      - name: Install Server Dependencies
+        run: npm --prefix server ci
+
+      - name: Run Secretlint (Security Scan)
+        run: npm run lint:secrets
+
+      - name: Build Frontend Client (Typecheck & Vite)
+        run: npm run build
+
+      - name: Validate Server Runtime
+        run: |
+          node -e "const app = require('./server/index.js'); console.log('Server module loaded OK');"
+

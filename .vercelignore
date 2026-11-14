@@ -1,0 +1,12 @@
+# Keep local datasets and credentials out of deployment uploads.
+.git
+.vercel
+.env
+.env.*
+**/.env
+**/.env.*
+node_modules
+**/node_modules
+client/dist
+server/data
+server/data/**

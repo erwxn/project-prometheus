@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en" class="about-document">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="How MODIS and VIIRS detect fires from orbit, and how to read the Prometheus sample dataset." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/index.css" />
+    <link rel="stylesheet" href="/src/about.css" />
+    <link rel="stylesheet" href="/src/editorial.css" />
+    <title>About the data | Prometheus</title>
+  </head>
+  <body>
+    <div class="mission-app about-page">
+      <header class="mission-header">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+            <circle cx="20" cy="20" r="15" stroke="currentColor" stroke-width="1.2" />
+            <ellipse cx="20" cy="20" rx="7" ry="19" stroke="currentColor" transform="rotate(40 20 20)" />
+            <path d="M14 28 20 11l6 17-6-4-6 4Z" fill="currentColor" />
+          </svg>
+          <div><p class="about-brand-name">Prometheus</p><p>Earth observation platform</p></div>
+        </div>
+        <nav class="header-nav" aria-label="Main navigation">
+          <a href="/">Fire explorer</a>
+          <a href="/analytics/">Analytics</a>
+          <span class="active" aria-current="page">About the data</span>
+        </nav>
+        <div class="challenge-tag"><span class="tiny-orbit" aria-hidden="true"></span>NASA Space Apps</div>
+        <nav class="about-mobile-nav" aria-label="Main navigation">
+          <a href="/">Fire explorer</a>
+          <a href="/analytics/">Analytics</a>
+        </nav>
+      </header>
+
+      <main class="about-content">
+        <section class="about-hero" aria-labelledby="about-title">
+          <div class="about-earth" aria-hidden="true"></div>
+          <h1 id="about-title">About the data</h1>
+          <p>MODIS and VIIRS both detect heat from orbit. Their pixel sizes and observation times differ, so the same fire can look different in each dataset.</p>
+        </section>
+
+        <section aria-labelledby="sensor-title">
+          <h2 id="sensor-title">MODIS vs. VIIRS</h2>
+          <p>NASA FIRMS publishes active-fire detections from both instruments. The nominal pixel sizes below describe the detection products near the point directly beneath the satellite.</p>
+          <div class="sensor-comparison">
+            <article class="sensor-card">
+              <div class="sensor-pixel" aria-hidden="true"></div>
+              <h3>MODIS <span>1 km</span></h3>
+              <p class="sensor-name">Moderate Resolution Imaging Spectroradiometer</p>
+              <p>Flown on Terra and Aqua, MODIS provides a long record of fire observations. One larger pixel can contain several nearby hotspots.</p>
+            </article>
+            <article class="sensor-card">
+              <div class="sensor-pixel sensor-pixel-fine" aria-hidden="true"></div>
+              <h3>VIIRS <span>375 m</span></h3>
+              <p class="sensor-name">Visible Infrared Imaging Radiometer Suite</p>
+              <p>Flown on satellites including Suomi NPP and NOAA-20, VIIRS can detect smaller fires and distinguish hotspots that may fall within the same MODIS pixel.</p>
+            </article>
+          </div>
+          <p class="about-caption">Squares compare nominal pixel widths at the same scale. A detection identifies a pixel containing a heat source. The fire may occupy only a fraction of that pixel.</p>
+        </section>
+
+        <section class="about-section" aria-labelledby="timing-title">
+          <h2 id="timing-title">Why timing matters</h2>
+          <p>Polar-orbiting satellites observe a location as they pass overhead. A fire can change between passes, so differences can reflect the time of observation as well as the instrument. Clouds can also block a detection.</p>
+          <p>The explorer starts in <strong>UTC</strong>, a shared clock for comparing acquisition times across locations. <strong>Local solar analysis</strong> uses each detection’s longitude to estimate the local mean solar time, which helps compare the same part of the day across regions.</p>
+          <p>Choose <strong>Selected 24 hours</strong> or <strong>Entire file</strong> to set the time range. Playback advances in 15-minute steps and shows detections from the preceding 60 minutes. The full-range view shows all matching detections in the chosen range.</p>
+        </section>
+
+        <section class="about-section" aria-labelledby="reading-title">
+          <h2 id="reading-title">How to read the explorer</h2>
+          <dl class="about-definitions">
+            <dt>Fire radiative power (FRP)</dt>
+            <dd>An estimate of the rate at which a fire emits radiant energy, measured in megawatts (MW). The explorer uses FRP to color the markers. Marker size is exaggerated for visibility.</dd>
+            <dt>Raw MODIS and Raw VIIRS</dt>
+            <dd>These layers show detections labeled for each sensor using their stored raw FRP values. Imported MODIS files contain MODIS detections only. The hotspot count counts visible records, and one fire can have several detections.</dd>
+            <dt>AI Harmonized</dt>
+            <dd>This layer shows precomputed sample estimates that illustrate how measurements from different sensors and overpass times might be made easier to compare. The explorer displays stored values and does not run a model.</dd>
+            <dt>Export data</dt>
+            <dd>Downloads the currently filtered records as GeoJSON, including coordinates, sensor label, acquisition time, local solar time, confidence, and FRP values.</dd>
+          </dl>
+          <aside class="about-note" aria-label="Dataset provenance"><strong>Check the data source.</strong> Prometheus can show a demonstration dataset or an imported MODIS snapshot. The sidebar identifies the active source. For current active-fire data, use <a href="https://firms.modaps.eosdis.nasa.gov/">NASA FIRMS</a>.</aside>
+        </section>
+
+        <footer class="about-section" aria-labelledby="references-title">
+          <h2 id="references-title">NASA references</h2>
+          <ul class="about-references">
+            <li><a href="https://wiki.earthdata.nasa.gov/spaces/FIRMS/blog/2022/09/29/266967967/Characteristics%2Bof%2BVIIRS%2BMODIS%2Band%2BOLI%2BSensors%2Band%2BTheir%2BEffects%2Bon%2Bthe%2BSpatial%2BExtent%2Bof%2BDaily%2BActive%2BFire%2BData">How sensor characteristics affect fire detections</a></li>
+            <li><a href="https://forum.earthdata.nasa.gov/viewtopic.php?t=5191">MODIS active-fire data FAQ</a></li>
+            <li><a href="https://forum.earthdata.nasa.gov/viewtopic.php?t=5189">VIIRS active-fire data FAQ</a></li>
+          </ul>
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

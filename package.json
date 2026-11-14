@@ -1,0 +1,33 @@
+{
+  "name": "web-service-nasa-space-apps",
+  "version": "1.0.0",
+  "description": "Project Prometheus - NASA Space Apps Challenge: Harmonization of MODIS and VIIRS Hot Spots",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "prepare": "node .husky/install.mjs",
+    "lint:secrets": "secretlint \"**/*\"",
+    "lint-staged": "lint-staged",
+    "test": "npm run lint:secrets && npm run build",
+    "build": "npm --prefix client run build",
+    "start": "npm --prefix server start",
+    "server:start": "npm --prefix server start",
+    "server:dev": "npm --prefix server run dev",
+    "client:dev": "npm --prefix client run dev",
+    "client:build": "npm --prefix client run build"
+  },
+  "devDependencies": {
+    "@secretlint/secretlint-rule-preset-recommend": "^13.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "secretlint": "^13.1.0"
+  },
+  "lint-staged": {
+    "**/*.{js,ts,jsx,tsx,json,md,html,env}": [
+      "secretlint"
+    ]
+  }
+}

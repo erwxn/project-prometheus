@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <radialGradient id="flameGrad" cx="50%" cy="75%" r="65%">
+      <stop offset="0%" stop-color="#fff59d"/>
+      <stop offset="35%" stop-color="#f59e0b"/>
+      <stop offset="70%" stop-color="#ea580c"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </radialGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0b0f19"/>
+  <path d="M32 6C32 6 36 18 30 24C24 30 18 36 18 44C18 52 24.3 58 32 58C39.7 58 46 52 46 44C46 33 39 25 39 19C39 19 36 21 35 23C34 19 32 6 32 6Z" fill="url(#flameGrad)" filter="url(#glow)"/>
+  <path d="M32 28C29 33 25 38 25 44C25 48.5 28.1 52 32 52C35.9 52 39 48.5 39 44C39 38 34.5 33 32 28Z" fill="#ffedd5"/>
+</svg>

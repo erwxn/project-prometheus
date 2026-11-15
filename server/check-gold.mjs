@@ -41,10 +41,12 @@ try {
     let reader;
     if (mode === 'offline-synthetic-parquet') reader = (await import('./fixtures/gold-fixture.mjs')).goldFixture().reader;
     else reader = createGoldReader();
-    await reader.checkAccess();
+    const access = await reader.checkAccess();
+    if (mode === 'live-azure') report.authentication = { method: 'read-only container SAS', credential_source: process.env.PROMETHEUS_GOLD_SAS_TOKEN ? 'backend environment' : 'backend private access file', expires_at_utc: new Date(access.expiry).toISOString() };
     stage = 'data';
     const snapshot = await reader.getSnapshot();
     report.tested_snapshot = snapshot.snapshot;
+    report.committed_catalog_sha256_verified = true;
     report.verified = {};
     const loaded = new Map();
     for (const id of Object.keys(GOLD_KINDS)) {
@@ -101,6 +103,28 @@ try {
     const unknownBody = await unknown.json();
     if (unknown.status !== 200 || unknownBody.data.some(row => row.viirs_observed_label !== null)) throw Error('Unknown label changed.');
     examples.responses['/api/model-evaluations/metrics'] = metricsBody;
+    report.explorer = {};
+    for (const sensor of ['Harmonized', 'MODIS', 'VIIRS']) {
+      let count = 0, expected, pages = 0;
+      for (let page = 1; ; page++) {
+        const url = new URL('/api/gold/explorer', base);
+        url.search = new URLSearchParams({ sensor, page: String(page), snapshot: snapshot.snapshot });
+        const response = await fetch(url), body = await response.json();
+        if (response.status !== 200 || response.headers.get('content-encoding') !== 'gzip' || body.metadata.gold_snapshot !== snapshot.snapshot || body.metadata.gold_sensor !== sensor || body.features.some(feature => feature.properties.country_iso3 !== 'MAR' || feature.properties.observed_at_utc.startsWith('2026-'))) throw Error('Explorer verification failed.');
+        expected ??= body.metadata.total_features;
+        if (body.metadata.total_features !== expected || body.metadata.gold_page !== page) throw Error('Explorer pagination changed.');
+        count += body.features.length; pages++;
+        if (page >= body.metadata.gold_pages) break;
+        if (page >= 100) throw Error('Explorer pagination limit exceeded.');
+      }
+      const records = loaded.get(sensor === 'Harmonized' ? 'morocco_harmonized_predictions' : 'morocco_fire_observations').filter(row => row.country_iso3 === 'MAR' && row.boundary_sha256 === snapshot.catalog.boundary_sha256 && !row.observed_at_utc.startsWith('2026-') && (sensor === 'Harmonized' || row.sensor === sensor)).length;
+      if (count !== expected || count !== records) throw Error('Explorer population mismatch.');
+      report.explorer[sensor] = { records: count, pages_verified: pages };
+    }
+    const producerMetrics = await fetch(base + '/api/producer-reported-evaluations/metrics');
+    const producer = await producerMetrics.json();
+    if (producerMetrics.status !== 200 || producer.independently_verified !== false || producer.metrics_by_year.some(item => item.year === 2026)) throw Error('Producer metrics verification failed.');
+    report.null_producer_metrics_preserved = producer.metrics_by_year.filter(item => item.metrics === null).map(item => item.year);
     report.pagination_filter_empty_and_conflict_checks = 'passed';
     report.positive_filter_2019_viirs_count = expected2019;
     await save(mode === 'live-azure' ? 'api-response-examples.json' : 'offline-api-response-examples.json', examples);

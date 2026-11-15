@@ -1,0 +1,155 @@
+{
+  "catalog_sha256": "27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d",
+  "producer_reported_metrics_by_year": [
+    {
+      "independently_verified": false,
+      "metrics": {
+        "ap": 0.6804985652284506,
+        "at_0.5": {
+          "FN": 18,
+          "FP": 0,
+          "TN": 98,
+          "TP": 0,
+          "accuracy": 0.8448275862068966,
+          "f1": null,
+          "precision": null,
+          "recall": 0,
+          "threshold": 0.5
+        },
+        "at_f1_threshold": {
+          "FN": 5,
+          "FP": 10,
+          "TN": 88,
+          "TP": 13,
+          "accuracy": 0.8706896551724138,
+          "f1": 0.6341463414634146,
+          "precision": 0.5652173913043478,
+          "recall": 0.7222222222222222,
+          "threshold": 0.16686241493815074
+        },
+        "brier": 0.1061144371880701,
+        "cells_observed_by_viirs": 116,
+        "cells_total": 444,
+        "count_bias": -0.20314687898292638,
+        "count_expected_sum_p": 14.343356178307324,
+        "frp_groups_fully_observed": {
+          "bias_harmonized": 0.030978139527518156,
+          "bias_raw": 0.7926236827207984,
+          "harmonized_total_mw": 693.5953100049594,
+          "mae_harmonized_mw": 18.160301719481826,
+          "mae_raw_mw": 53.028250217437744,
+          "modis_raw_total_mw": 1205.99587059021,
+          "n_groups": 12,
+          "viirs_total_mw": 672.7546234130859
+        },
+        "viirs_positive_cells": 18
+      },
+      "population": "Original delivery population; boundary-filtered Gold counts are recorded separately",
+      "year": 2014
+    },
+    {
+      "independently_verified": false,
+      "metrics": null,
+      "population": "Original delivery population; boundary-filtered Gold counts are recorded separately",
+      "year": 2015
+    },
+    {
+      "independently_verified": false,
+      "metrics": {
+        "ap": 0.5181418019054543,
+        "at_0.5": {
+          "FN": 17,
+          "FP": 1,
+          "TN": 76,
+          "TP": 0,
+          "accuracy": 0.8085106382978723,
+          "f1": null,
+          "precision": 0,
+          "recall": 0,
+          "threshold": 0.5
+        },
+        "at_f1_threshold": {
+          "FN": 2,
+          "FP": 30,
+          "TN": 47,
+          "TP": 15,
+          "accuracy": 0.6595744680851063,
+          "f1": 0.48387096774193544,
+          "precision": 0.3333333333333333,
+          "recall": 0.8823529411764706,
+          "threshold": 0.16686241493815074
+        },
+        "brier": 0.12004666954757526,
+        "cells_observed_by_viirs": 94,
+        "cells_total": 472,
+        "count_bias": -0.018551770989870597,
+        "count_expected_sum_p": 16.6846198931722,
+        "frp_groups_fully_observed": {
+          "bias_harmonized": 0.0740708948627915,
+          "bias_raw": 0.8675516475398257,
+          "harmonized_total_mw": 210.6422486281065,
+          "mae_harmonized_mw": 10.854771090048905,
+          "mae_raw_mw": 18.19144916534424,
+          "modis_raw_total_mw": 366.2563433647156,
+          "n_groups": 10,
+          "viirs_total_mw": 196.1157774925232
+        },
+        "viirs_positive_cells": 17
+      },
+      "population": "Original delivery population; boundary-filtered Gold counts are recorded separately",
+      "year": 2024
+    },
+    {
+      "independently_verified": false,
+      "metrics": {
+        "ap": 0.39443446586941067,
+        "at_0.5": {
+          "FN": 8,
+          "FP": 0,
+          "TN": 94,
+          "TP": 0,
+          "accuracy": 0.9215686274509803,
+          "f1": null,
+          "precision": null,
+          "recall": 0,
+          "threshold": 0.5
+        },
+        "at_f1_threshold": {
+          "FN": 8,
+          "FP": 0,
+          "TN": 94,
+          "TP": 0,
+          "accuracy": 0.9215686274509803,
+          "f1": null,
+          "precision": null,
+          "recall": 0,
+          "threshold": 0.16686241493815074
+        },
+        "brier": 0.07035055002573122,
+        "cells_observed_by_viirs": 102,
+        "cells_total": 523,
+        "count_bias": -0.23744959885616979,
+        "count_expected_sum_p": 6.100403209150642,
+        "frp_groups_fully_observed": {
+          "bias_harmonized": 0.4754024223702049,
+          "bias_raw": 1.565370906018002,
+          "harmonized_total_mw": 77.39506494429874,
+          "mae_harmonized_mw": 8.312715409289355,
+          "mae_raw_mw": 27.371511459350586,
+          "modis_raw_total_mw": 134.57145309448242,
+          "n_groups": 3,
+          "viirs_total_mw": 52.456918716430664
+        },
+        "viirs_positive_cells": 8
+      },
+      "population": "Original delivery population; boundary-filtered Gold counts are recorded separately",
+      "year": 2025
+    },
+    {
+      "independently_verified": false,
+      "metrics": null,
+      "population": "Original delivery population; boundary-filtered Gold counts are recorded separately",
+      "year": 2026
+    }
+  ]
+}

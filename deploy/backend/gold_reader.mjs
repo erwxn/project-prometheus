@@ -62,7 +62,8 @@ export function validateGoldCatalog(catalog, { maxRows = 250000, maxBytes = 128 
     }
     if (kind === 'producer_reported_evaluation') {
       check(Array.isArray(dataset.producer_reported_metrics_by_year) && dataset.producer_reported_metrics_by_year.length <= 200);
-      for (const item of dataset.producer_reported_metrics_by_year) check(integer(item.year, 1900) && item.year <= 2200 && item.independently_verified === false && typeof item.population === 'string' && item.metrics && typeof item.metrics === 'object' && !Array.isArray(item.metrics));
+      // Null means producer metrics were unavailable; it must not invalidate other datasets or become zero.
+      for (const item of dataset.producer_reported_metrics_by_year) check(integer(item.year, 1900) && item.year <= 2200 && item.independently_verified === false && typeof item.population === 'string' && (item.metrics === null || item.metrics && typeof item.metrics === 'object' && !Array.isArray(item.metrics)));
     }
   }
   check(fileCount <= 512 && rows <= maxRows && bytes <= maxBytes);

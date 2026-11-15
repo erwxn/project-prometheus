@@ -1,6 +1,6 @@
 {
   "mode": "live-azure",
-  "checked_at_utc": "2026-11-15T08:07:42.335Z",
+  "checked_at_utc": "2026-11-15T12:06:30.519Z",
   "status": "passed",
   "azure_writes_performed": false,
   "supplied_catalog_sha256": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
@@ -32,7 +32,13 @@
     }
   },
   "supplied_parquet_files": 146,
-  "tested_snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+  "authentication": {
+    "method": "read-only container SAS",
+    "credential_source": "backend environment",
+    "expires_at_utc": "2026-11-22T07:59:00.000Z"
+  },
+  "tested_snapshot": "27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d",
+  "committed_catalog_sha256_verified": true,
   "verified": {
     "morocco_fire_observations": {
       "files": 1,
@@ -42,25 +48,25 @@
       "pages_verified": 71
     },
     "morocco_harmonization_daily_summary": {
-      "files": 3,
-      "parsed_rows": 126,
-      "dated_2026_rows": 0,
-      "scoped_rows": 126,
+      "files": 5,
+      "parsed_rows": 232,
+      "dated_2026_rows": 54,
+      "scoped_rows": 178,
       "pages_verified": 1
     },
     "morocco_harmonized_fire_groups": {
-      "files": 3,
-      "parsed_rows": 160,
-      "dated_2026_rows": 0,
-      "scoped_rows": 160,
+      "files": 5,
+      "parsed_rows": 312,
+      "dated_2026_rows": 73,
+      "scoped_rows": 239,
       "pages_verified": 1
     },
     "morocco_harmonized_predictions": {
-      "files": 134,
-      "parsed_rows": 1826,
-      "dated_2026_rows": 0,
-      "scoped_rows": 1826,
-      "pages_verified": 2
+      "files": 242,
+      "parsed_rows": 3210,
+      "dated_2026_rows": 762,
+      "scoped_rows": 2448,
+      "pages_verified": 3
     },
     "morocco_model_evaluation": {
       "files": 2,
@@ -70,11 +76,11 @@
       "pages_verified": 1
     },
     "morocco_producer_reported_evaluation": {
-      "files": 3,
-      "parsed_rows": 1430,
-      "dated_2026_rows": 0,
-      "scoped_rows": 1430,
-      "pages_verified": 2
+      "files": 5,
+      "parsed_rows": 2814,
+      "dated_2026_rows": 762,
+      "scoped_rows": 2052,
+      "pages_verified": 3
     }
   },
   "evaluation_metrics": {
@@ -99,6 +105,23 @@
     },
     "calculation": "Recomputed from verified evaluation rows; classification thresholds supplied by the committed catalog."
   },
+  "explorer": {
+    "Harmonized": {
+      "records": 2448,
+      "pages_verified": 1
+    },
+    "MODIS": {
+      "records": 8194,
+      "pages_verified": 1
+    },
+    "VIIRS": {
+      "records": 62719,
+      "pages_verified": 7
+    }
+  },
+  "null_producer_metrics_preserved": [
+    2015
+  ],
   "pagination_filter_empty_and_conflict_checks": "passed",
   "positive_filter_2019_viirs_count": 5757
 }

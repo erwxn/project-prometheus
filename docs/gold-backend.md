@@ -72,3 +72,5 @@ See [backend connection and deployment](../deploy/BACKEND_CONNECTION.md), [test 
 `GET /api/gold/explorer?sensor=Harmonized|MODIS|VIIRS&page=1` serves verified Morocco GeoJSON in gzip-compressed pages of 10,000 records. Subsequent pages require the returned `gold_snapshot` as `snapshot`. The frontend validates and assembles every page before displaying a source, and rejects partial or mixed publications. This map endpoint is separate from the record APIs and their 1,000-row maximum. Conditional refreshes use ETags after credential and snapshot checks.
 
 Explore and Analyze start with an empty Morocco map while Gold loads, default to model candidates, and show an explicit error on failure. They never replace unavailable Gold data with global demo fires. Raw MODIS and VIIRS observations remain separate from model candidates; model scores are not probabilities.
+
+Producer-reported annual `metrics` may be an object or explicit `null` when unavailable. Null values are preserved, never converted to zero, and cannot invalidate unrelated observation or prediction datasets. These imported metrics remain marked `independently_verified: false`.

@@ -1,11 +1,11 @@
 {
   "mode": "live-azure",
-  "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+  "snapshot": "27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d",
   "responses": {
     "/api/gold/catalog": {
       "status": "COMMITTED",
       "schema_version": 1,
-      "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+      "snapshot": "27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d",
       "datasets": {
         "morocco_fire_observations": {
           "kind": "source_observation",
@@ -14,18 +14,18 @@
         },
         "morocco_harmonization_daily_summary": {
           "kind": "harmonization_daily_summary",
-          "catalog_row_count": 126,
-          "file_count": 3
+          "catalog_row_count": 232,
+          "file_count": 5
         },
         "morocco_harmonized_fire_groups": {
           "kind": "harmonized_fire_group",
-          "catalog_row_count": 160,
-          "file_count": 3
+          "catalog_row_count": 312,
+          "file_count": 5
         },
         "morocco_harmonized_predictions": {
           "kind": "model_candidate",
-          "catalog_row_count": 1826,
-          "file_count": 134
+          "catalog_row_count": 3210,
+          "file_count": 242
         },
         "morocco_model_evaluation": {
           "kind": "model_evaluation",
@@ -34,8 +34,8 @@
         },
         "morocco_producer_reported_evaluation": {
           "kind": "producer_reported_evaluation",
-          "catalog_row_count": 1430,
-          "file_count": 3
+          "catalog_row_count": 2814,
+          "file_count": 5
         }
       },
       "capture_note": "Dataset inventory summary; the endpoint itself returns complete safe file inventories."
@@ -43,7 +43,7 @@
     "/api/fire-observations": {
       "metadata": {
         "source": "Azure Gold",
-        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "snapshot": "27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d",
         "country_iso3": "MAR",
         "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
         "study_area": "Morocco; Western Sahara separate",
@@ -108,7 +108,7 @@
     "/api/harmonization-daily-summary": {
       "metadata": {
         "source": "Azure Gold",
-        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "snapshot": "27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d",
         "country_iso3": "MAR",
         "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
         "study_area": "Morocco; Western Sahara separate",
@@ -124,9 +124,9 @@
         "coverage_status": "Unknown; missing records are not zero activity."
       },
       "filters": {},
-      "catalog_count": 126,
-      "scoped_count": 126,
-      "filtered_count": 126,
+      "catalog_count": 232,
+      "scoped_count": 178,
+      "filtered_count": 178,
       "page": 1,
       "page_size": 1000,
       "total_pages": 1,
@@ -164,7 +164,7 @@
     "/api/harmonized-fire-groups": {
       "metadata": {
         "source": "Azure Gold",
-        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "snapshot": "27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d",
         "country_iso3": "MAR",
         "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
         "study_area": "Morocco; Western Sahara separate",
@@ -180,9 +180,9 @@
         "coverage_status": "Unknown; missing records are not zero activity."
       },
       "filters": {},
-      "catalog_count": 160,
-      "scoped_count": 160,
-      "filtered_count": 160,
+      "catalog_count": 312,
+      "scoped_count": 239,
+      "filtered_count": 239,
       "page": 1,
       "page_size": 1000,
       "total_pages": 1,
@@ -236,7 +236,7 @@
     "/api/model-predictions": {
       "metadata": {
         "source": "Azure Gold",
-        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "snapshot": "27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d",
         "country_iso3": "MAR",
         "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
         "study_area": "Morocco; Western Sahara separate",
@@ -252,12 +252,12 @@
         "coverage_status": "Unknown; missing records are not zero activity."
       },
       "filters": {},
-      "catalog_count": 1826,
-      "scoped_count": 1826,
-      "filtered_count": 1826,
+      "catalog_count": 3210,
+      "scoped_count": 2448,
+      "filtered_count": 2448,
       "page": 1,
       "page_size": 1000,
-      "total_pages": 2,
+      "total_pages": 3,
       "data": [
         {
           "longitude": -2.64948514573334,
@@ -299,7 +299,7 @@
     "/api/model-evaluations": {
       "metadata": {
         "source": "Azure Gold",
-        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "snapshot": "27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d",
         "country_iso3": "MAR",
         "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
         "study_area": "Morocco; Western Sahara separate",
@@ -365,7 +365,7 @@
     "/api/producer-reported-evaluations": {
       "metadata": {
         "source": "Azure Gold",
-        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "snapshot": "27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d",
         "country_iso3": "MAR",
         "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
         "study_area": "Morocco; Western Sahara separate",
@@ -382,12 +382,12 @@
         "coverage_status": "Unknown; missing records are not zero activity."
       },
       "filters": {},
-      "catalog_count": 1430,
-      "scoped_count": 1430,
-      "filtered_count": 1430,
+      "catalog_count": 2814,
+      "scoped_count": 2052,
+      "filtered_count": 2052,
       "page": 1,
       "page_size": 1000,
-      "total_pages": 2,
+      "total_pages": 3,
       "data": [
         {
           "record_id": "f4dde8a806740be7c5b47a8bc467e3aea19cadcebf86fc8de7dc5647b2e589ed",
@@ -424,7 +424,7 @@
     "/api/model-evaluations/metrics": {
       "metadata": {
         "source": "Azure Gold",
-        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "snapshot": "27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d",
         "country_iso3": "MAR",
         "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
         "study_area": "Morocco; Western Sahara separate",

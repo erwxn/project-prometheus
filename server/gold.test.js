@@ -253,3 +253,25 @@ test('map feed serves only the selected Morocco Gold population, not legacy demo
     assert.equal((await fetch(base+'/api/gold/explorer',{headers:{'If-None-Match':first.headers.get('etag')}})).status,503);
   });
 });
+
+test('actual expanded Gold catalog accepts unavailable producer metrics without inventing values',async()=>{
+ const fs=require('node:fs');
+ const {realCatalogBytes}=await import('./fixtures/gold-fixture.mjs');
+ const {validateGoldCatalog,GoldError}=await import('../deploy/backend/gold_reader.mjs');
+ const {createGoldService}=await import('./gold-service.mjs');
+ const publication=JSON.parse(fs.readFileSync(require('node:path').join(__dirname,'fixtures/gold-catalog/producer-metrics-27161f76.json'),'utf8'));
+ const catalog=JSON.parse(realCatalogBytes);
+ const dataset=catalog.datasets.morocco_producer_reported_evaluation;
+ dataset.producer_reported_metrics_by_year=publication.producer_reported_metrics_by_year;
+ assert.equal(validateGoldCatalog(catalog),catalog);
+ assert.equal(dataset.producer_reported_metrics_by_year.find(item=>item.year===2015).metrics,null);
+ const service=createGoldService({reader:{getSnapshot:async()=>({snapshot:publication.catalog_sha256,generation:1,catalog})}});
+ const response=await service.producerMetrics();
+ assert.equal(response.independently_verified,false);
+ assert.equal(response.metrics_by_year.find(item=>item.year===2015).metrics,null);
+ assert.ok(response.metrics_by_year.every(item=>item.year!==2026&&item.independently_verified===false));
+ for(const invalid of [undefined,false,0,'',[]]){
+  const changed=structuredClone(catalog);changed.datasets.morocco_producer_reported_evaluation.producer_reported_metrics_by_year[0].metrics=invalid;
+  assert.throws(()=>validateGoldCatalog(changed),GoldError);
+ }
+});

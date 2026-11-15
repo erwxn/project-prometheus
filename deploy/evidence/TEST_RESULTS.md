@@ -50,7 +50,7 @@ The full application smoke test verifies that health and existing legacy samples
 
 The renewed credential is stored only in ignored local backend settings. It expires **2026-11-22 at 07:59 UTC**; rotation requires a newly issued credential, not editing expiry fields. Deployment still needs backend-only Gold environment variables in the actual existing Vercel project, a redeploy, and hosted endpoint/latency checks. No Vercel project or principal/object ID was invented. The dedicated production backend identity and Gold-container-only `Storage Blob Data Reader` handoff remain pending; no ingestion identity or permanent password was reused.
 
-## Morocco frontend connection fix — 2026-11-15
+## Morocco frontend connection fix ï¿½ 2026-11-15
 
 - Full local regression suite: 146 passed, 0 failed.
 - Frontend lint, secret scan and production build passed. Existing bundle-size warnings remain.
@@ -58,3 +58,13 @@ The renewed credential is stored only in ignored local backend settings. It expi
 - Browser verification confirmed the default model map and complete paginated VIIRS source load. Initial and failed loads cannot show worldwide demo points.
 - Map pages are gzip-compressed, snapshot-pinned, and assembled before replacing the displayed dataset. Unchanged refreshes support conditional 304 responses after access checks.
 - Public production API verification was blocked by Vercel HTTP 429; local verification does not establish production deployment readiness.
+
+## Expanded committed catalog incident - 2026-11-15
+
+- Failing production map request: `GET /api/gold/explorer?sensor=Harmonized&page=1`; catalog API also returned HTTP 503 with `GOLD_503`. Request logs confirmed the calls reached Express. Sanitized errors intentionally omitted provider details.
+- Azure pointer and catalog GET requests returned HTTP 200 using the valid backend-only read-only SAS. The new committed catalog SHA-256 `27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d` verified successfully.
+- Root cause: producer-reported evaluation metadata now contains `metrics: null` for 2015 and 2026. The validator incorrectly required a metrics object for every year, rejecting the entire otherwise valid catalog before reading Parquet.
+- Fixed validation to preserve explicit null metrics as unavailable. Missing/invalid metric values remain rejected, producer metrics remain unverified, and 2026 remains excluded. Regression uses the actual published producer metadata fragment.
+- Full regression suite: 150 passed, 0 failed. Build passed; frontend lint exited successfully with an existing AnalyticsPage set-state-in-effect warning.
+- Actual Azure verification passed: 260 files, 84,478 parsed rows; six APIs fully paginated; checksum/length/row-count/columns verified. Map feed counts: 2,448 model candidates, 8,194 MODIS, 62,719 VIIRS. Filtered, empty, invalid-query and snapshot-conflict checks passed. Independent evaluation retains 79 known and 38 unknown labels.
+- No Azure writes or ingestion/model changes. Evidence in `local-gold-verification.json` and `api-response-examples.json` reflects the newly committed publication.

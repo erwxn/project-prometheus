@@ -3,7 +3,7 @@ import { SeasonalHeatmap } from './SeasonalHeatmap';
 import { DatasetStatus } from './DatasetStatus';
 import { MapLoading } from './MapLoading';
 import { mapFeedback } from './map-feedback';
-import { MapAppearance } from './MapAppearance';
+import { BasemapAppearance, MapAppearance } from './MapAppearance';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl/maplibre';
 import { SiteBrand, SiteNavigation } from './SiteHeader';
@@ -19,6 +19,7 @@ import { areaBounds } from './area-selection';
 import { metricUnit, type DrawMode } from './analytics-model';
 import { archiveFeature } from './archive-model';
 import orbitalStars from './assets/orbital-stars.svg';
+import type { ThemeProps } from './theme';
 
 const whole = new Intl.NumberFormat();
 const decimal = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
@@ -117,10 +118,9 @@ function Breakdown({ rows, total }: { rows: { label: string; count: number }[]; 
   );
 }
 
-export default function AnalyticsPage() {
+export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference, setMapPreference }: ThemeProps) {
   const { camera, state, selected, summary, archive } = useDashboard();
   const [basis, setBasis] = useState<TimeBasis>('utc');
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [projection, setProjection] = useState<'mercator' | 'globe'>('mercator');
   const [mode, setMode] = useState<DrawMode>('static');
   const [drawingError, setDrawingError] = useState('');
@@ -175,10 +175,10 @@ export default function AnalyticsPage() {
         <DatasetControls />
         <GlobalFilters />
         <div className="analytics-map-layout">
-        <section className="map-stage analytics-map" data-projection={projection} aria-label="Analytics fire observation map">
+        <section className="map-stage analytics-map" data-map-theme={mapTheme} data-projection={projection} aria-label="Analytics fire observation map">
           {projection === 'globe' && <img className="orbital-stars" src={orbitalStars} alt="" aria-hidden="true" draggable={false} />}
-          <FireMap mapRef={mapRef} features={features} theme={theme} projection={projection} mode={mode} onModeChange={changeMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
-          <div className="map-top-controls"><div className="map-heading"><h2>{state.filters.area ? 'Selected area' : 'All locations'} <span>/ {whole.format(features.length)} detections</span></h2></div><CountrySearch onSelect={([, , bounds]) => { if (!mapRef.current) return false; mapRef.current.fitBounds(bounds, { padding: 75, pitch: 0, maxZoom: 9 }); return true; }} /><div className="projection-switch" role="group" aria-label="Map projection"><button aria-pressed={projection === 'mercator'} onClick={() => { setMode('static'); setProjection('mercator'); }}>Flat map</button><button aria-pressed={projection === 'globe'} onClick={() => { setMode('static'); setProjection('globe'); }}>3D globe</button></div></div>
+          <FireMap mapRef={mapRef} features={features} theme={mapTheme} projection={projection} mode={mode} onModeChange={changeMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
+          <div className="map-top-controls"><div className="map-heading"><h2>{state.filters.area ? 'Selected area' : 'All locations'} <span>/ {whole.format(features.length)} detections</span></h2></div><CountrySearch onSelect={([, , bounds]) => { if (!mapRef.current) return false; mapRef.current.fitBounds(bounds, { padding: 75, pitch: 0, maxZoom: 9 }); return true; }} /><div className="projection-switch" role="group" aria-label="Map projection"><button aria-pressed={projection === 'mercator'} onClick={() => { setMode('static'); setProjection('mercator'); }}>Flat map</button><button aria-pressed={projection === 'globe'} onClick={() => { setMode('static'); setProjection('globe'); }}>3D globe</button></div><BasemapAppearance value={mapPreference} onChange={setMapPreference} /></div>
           {mode !== 'static' && <p className="map-drawing-status" role="status">{mode === 'select' ? 'Editing selected area' : `Drawing ${mode}`} · Finish or cancel in the area controls</p>}
           {mapState === 'loading' && <MapLoading />}
           {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry archive in the filters to try again.</p>}

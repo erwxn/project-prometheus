@@ -4,7 +4,7 @@ import { ExploreControls } from './ExploreControls';
 import { MapLoading } from './MapLoading';
 import { mapFeedback } from './map-feedback';
 import { archivePeriod, explorerDatasetKey } from './explorer-period';
-import { MapAppearance } from './MapAppearance';
+import { BasemapAppearance, MapAppearance } from './MapAppearance';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { MapRef } from 'react-map-gl/maplibre';
 import { MINUTE, STEP_MINUTES, observationTime, defaultWindowStart, fileWindow, matchesTime, nextDetectionMinute, type TimeBasis } from './timeline';
@@ -20,8 +20,9 @@ import { SiteBrand, SiteNavigation } from './SiteHeader';
 import { CountrySearch } from './CountrySearch';
 import type { Country } from './country-bounds';
 import orbitalStars from './assets/orbital-stars.svg';
+import type { ThemeProps } from './theme';
 
-export default function App() {
+export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPreference }: ThemeProps) {
   const { state, dispatch, selected, scope, retry, archive, camera, shareNotice } = useDashboard();
   const [sharedTimeline] = useState(() => readSharedExplore(window.location.search));
   const [restoredTimeline,setRestoredTimeline] = useState(false);
@@ -46,7 +47,6 @@ export default function App() {
   const [timelineSize, setTimelineSize] = useState('compact');
   const [showTimelineOptions, setShowTimelineOptions] = useState(false);
   const [activeRegion, setActiveRegion] = useState('Global');
-  const [mapTheme, setMapTheme] = useState<'dark' | 'light'>('dark');
   const [mapProjection, setMapProjection] = useState<'mercator' | 'globe'>('mercator');
   const changeDrawMode = (mode: DrawMode) => { if (mode !== 'static') setMapProjection('mercator'); setDrawMode(mode); };
   const switchProjection = (projection: typeof mapProjection) => { setDrawMode('static'); setMapProjection(projection); };
@@ -213,13 +213,13 @@ export default function App() {
   const timelineSources = [{ id: 'ALL', label: 'All' }, { id: 'MODIS', label: 'MODIS' }, { id: 'VIIRS', label: 'VIIRS' }, { id: 'Harmonized', label: 'AI Harmonized' }] as const;
 
   return (
-    <div className="mission-app" data-theme={mapTheme}>
+    <div className="mission-app" data-theme={theme}>
       <header className="mission-header">
         <SiteBrand heading />
         <SiteNavigation current="explorer" />
         <div className="challenge-tag"><span className="tiny-orbit" aria-hidden="true" />NASA Space Apps</div>
         <button className="export-button" aria-label="Download PDF report" title="Download PDF report" disabled={exporting} onClick={() => void exportObservations()}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4" /></svg><span>{exporting ? 'Preparing...' : 'Export PDF'}</span></button>
-        <MapAppearance value={mapTheme} onChange={setMapTheme} />
+        <MapAppearance value={theme} onChange={setTheme} />
       </header>
 
       <p className="visually-hidden" role="status">{exportStatus}</p>
@@ -292,7 +292,7 @@ export default function App() {
           <div className="panel-footer"><p>One planet. Multiple perspectives.<br /><span>MODIS + VIIRS / Diurnal harmonization</span></p></div>
         </aside>
 
-        <section className="map-stage" data-projection={mapProjection} aria-label="Interactive fire observation map">
+        <section className="map-stage" data-map-theme={mapTheme} data-projection={mapProjection} aria-label="Interactive fire observation map">
           {mapProjection === 'globe' && <img className="orbital-stars" src={orbitalStars} alt="" aria-hidden="true" draggable={false} />}
           {mapState === 'loading' && <MapLoading />}
           {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry archive in the filters to try again.</p>}
@@ -311,6 +311,7 @@ export default function App() {
                 3D globe
               </button>
             </div>
+            <BasemapAppearance value={mapPreference} onChange={setMapPreference} />
           </div>
           <div className="map-help">DRAG TO PAN<span>·</span>RIGHT-DRAG TO ROTATE<span>·</span>SCROLL TO ZOOM</div>
           {activeFire && <section className="observation-detail" aria-label="Selected observation">

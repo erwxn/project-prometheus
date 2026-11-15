@@ -8,7 +8,7 @@ import { alignedKeys, chartTitle, historicalLabel, periodKeys, type TrendGroupin
 
 const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
 const signed = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1, signDisplay: 'exceptZero' });
-const colors = ['#365f76', '#8b4f76', '#277569', '#9a641d', '#5151a3'];
+const colors = ['#365f76', '#8b4f76', '#277569', '#9a641d', '#5151a3'].map((color, index) => `var(--chart-${index + 1}, ${color})`);
 const dashes = ['', '7 4', '2 4', '10 3 2 3', '4 2'];
 
 export function HistoricalActivity() {
@@ -60,7 +60,7 @@ function LocalHistoricalActivity() {
     series = selectedYears.map((year, i) => ({ id: year, label: year, values: keys.map(key => byYear[i].find(point => point.date === `${year}-${key}`)?.value ?? null), complete: keys.map(key => byYear[i].find(point => point.date === `${year}-${key}`)?.complete ?? false), color: colors[i % colors.length], dash: dashes[i % dashes.length] }));
     if (showBaseline && selectedYears.length) {
       const latest = byYear.at(-1)!;
-      series.push({ id: 'baseline', label: `${selectedYears.at(-1)} · preceding 3-year comparable mean`, values: keys.map(key => latest.find(point => point.date === `${selectedYears.at(-1)}-${key}`)?.baseline ?? null), color: '#796b55', dash: '6 5' });
+      series.push({ id: 'baseline', label: `${selectedYears.at(-1)} · preceding 3-year comparable mean`, values: keys.map(key => latest.find(point => point.date === `${selectedYears.at(-1)}-${key}`)?.baseline ?? null), color: 'var(--chart-baseline, #796b55)', dash: '6 5' });
     }
     selectedIndex = filters.selectedDay ? keys.indexOf(filters.selectedDay.slice(5, 7)) : -1;
     xAxisLabel = 'UTC month';
@@ -69,7 +69,7 @@ function LocalHistoricalActivity() {
     labels = keys;
     const lookup = new Map(yearly.map(point => [point.date, point]));
     series = selectedYears.map((year, i) => ({ id: year, label: `${year} · recorded observations`, values: keys.map(key => key === year ? lookup.get(year)?.value ?? null : null), complete: keys.map(key => key === year && (lookup.get(year)?.complete ?? false)), color: colors[i % colors.length], dash: dashes[i % dashes.length] }));
-    if (showBaseline) series.push({ id: 'baseline', label: 'Preceding 3-year comparable mean', values: keys.map(key => lookup.get(key)?.baseline ?? null), color: '#796b55', dash: '6 5' });
+    if (showBaseline) series.push({ id: 'baseline', label: 'Preceding 3-year comparable mean', values: keys.map(key => lookup.get(key)?.baseline ?? null), color: 'var(--chart-baseline, #796b55)', dash: '6 5' });
     selectedIndex = filters.selectedDay ? keys.indexOf(filters.selectedDay.slice(0, 4)) : -1;
     xAxisLabel = 'UTC year';
   } else {
@@ -77,7 +77,7 @@ function LocalHistoricalActivity() {
     labels = keys.map(key => historicalLabel(key, grouping));
     const lookup = new Map(points.map(point => [point.date, point]));
     series = [{ id: 'observed', label: `${sensor} · recorded ${metricLabel(metric).toLowerCase()}`, values: keys.map(key => lookup.get(key)?.value ?? null), complete: keys.map(key => lookup.get(key)?.complete ?? false), color: colors[0] }];
-    if (showBaseline && grouping !== 'daily') series.push({ id: 'baseline', label: 'Previous 3 years · comparable mean', values: keys.map(key => lookup.get(key)?.baseline ?? null), color: '#796b55', dash: '6 5' });
+    if (showBaseline && grouping !== 'daily') series.push({ id: 'baseline', label: 'Previous 3 years · comparable mean', values: keys.map(key => lookup.get(key)?.baseline ?? null), color: 'var(--chart-baseline, #796b55)', dash: '6 5' });
     const focus = filters.selectedDay?.slice(0, grouping === 'daily' ? 10 : grouping === 'monthly' ? 7 : 4);
     selectedIndex = focus ? keys.indexOf(focus) : -1;
     xAxisLabel = grouping === 'daily' ? 'UTC date' : grouping === 'monthly' ? 'UTC month' : 'UTC year';

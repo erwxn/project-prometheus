@@ -41,9 +41,9 @@ export function datasetDateBounds(collection: FireCollection): [string, string] 
   return [dates[0] ?? '', dates.at(-1) ?? ''];
 }
 
-export function selectScope(rows: PreparedObservation[], filters: Pick<DashboardFilters, 'area' | 'sensor' | 'country'>): PreparedObservation[] {
+export function selectScope(rows: PreparedObservation[], filters: Pick<DashboardFilters, 'area' | 'sensor' | 'country' | 'simulatedPlatform'>): PreparedObservation[] {
   const contains = areaPredicate(filters.area);
-  return rows.filter(row => (filters.sensor === 'ALL' || row.sensor === filters.sensor) && countryContains(filters.country, row.feature.geometry.coordinates) && contains(row.feature.geometry.coordinates));
+  return rows.filter(row => (filters.sensor === 'ALL' || row.sensor === filters.sensor) && (!filters.simulatedPlatform || row.feature.properties.platform === filters.simulatedPlatform) && countryContains(filters.country, row.feature.geometry.coordinates) && contains(row.feature.geometry.coordinates));
 }
 
 export function selectRange(rows: PreparedObservation[], filters: Pick<DashboardFilters, 'startDate' | 'endDate' | 'selectedDay'>, focusDay = true): PreparedObservation[] {

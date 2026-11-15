@@ -3,33 +3,36 @@ import { useId, useMemo, useRef, useState, type RefObject } from 'react';
 import type { MapRef } from 'react-map-gl/maplibre';
 import { useDashboard } from './dashboard-context';
 import { dateRangeError } from './analytics-engine';
-import { SENSOR_IDS, availableSensors, metricLabel, type ActivityMetric, type DrawMode, type SensorFilter } from './analytics-model';
+import { SENSOR_IDS, SIMULATED_PLATFORMS, availableSensors, metricLabel, type ActivityMetric, type DrawMode, type SensorFilter, type SimulatedPlatform } from './analytics-model';
 import { areaBounds, radiusArea, validateArea } from './area-selection';
 import { TemporaryDataPicker } from './TemporaryDataPicker';
 
 export function DatasetControls() {
-  const { state, retry, uploadCsv, showSimulatedHistory, returnToLoaded } = useDashboard();
+  const { state, retry, uploadDataset, showSimulatedHistory, returnToLoaded } = useDashboard();
   const input = useRef<HTMLInputElement>(null);
+  const harmonizedInput = useRef<HTMLInputElement>(null);
   const id = useId();
   const simulated = state.collection.metadata.source === 'simulated';
   const harmonized = state.collection.metadata.source === 'harmonized';
   return <div className="dataset-controls">
     {harmonized ? <details><summary>Optional raw satellite test archive</summary><TemporaryDataPicker /></details> : <TemporaryDataPicker />}
     <div className={`dataset-notice${simulated ? ' simulated' : ''}`} role="status">
-      <strong>{state.status === 'loading' ? 'Loading observations…' : harmonized ? state.collection.metadata.source_name || 'Team harmonized results' : simulated ? 'SIMULATED HISTORY · 2021–2025' : state.collection.metadata.source === 'csv' ? state.collection.metadata.source_name || 'Imported MODIS snapshot' : state.collection.metadata.source === 'demo' ? 'Illustrative demo · no acquisition dates' : 'Loaded observation snapshot'}</strong>
-      <span>{harmonized ? state.collection.metadata.feed_status === 'stale' ? 'Update failed; the last valid publication remains visible. Coverage is unknown.' : 'Harmonized model output. Counts use the record unit described above; coverage is unknown.' : simulated ? 'Synthetic examples for exploring the tools. These are not NASA satellite observations.' : state.collection.metadata.source === 'csv' ? 'Recorded detections only. This file does not establish complete satellite coverage.' : state.collection.metadata.source === 'demo' ? 'The current dataset has no dated history. Select simulated history to try the calendar and comparisons.' : 'Source provenance and complete satellite coverage are not established by this API response.'}</span>
+      <strong>{state.status === 'loading' ? 'Loading observations…' : harmonized ? state.collection.metadata.source_name || 'Team harmonized results' : simulated ? 'Example dataset · 2021–2025' : state.collection.metadata.source === 'csv' ? state.collection.metadata.source_name || 'Imported MODIS snapshot' : state.collection.metadata.source === 'demo' ? 'Illustrative demo · no acquisition dates' : 'Loaded observation snapshot'}</strong>
+      <span>{harmonized ? state.collection.metadata.feed_status === 'stale' ? 'Update failed; the last valid publication remains visible. Coverage is unknown.' : 'Harmonized model output. Counts use the record unit described above; coverage is unknown.' : simulated ? 'Synthetic observations. Use Sensor and Simulated satellite in Filters to explore example platforms.' : state.collection.metadata.source === 'csv' ? 'Recorded detections only. This file does not establish complete satellite coverage.' : state.collection.metadata.source === 'demo' ? 'The current dataset has no dated history. Select simulated history to try the calendar and comparisons.' : 'Source provenance and complete satellite coverage are not established by this API response.'}</span>
     </div>
     {state.error && <p role="alert" className="dashboard-error">{state.error} Current examples/data remain visible. <button onClick={() => void retry()}>Retry server</button></p>}
     <div className="control-actions">
       {simulated ? <button onClick={() => state.loadedCollection ? returnToLoaded() : void retry()}>{state.loadedCollection ? 'Return to loaded dataset' : 'Load server dataset'}</button> : <button onClick={() => void showSimulatedHistory()}>Use simulated history</button>}
       {import.meta.env.VITE_ENABLE_CSV_UPLOAD !== 'false' && <>
-        <input ref={input} id={id} className="visually-hidden" type="file" accept=".csv,text/csv" tabIndex={-1} aria-label="NASA FIRMS MODIS CSV, up to 3 MB" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void uploadCsv(file); }} />
-        <button disabled={state.uploadStatus === 'uploading'} onClick={() => input.current?.click()}>{state.uploadStatus === 'uploading' ? 'Loading CSV…' : 'Upload MODIS CSV'}</button>
+        <input ref={input} id={id} className="visually-hidden" type="file" accept=".csv,text/csv" tabIndex={-1} aria-label="NASA FIRMS MODIS CSV, up to 3 MB" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void uploadDataset(file); }} />
+        <button disabled={state.uploadStatus === 'uploading'} onClick={() => input.current?.click()}>Upload MODIS CSV</button>
+        <input ref={harmonizedInput} className="visually-hidden" type="file" accept=".csv,.json,.parquet,.zip" tabIndex={-1} aria-label="Harmonized delivery file" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void uploadDataset(file, true); }} />
+        <button disabled={state.uploadStatus === 'uploading'} onClick={() => harmonizedInput.current?.click()}>Load harmonized results</button>
       </>}
       {state.collection.metadata.uploaded && <button onClick={() => void retry()}>Restore server dataset</button>}
     </div>
     {state.uploadMessage && <p className={`upload-feedback ${state.uploadStatus}`} role={state.uploadStatus === 'error' ? 'alert' : 'status'}>{state.uploadMessage}</p>}
-    <small>Temporary CSVs: up to 3 MB / 50,000 detections. Navigation keeps your upload; refreshing restores server data.</small>
+    <small>Harmonized uploads accept team delivery ZIPs, CSV, JSON, or Parquet. Uploads are limited to 3 MB and 50,000 records and stay in this browser session.</small>
   </div>;
 }
 
@@ -42,6 +45,7 @@ export function GlobalFilters({ compact = false }: { compact?: boolean }) {
   const [previousRange, setPreviousRange] = useState(rangeKey);
   if (previousRange !== rangeKey) { setPreviousRange(rangeKey); setError(''); }
   const available = useMemo(() => availableSensors(state.collection), [state.collection]);
+  const simulatedPlatforms = filters.sensor === 'ALL' ? Object.values(SIMULATED_PLATFORMS).flat() : SIMULATED_PLATFORMS[filters.sensor];
   return <div className={`global-filters${compact ? ' compact' : ''}`} aria-label="Shared dashboard filters">
     {!archive.active && <form className="date-filter" onSubmit={event => { event.preventDefault(); const data = new FormData(event.currentTarget); const start = String(data.get('startDate') || ''), end = String(data.get('endDate') || ''); const error = dateRangeError(start, end); setError(error || ''); if (!error) dispatch({ type: 'filters', patch: { startDate: start, endDate: end } }); }}>
       <label htmlFor={`${id}-start`}>Start date (UTC)<input key={`${rangeKey}-start`} id={`${id}-start`} name="startDate" type="date" defaultValue={filters.startDate} disabled={!filters.startDate} required /></label>
@@ -50,6 +54,9 @@ export function GlobalFilters({ compact = false }: { compact?: boolean }) {
     </form>}
     {!archive.active && <label htmlFor={`${id}-sensor`}>Sensor<select id={`${id}-sensor`} value={filters.sensor} onChange={event => dispatch({ type: 'filters', patch: { sensor: event.target.value as SensorFilter } })}>
       <option value="ALL">All sources · overview</option>{SENSOR_IDS.map(sensor => <option key={sensor} value={sensor}>{sensor}{available.includes(sensor) ? '' : ' · no loaded data'}</option>)}
+    </select></label>}
+    {state.collection.metadata.source === 'simulated' && simulatedPlatforms.length > 0 && <label htmlFor={`${id}-platform`}>Simulated satellite<select id={`${id}-platform`} value={filters.simulatedPlatform ?? ''} onChange={event => dispatch({ type: 'filters', patch: { simulatedPlatform: (event.target.value || null) as SimulatedPlatform | null } })}>
+      <option value="">All simulated satellites</option>{simulatedPlatforms.map(platform => <option key={platform}>{platform}</option>)}
     </select></label>}
     <label htmlFor={`${id}-metric`}>Activity metric<select id={`${id}-metric`} value={filters.metric} onChange={event => dispatch({ type: 'filters', patch: { metric: event.target.value as ActivityMetric } })}>{(['detections', 'mean-frp'] as const).map(metric => <option key={metric} value={metric}>{metricLabel(metric, state.collection.metadata.record_unit)}</option>)}</select></label>
     {filters.selectedDay && <button className="day-filter" onClick={() => dispatch({ type: 'filters', patch: { selectedDay: null } })}>Clear selected day · {filters.selectedDay} ×</button>}

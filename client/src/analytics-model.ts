@@ -4,6 +4,8 @@ import type { FireFeature } from './fire-data.ts';
 export const SENSOR_IDS = ['MODIS', 'VIIRS', 'Harmonized'] as const;
 export type Sensor = typeof SENSOR_IDS[number];
 export type SensorFilter = Sensor | 'ALL';
+export const SIMULATED_PLATFORMS = { MODIS: ['Terra', 'Aqua'], VIIRS: ['Suomi NPP', 'NOAA-20', 'NOAA-21'], Harmonized: [] } as const;
+export type SimulatedPlatform = (typeof SIMULATED_PLATFORMS)[Sensor][number];
 export type ActivityMetric = 'detections' | 'mean-frp';
 export type AreaFeature = Feature<Polygon, { kind: 'rectangle' | 'polygon' | 'radius'; center?: [number, number]; radiusKm?: number }>;
 export type DrawMode = 'static' | 'rectangle' | 'polygon' | 'select';
@@ -68,6 +70,7 @@ export interface FireCollection {
 
 export interface DashboardFilters {
   country?: string | null;
+  simulatedPlatform?: SimulatedPlatform | null;
   area: AreaFeature | null;
   startDate: string;
   endDate: string;

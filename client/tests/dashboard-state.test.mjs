@@ -12,6 +12,8 @@ test('observation rate limiting reports the server cooldown', async () => {
 });
 import { dashboardPage, navigateDashboard } from '../src/dashboard-navigation.ts';
 import { simulatedHistory } from '../src/historical-demo.ts';
+import { prepareObservations, selectScope } from '../src/analytics-engine.ts';
+import { countryContains } from '../src/country-filter.ts';
 import { collection, feature, polygon } from './analytics-fixtures.mjs';
 
 test('harmonized refresh preserves search filters and never replaces an archive or upload', () => {
@@ -120,4 +122,24 @@ test('historical demo is deterministic, labeled, dated, and contains missing FRP
   assert.ok(demo.metadata.coverage.some(i => i.status === 'unavailable'));
   assert.equal(new Set(demo.features.map(f => f.properties.satellite)).size, 3);
   assert.ok(demo.features.every(f => f.properties.observed_at_utc >= '2021-01-01' && f.properties.observed_at_utc < '2026-01-01'));
+});
+
+test('simulated history spans multiple regions and supports platform filtering', () => {
+  const demo = simulatedHistory();
+  const rows = prepareObservations(demo.features);
+  let state = initialDashboardState(demo);
+  state = dashboardReducer(state, { type: 'filters', patch: { sensor: 'VIIRS', simulatedPlatform: 'NOAA-20' } });
+  const selected = selectScope(rows, state.filters);
+  assert.ok(selected.length > 0 && selected.length < rows.length);
+  assert.ok(selected.every(row => row.feature.properties.platform === 'NOAA-20'));
+  assert.ok(new Set(selected.map(row => Math.floor(row.feature.geometry.coordinates[0]))).size > 10);
+  state = dashboardReducer(state, { type: 'filters', patch: { sensor: 'MODIS' } });
+  assert.equal(state.filters.simulatedPlatform, null);
+});
+
+test('simulated locations have no grid-sized pileups and stay inside the sample countries', () => {
+  const coordinates = simulatedHistory().features.map(feature => feature.geometry.coordinates);
+  const countries = ['MAR', 'ESP', 'USA', 'BRA', 'ZAF'];
+  assert.equal(new Set(coordinates.map(point => point.join(','))).size, coordinates.length);
+  assert.ok(coordinates.every(point => countries.some(country => countryContains(country, point))));
 });

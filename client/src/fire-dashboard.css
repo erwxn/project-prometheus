@@ -433,6 +433,12 @@
 .place-month-inspector ul { padding: 0; margin: 0; list-style: none; color: var(--muted); font-size: 13px; line-height: 1.65; }
 .place-month-inspector strong { color: var(--text); }
 
+.satellite-marker-key { display: grid; gap: 4px; padding: 0; margin: 0; list-style: none; color: var(--map-tool-text); font-size: 11px; line-height: 1.4; }
+.satellite-marker-key li { display: flex; align-items: center; gap: 6px; }
+.satellite-marker-key svg { width: 13px; height: 13px; flex: 0 0 13px; }
+.thermal-legend .satellite-marker-key { margin-bottom: 9px; padding-bottom: 8px; border-bottom: 1px solid var(--map-tool-rule); }
+.platform-legend { position: absolute; z-index: 2; top: 128px; right: 12px; max-width: 45%; padding: 8px 10px; border: 1px solid var(--map-tool-rule); border-radius: 5px; background: var(--map-tool); pointer-events: none; }
+
 @media (max-width: 760px) {
   .analytics-content { --analysis-nav-top: 68px; --analysis-nav-height: 106px; }
   .analytics-page:has(> .simulation-banner) .analytics-content { --analysis-nav-top: 115px; }

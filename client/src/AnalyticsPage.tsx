@@ -13,6 +13,7 @@ import type { TimeBasis } from './timeline';
 import { useDashboard } from './dashboard-context';
 import { AreaControls, DatasetControls, GlobalFilters } from './DashboardControls';
 import { FireMap } from './FireMap';
+import { SatelliteMarkerKey } from './SatelliteMarkerKey';
 import { ActivityCalendar } from './ActivityCalendar';
 import { HistoricalActivity } from './HistoricalActivity';
 import { PlaceComparison } from './PlaceComparison';
@@ -167,7 +168,7 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
       </section>
       <dl className="analytics-metrics" aria-label="Fire statistics" aria-busy={loading}>
         <div><dt>{state.collection.metadata.record_unit === 'predicted_cell' && !archive.active ? 'Predicted cells' : state.collection.metadata.record_unit === 'fire_group' && !archive.active ? 'Fire groups' : 'Total hotspot detections'}</dt><dd>{loading ? '—' : whole.format(summary.count)}<small>Records matching the filters</small></dd></div>
-        <div><dt>Active observation days</dt><dd>{loading || summary.activeDays === null ? '—' : whole.format(summary.activeDays)}<small>{summary.activeDays === null ? 'Acquisition dates unavailable' : 'UTC days with at least one detection'}</small></dd></div>
+        <div><dt>Active observation days</dt><dd>{loading || summary.activeDays === null ? '—' : whole.format(summary.activeDays)}<small>{summary.activeDays === null ? 'Acquisition dates unavailable' : 'UTC days with at least one record'}</small></dd></div>
         <div><dt>Average FRP</dt><dd>{loading ? '—' : formatPower(summary.meanFrp)}<small>{whole.format(summary.frpCount)} valid readings{state.filters.sensor === 'Harmonized' ? ' · stored estimates' : ' · measured FRP'}</small></dd></div>
         <div><dt>Peak activity day</dt><dd className="peak-day" title={summary.peakDays.join(', ')}>{loading ? '—' : summary.peakDays[0] || '—'}<small>{summary.peak === null ? 'No dated activity value available' : `${decimal.format(summary.peak)} ${metricUnit(state.filters.metric, state.collection.metadata.record_unit)}${summary.peakDays.length > 1 ? ` · ${summary.peakDays.length} days tied` : ''}`}</small></dd></div>
       </dl>
@@ -181,12 +182,13 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
         <div className="analytics-map-layout">
         <section className="map-stage analytics-map" data-map-theme={mapTheme} data-projection={projection} aria-label="Analytics fire observation map">
           {projection === 'globe' && <img className="orbital-stars" src={orbitalStars} alt="" aria-hidden="true" draggable={false} />}
-          <FireMap mapRef={mapRef} features={features} theme={mapTheme} projection={projection} mode={mode} onModeChange={changeMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
-          <div className="map-top-controls"><div className="map-heading"><h2>{state.filters.area ? 'Selected area' : 'All locations'} <span>/ {whole.format(features.length)} detections</span></h2></div><CountrySearch onSelect={([, , bounds]) => { if (!mapRef.current) return false; mapRef.current.fitBounds(bounds, { padding: 75, pitch: 0, maxZoom: 9 }); return true; }} /><div className="projection-switch" role="group" aria-label="Map projection"><button aria-pressed={projection === 'mercator'} onClick={() => { setMode('static'); setProjection('mercator'); }}>Flat map</button><button aria-pressed={projection === 'globe'} onClick={() => { setMode('static'); setProjection('globe'); }}>3D globe</button></div><BasemapAppearance value={mapPreference} onChange={setMapPreference} /></div>
+          <FireMap mapRef={mapRef} features={features} simulated={state.collection.metadata.source === 'simulated'} theme={mapTheme} projection={projection} mode={mode} onModeChange={changeMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
+          <div className="map-top-controls"><div className="map-heading"><h2>{state.filters.area ? 'Selected area' : 'All locations'} <span>/ {whole.format(features.length)} {metricUnit('detections', state.collection.metadata.record_unit)}</span></h2></div><CountrySearch onSelect={([, , bounds]) => { if (!mapRef.current) return false; mapRef.current.fitBounds(bounds, { padding: 75, pitch: 0, maxZoom: 9 }); return true; }} /><div className="projection-switch" role="group" aria-label="Map projection"><button aria-pressed={projection === 'mercator'} onClick={() => { setMode('static'); setProjection('mercator'); }}>Flat map</button><button aria-pressed={projection === 'globe'} onClick={() => { setMode('static'); setProjection('globe'); }}>3D globe</button></div><BasemapAppearance value={mapPreference} onChange={setMapPreference} /></div>
           {mode !== 'static' && <p className="map-drawing-status" role="status">{mode === 'select' ? 'Editing selected area' : `Drawing ${mode}`} · Finish or cancel in the area controls</p>}
           {mapState === 'loading' && <MapLoading />}
           {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry archive in the filters to try again.</p>}
           {mapState === 'empty' && mode === 'static' && <p className="analytics-map-empty" role="status">No matching detections in the loaded snapshot. This does not establish an absence of fires.</p>}
+          {!!features.length && <div className="platform-legend"><SatelliteMarkerKey features={features} /></div>}
           <div className="map-activity-caption">{archive.active ? 'RAW TEST ARCHIVE' : state.collection.metadata.source === 'harmonized' ? 'HARMONIZED RESULTS' : state.collection.metadata.source === 'simulated' ? 'SIMULATED' : state.collection.metadata.source === 'csv' ? 'IMPORTED SNAPSHOT' : 'ILLUSTRATIVE DEMO'} · {state.filters.sensor} · Points show records, not fire perimeters</div>
         </section>
         <aside className="analytics-area-panel" aria-label="Geographic area selection"><AreaControls mapRef={mapRef} mode={mode} onModeChange={changeMode} error={drawingError} onError={setDrawingError} /></aside>

@@ -1,6 +1,6 @@
 import type { ArchiveSelection } from './archive-model';
 import { datasetDateBounds, dateRangeError, validDate } from './analytics-engine.ts';
-import { SENSOR_IDS, availableSensors, type DashboardFilters, type FireCollection } from './analytics-model.ts';
+import { SENSOR_IDS, SIMULATED_PLATFORMS, availableSensors, type DashboardFilters, type FireCollection } from './analytics-model.ts';
 import { validateArea } from './area-selection.ts';
 
 export interface DashboardState {
@@ -42,7 +42,7 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
         ? { ...action.collection, features: state.collection.features } : action.collection;
       return { ...state, collection, loadedCollection: collection };
     }
-    case 'archive-apply': return {...state,collection:{type:'FeatureCollection',features:[],metadata:{source:'csv',temporary:true,archive:true,archive_platform:action.selection.platform,archive_year:action.selection.year,archive_month:action.selection.month,archive_startDate:action.selection.startDate,archive_endDate:action.selection.endDate,archive_sensor:action.sensor,source_name:`Temporary archive · ${action.selection.platform}`}},filters:{...state.filters,country:action.reset?null:state.filters.country,startDate:action.selection.startDate,endDate:action.selection.endDate,sensor:action.sensor,area:action.reset?null:state.filters.area,selectedDay:null},status:'ready',error:''};
+    case 'archive-apply': return {...state,collection:{type:'FeatureCollection',features:[],metadata:{source:'csv',temporary:true,archive:true,archive_platform:action.selection.platform,archive_year:action.selection.year,archive_month:action.selection.month,archive_startDate:action.selection.startDate,archive_endDate:action.selection.endDate,archive_sensor:action.sensor,source_name:`Temporary archive · ${action.selection.platform}`}},filters:{...state.filters,country:action.reset?null:state.filters.country,startDate:action.selection.startDate,endDate:action.selection.endDate,sensor:action.sensor,area:action.reset?null:state.filters.area,selectedDay:null,simulatedPlatform:null},status:'ready',error:''};
     case 'archive-map': {
       if(!state.collection.metadata.archive)return state;
       const collection={...action.collection,metadata:{...action.collection.metadata,...state.collection.metadata}};
@@ -57,6 +57,10 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
       if (filters.country && !/^[A-Z]{3}$/.test(filters.country)) return state;
       if (dateRangeError(filters.startDate, filters.endDate) || (filters.area && validateArea(filters.area))) return state;
       if (!['ALL', ...SENSOR_IDS].includes(filters.sensor) || !['detections', 'mean-frp'].includes(filters.metric)) return state;
+      if (filters.simulatedPlatform) {
+        const allowed = filters.sensor === 'ALL' ? Object.values(SIMULATED_PLATFORMS).flat() : SIMULATED_PLATFORMS[filters.sensor];
+        if (state.collection.metadata.source !== 'simulated' || !allowed.some(platform => platform === filters.simulatedPlatform)) filters.simulatedPlatform = null;
+      }
       if (filters.selectedDay && (!validDate(filters.selectedDay) || filters.selectedDay < filters.startDate || filters.selectedDay > filters.endDate)) filters.selectedDay = null;
       return { ...state, filters };
     }

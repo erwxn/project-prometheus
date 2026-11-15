@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState, useRef, type Rea
 import { DashboardContext } from './dashboard-context';
 import { API_BASE, FALLBACK_FIRES } from './fire-data';
 import { dashboardReducer, initialDashboardState, type DashboardAction, type DashboardState } from './dashboard-state';
-import { DatasetRequests, loadObservations, ObservationRateLimitError, uploadObservations, validateUpload, parseCollection } from './fire-api';
+import { DatasetRequests, loadObservations, ObservationRateLimitError, uploadHarmonized, uploadObservations, validateUpload, parseCollection } from './fire-api';
 import { dailyBuckets, prepareObservations, selectRange, selectScope, summarizeRange } from './analytics-engine';
 
 function useDashboardValue() {
@@ -60,28 +60,29 @@ function useDashboardValue() {
 
   useEffect(() => { void retry(); const gate = requests; return () => gate.cancel(); }, [retry, requests]);
   useEffect(() => {
-    if (state.status !== 'ready' || state.collection.metadata.source !== 'harmonized' || state.collection.metadata.archive || state.uploadStatus === 'uploading') return;
+    if (state.status !== 'ready' || state.collection.metadata.source !== 'harmonized' || state.collection.metadata.archive || state.collection.metadata.uploaded || state.uploadStatus === 'uploading') return;
     const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void retry(true); }, 60_000);
     return () => window.clearInterval(timer);
-  }, [retry, state.status, state.collection.metadata.source, state.collection.metadata.archive, state.uploadStatus]);
+  }, [retry, state.status, state.collection.metadata.source, state.collection.metadata.archive, state.collection.metadata.uploaded, state.uploadStatus]);
   useEffect(() => {
     if (state.status !== 'error' || state.collection.metadata.uploaded || state.collection.metadata.source === 'simulated' || state.uploadStatus === 'uploading') return;
     const timer = window.setTimeout(() => void retry(), Math.max(30_000, observationRetryAt.current - Date.now()));
     return () => window.clearTimeout(timer);
   }, [retry, state.status, state.collection, state.uploadStatus]);
 
-  const uploadCsv = useCallback(async (file: File) => {
-    const error = validateUpload(file);
+  const uploadDataset = useCallback(async (file: File, harmonized = false) => {
+    const error = validateUpload(file, harmonized);
     if (error) { dispatch({ type: 'upload', status: 'error', message: error }); return; }
     const request = requests.begin();
     const timeout = window.setTimeout(() => request.controller.abort(), 60000);
     dispatch({ type: 'upload', status: 'uploading', message: `Reading ${file.name}…` });
     dispatch({ type: 'status', status: 'ready' });
     try {
-      const collection = await uploadObservations(API_BASE, file, request.controller.signal);
+      const load = harmonized ? uploadHarmonized : uploadObservations;
+      const collection = await load(API_BASE, file, request.controller.signal);
       if (!requests.current(request.revision)) return;
       dispatch({ type: 'loaded', collection, remember: true });
-      dispatch({ type: 'upload', status: 'done', message: `Loaded ${collection.features.length.toLocaleString()} MODIS detections from ${file.name}.${collection.metadata.rejected_rows ? ` ${collection.metadata.rejected_rows} invalid rows excluded.` : ''}` });
+      dispatch({ type: 'upload', status: 'done', message: `Loaded ${collection.features.length.toLocaleString()} ${harmonized ? 'harmonized records' : 'MODIS detections'} from ${file.name}.${collection.metadata.rejected_rows ? ` ${collection.metadata.rejected_rows} invalid rows excluded.` : ''}` });
     } catch (error) {
       if (requests.current(request.revision)) dispatch({ type: 'upload', status: 'error', message: `${request.controller.signal.aborted ? 'Upload timed out.' : error instanceof Error ? error.message : 'Upload failed.'} Your current dataset has been kept.` });
     } finally { window.clearTimeout(timeout); }
@@ -109,8 +110,8 @@ function useDashboardValue() {
   }, [requests]);
   const returnToLoaded = useCallback(() => { requests.cancel(); dispatch({ type: 'return-loaded' }); }, [requests]);
   const prepared = useMemo(() => prepareObservations(state.collection.features), [state.collection]);
-  const { country, area, sensor, startDate, endDate, selectedDay } = state.filters;
-  const scope = useMemo(() => selectScope(prepared, { area, sensor, country }), [prepared, area, sensor, country]);
+  const { country, area, sensor, startDate, endDate, selectedDay, simulatedPlatform } = state.filters;
+  const scope = useMemo(() => selectScope(prepared, { area, sensor, country, simulatedPlatform }), [prepared, area, sensor, country, simulatedPlatform]);
   const index = useMemo(() => archive.active ? new Map((archive.data?.daily||[]).map(d=>[d.date,{count:d.count,frpSum:d.frpSum,frpCount:d.frpCount,methodIds:new Set(d.methods)}])) : dailyBuckets(scope), [scope, archive.data, archive.active]);
   const selected = useMemo(() => selectRange(scope, { startDate, endDate, selectedDay }), [scope, startDate, endDate, selectedDay]);
   const localSummary = useMemo(() => summarizeRange(selected, state.filters, index, state.collection.metadata), [selected, state.filters, index, state.collection.metadata]);
@@ -122,7 +123,7 @@ function useDashboardValue() {
     const peak=values.length?Math.max(...values):null;
     return {count,activeDays:days.length,meanFrp:frpCount?frpSum/frpCount:null,frpCount,maxFrp:frpCount?Math.max(...days.filter(d=>d.maxFrp!==null).map(d=>d.maxFrp!)):null,peak,peakDays:days.filter(d=>peak!==null&&(state.filters.metric==='detections'?d.count:d.frpCount?d.frpSum/d.frpCount:null)===peak).map(d=>d.date)};
   },[archive.active,archive.data,localSummary,selectedDay,state.filters.metric]);
-  return { shareNotice, saveCamera, camera, archive, state, dispatch, retry, uploadCsv, showSimulatedHistory, returnToLoaded, loadTemporary, prepared, scope, index, selected, summary, calendarFocus, setCalendarFocus, openCalendar };
+  return { shareNotice, saveCamera, camera, archive, state, dispatch, retry, uploadDataset, showSimulatedHistory, returnToLoaded, loadTemporary, prepared, scope, index, selected, summary, calendarFocus, setCalendarFocus, openCalendar };
 }
 
 export type DashboardContextValue = ReturnType<typeof useDashboardValue>;

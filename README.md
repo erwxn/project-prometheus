@@ -2,7 +2,27 @@
 
 Prometheus is a NASA Space Apps Challenge web app for exploring MODIS and VIIRS active-fire observations and harmonized model results. It brings maps, a burning calendar, historical comparisons, and downloadable reports into one workspace.
 
+## Docker quick start for judges
+
+From the repository root, with Docker running:
+
+```sh
+docker compose up --build -d
+```
+
+Open [Prometheus at localhost:8080](http://localhost:8080). The bundled Morocco 2014 historical preview is available without Azure credentials or a local Node.js install. Basemap tiles require internet access. Run `docker compose down` to stop the preview. See [Docker setup, smoke checks and image handoff](docs/docker.md).
+
 ## Architecture
+
+| Stage | Responsibility |
+| --- | --- |
+| Offline harmonization | Prepare NASA MODIS products, apply the frozen model to candidate cells, and package the Parquet outputs. Paired VIIRS supplies evaluation and training labels. |
+| Hosted data | Azure Gold publishes a committed Morocco catalog and Parquet files. The Express API validates the publication and serves paginated records to the browser. |
+| Hosted web app | Vercel serves the Vite build and forwards API requests through `api/index.js`. React renders maps, the burning calendar, charts and exports. |
+| Docker review | Nginx serves the Vite build and forwards API requests to the internal Express container. The API serves the bundled historical snapshot. |
+| Seasonal Monitor overlay | A separate offline Python model generates the static Morocco JSON loaded by Monitor. |
+
+### Hosted data flow
 
 ```mermaid
 ---
@@ -75,6 +95,17 @@ flowchart TB
     style API fill:#18182d,stroke:#685994,color:#eae4ff,stroke-width:1px
     style DATA fill:#102622,stroke:#38746a,color:#dff8f0,stroke-width:1px
 ```
+
+### Docker review data flow
+
+```mermaid
+flowchart LR
+    Browser["Browser · localhost:8080"] --> Web["web · Nginx + Vite build"]
+    Web -->|API and health requests| API["api · Node.js 24 + Express"]
+    API -->|Reads and validates| Sample["Bundled Morocco 2014 delivery ZIP"]
+```
+
+Compose waits for the API health check before starting Nginx. The browser uses one local origin for static assets and API calls. Offline training and Azure publication run separately from this review setup.
 
 NASA FIRMS distributes active-fire products at approximately **1 km for MODIS** (Terra and Aqua) and **375 m for VIIRS** (Suomi NPP, NOAA-20, and NOAA-21). VIIRS can detect smaller hotspots, and different overpass times can capture different stages of a fire. A change in raw hotspot counts can reflect a change in the observing system. [NASA FIRMS active-fire products](https://firms.modaps.eosdis.nasa.gov/map/index.html) · [NASA VIIRS product description](https://firms.modaps.eosdis.nasa.gov/content/descriptions/FIRMS_VIIRS_Firehotspots.html)
 
@@ -238,7 +269,3 @@ Use the repository root and the **Other** framework preset. [`vercel.json`](verc
 Set `ENABLE_CSV_UPLOAD=false` on the API to disable both temporary upload endpoints. Build the client with `VITE_ENABLE_CSV_UPLOAD=false` to hide the upload controls.
 
 Keep credentials on the server. Follow the [Azure Gold deployment instructions](deploy/BACKEND_CONNECTION.md#existing-vercel-project) to connect the current Explore and Analyze maps. The [Vercel hosting guide](docs/vercel-hosting.md) covers the snapshot endpoint and the historical fixture. The local FIRMS SQLite archive is excluded from the hosted bundle.
-
-## Docker quick start for judges
-
-Run `docker compose up --build -d`, then open http://localhost:8080. Docker uses an explicit historical snapshot preview, without Azure credentials. See [Docker setup and image handoff](docs/docker.md).

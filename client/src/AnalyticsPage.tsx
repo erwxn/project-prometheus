@@ -141,27 +141,36 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
   const [showStrictCells, setShowStrictCells] = useState(false);
   const isCellDelivery = state.collection.metadata.delivery_format === 'modis-viirs-v1' && state.collection.metadata.record_unit === 'predicted_cell';
   const [mapLayers, setMapLayers] = useState<Sensor[]>([...SENSOR_IDS]);
-  const [goldRows, setGoldRows] = useState<PreparedObservation[]>([]);
+  const [goldLayers, setGoldLayers] = useState<{ snapshot: string; sensor: string; rows: PreparedObservation[] } | null>(null);
   const [layerError, setLayerError] = useState('');
   const [layersLoading, setLayersLoading] = useState(false);
   const [layerRevision, setLayerRevision] = useState(0);
   const isGold = !!state.collection.metadata.gold;
+  const { gold_snapshot: goldSnapshot, gold_sensor: goldSensor } = state.collection.metadata;
   useEffect(() => {
-    if (!isGold) return;
+    if (!isGold || !goldSnapshot || !goldSensor) {
+      setLayersLoading(false);
+      setLayerError('');
+      return;
+    }
     let active = true;
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 60000);
-    setLayersLoading(true); setLayerError(''); setGoldRows([]);
-    Promise.all(SENSOR_IDS.map(sensor => loadObservations(API_BASE, controller.signal, fetch, sensor)))
+    setLayersLoading(true);
+    setLayerError('');
+    const extraSensors = SENSOR_IDS.filter(sensor => sensor !== goldSensor);
+    Promise.all(extraSensors.map(sensor => loadObservations(API_BASE, controller.signal, fetch, sensor, undefined, goldSnapshot)))
       .then(collections => {
         if (controller.signal.aborted) return;
-        if (new Set(collections.map(c => c.metadata.gold_snapshot)).size !== 1) throw Error('The publication changed while loading layers. Retry map layers.');
-        setGoldRows(prepareObservations(collections.flatMap(c => c.features)));
+        setGoldLayers({ snapshot: goldSnapshot, sensor: goldSensor, rows: prepareObservations(collections.flatMap(c => c.features)) });
       }).catch(error => { if (active) setLayerError(error instanceof Error ? error.message : 'Map layers could not be loaded.'); })
       .finally(() => { window.clearTimeout(timeout); if (active) setLayersLoading(false); });
     return () => { active = false; controller.abort(); window.clearTimeout(timeout); };
-  }, [isGold, layerRevision]);
-  const mapRows = useMemo(() => selectMapLayers(isGold ? goldRows : prepared, state.filters, SENSOR_IDS), [isGold, goldRows, prepared, state.filters]);
+  }, [isGold, goldSnapshot, goldSensor, layerRevision]);
+  const mapRows = useMemo(() => {
+    const extra = isGold && goldLayers?.snapshot === goldSnapshot && goldLayers?.sensor === goldSensor ? goldLayers?.rows : undefined;
+    return selectMapLayers(extra ? [...prepared, ...extra] : prepared, state.filters, SENSOR_IDS);
+  }, [isGold, goldLayers, goldSnapshot, goldSensor, prepared, state.filters]);
   const visibleMapRows = useMemo(() => {
     return mapRows.filter(({ feature: { properties } }) => {
       if (properties.record_unit === 'model_candidate') {
@@ -184,7 +193,7 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
   },[archive.active,archive.data,localStats,state.filters.selectedDay,basis,summary]);
   const clock = basis === 'utc' ? 'UTC' : 'local mean solar time';
   const loading = state.status === 'loading' || archive.busy || (archive.active && !archive.data);
-  const mapState = mapFeedback(layersLoading || state.status === 'loading' || archive.mapLoading, layerError || (archive.active ? archive.error : state.error), features.length);
+  const mapState = mapFeedback(!features.length && (layersLoading || state.status === 'loading' || archive.mapLoading), features.length ? '' : layerError || (archive.active ? archive.error : state.error), features.length);
   const changeMode = (next: DrawMode) => { if (next !== 'static') setProjection('mercator'); setMode(next); };
   useEffect(() => {
     if (!mapReady || archive.active || restoreCamera.current) return;

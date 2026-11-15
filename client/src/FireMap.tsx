@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import Map, { NavigationControl, useControl, type MapRef } from 'react-map-gl/maplibre';
 import { MapLibreOverlay, type MapLibreOverlayProps } from '@deck.gl/maplibre';
-import { IconLayer, ScatterplotLayer } from '@deck.gl/layers';
+import { GeoJsonLayer, IconLayer, ScatterplotLayer } from '@deck.gl/layers';
+import type { Layer, PickingInfo } from '@deck.gl/core';
 import { TerraDraw, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode, type GeoJSONStoreFeatures } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import mapLib from './maplibre';
@@ -12,6 +13,7 @@ import { validateArea, validateDrawingArea } from './area-selection';
 import { useDashboard } from './dashboard-context';
 import type { FireFeature } from './fire-data';
 import { satelliteIconAtlas, satelliteIconMapping, satelliteMarker, satelliteName } from './satellite-markers';
+import { predictionBands, probabilityLabel, type ForecastCells } from './morocco-predictions';
 
 function DeckGLOverlay(props: MapLibreOverlayProps) {
   const overlay = useControl<MapLibreOverlay>(() => new MapLibreOverlay(props));
@@ -27,6 +29,8 @@ interface FireMapProps {
   theme: 'light' | 'dark';
   projection: 'mercator' | 'globe';
   selectedFeature?: FireFeature | null;
+  forecast?: ForecastCells;
+  onSelectForecast?(probability: number): void;
   onSelectFeature?(feature: FireFeature | null): void;
   mode: DrawMode;
   onModeChange(mode: DrawMode): void;
@@ -34,7 +38,7 @@ interface FireMapProps {
   onLoad?(): void;
 }
 
-export function FireMap({ trackArchive = true, simulated = false, mapRef, features, theme, projection, selectedFeature, onSelectFeature, mode, onModeChange, onDrawingError, onLoad }: FireMapProps) {
+export function FireMap({ trackArchive = true, simulated = false, mapRef, features, theme, projection, selectedFeature, onSelectFeature, forecast, onSelectForecast, mode, onModeChange, onDrawingError, onLoad }: FireMapProps) {
   const { state, dispatch, archive, camera, saveCamera } = useDashboard();
   const [ready, setReady] = useState(false);
   const area = state.filters.area;
@@ -142,7 +146,13 @@ export function FireMap({ trackArchive = true, simulated = false, mapRef, featur
   }, [ready, mapRef, area, mode, styleRevision, stopDrawing, theme]);
 
   const layers = useMemo(() => {
-    const layers = [];
+    const layers: Layer[] = [];
+    if (forecast) layers.push(new GeoJsonLayer<{ probability: number }>({
+      id: 'morocco-prediction-cells', data: forecast, filled: true, stroked: true,
+      getFillColor: feature => [...(predictionBands.find(band => feature.properties.probability < band.limit) ?? predictionBands[3]).color],
+      getLineColor: theme === 'light' ? [33, 41, 73, 155] : [222, 232, 248, 135],
+      lineWidthMinPixels: 0.35, pickable: mode === 'static',
+    }));
     const symbols = {
       data: features, iconAtlas: satelliteIconAtlas, iconMapping: satelliteIconMapping,
       getPosition: (feature: FireFeature) => feature.geometry.coordinates,
@@ -160,10 +170,11 @@ export function FireMap({ trackArchive = true, simulated = false, mapRef, featur
       getLineColor: theme === 'light' ? [38, 52, 60, 255] : [255, 255, 255, 255], lineWidthMinPixels: 2, pickable: false,
     }));
     return layers;
-  }, [features, selectedFeature, theme, mode, simulated]);
+  }, [features, selectedFeature, theme, mode, simulated, forecast]);
 
-  const tooltip = useCallback((info: { object?: unknown }) => {
+  const tooltip = useCallback((info: PickingInfo) => {
     if (!info.object) return null;
+    if (info.layer?.id === 'morocco-prediction-cells') return { text: `Predicted share of Moroccan detections: ${probabilityLabel(info.object.properties.probability)}` };
     const feature = info.object as FireFeature, p = feature.properties;
     const power = (value: number | null) => value === null || !Number.isFinite(value) ? 'Not available' : `${value.toFixed(1)} MW`;
     return { text: `Satellite: ${satelliteName(p)}\nSource: ${p.satellite}${p.source_sensor ? ` (${p.source_sensor})` : ''}${p.record_unit === 'predicted_cell' ? ' · Predicted 500 m cell' : p.record_unit === 'fire_group' ? ' · Fire group' : ''}${p.p_viirs !== undefined ? `\nVIIRS detection probability: ${(p.p_viirs * 100).toFixed(1)}%` : ''}${simulated ? ' · SIMULATED' : ''}\nRaw FRP: ${power(p.raw_frp)}\nNormalized FRP: ${power(p.normalized_frp)}\nAcquired (UTC): ${p.observed_at_utc || `${p.acq_time_utc} · undated`}\nLocal mean solar time: ${p.local_solar_time || 'Unavailable'}\nConfidence: ${p.confidence || 'Unavailable'}\nLatitude, longitude: ${feature.geometry.coordinates[1].toFixed(4)}, ${feature.geometry.coordinates[0].toFixed(4)}`, style: { backgroundColor: '#172f40', color: '#f4f7fa', font: '12px/1.6 "DM Sans", sans-serif', borderRadius: '4px', maxWidth: '300px' } };
@@ -172,7 +183,11 @@ export function FireMap({ trackArchive = true, simulated = false, mapRef, featur
   return <Map mapLib={mapLib} ref={mapRef} initialViewState={camera.current ?? INITIAL_VIEW_STATE} onMoveEnd={event => { const v = event.viewState; saveCamera({ longitude: v.longitude, latitude: v.latitude, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing }); }} onLoad={() => { setReady(true); onLoad?.(); }}
     mapStyle={BASEMAP_STYLES.dark} projection={{ type: projection }} transformStyle={INITIAL_BASEMAP_TRANSFORM} transformRequest={basemapRequest} pixelRatio={RENDER_PIXEL_RATIO}
     sky={projection === 'globe' ? ORBITAL_SKY : FLAT_SKY} minZoom={-2} renderWorldCopies={false} dragRotate touchPitch touchZoomRotate keyboard pitchWithRotate maxPitch={85}>
-    <DeckGLOverlay useDevicePixels={RENDER_PIXEL_RATIO} interleaved={false} layers={layers} getTooltip={tooltip} onClick={info => { if (mode !== 'static') return; onSelectFeature?.((info.object as FireFeature | undefined) ?? null); }} />
+    <DeckGLOverlay useDevicePixels={RENDER_PIXEL_RATIO} interleaved={false} layers={layers} getTooltip={tooltip} onClick={info => {
+      if (mode !== 'static') return;
+      if (info.layer?.id === 'morocco-prediction-cells' && info.object) onSelectForecast?.(info.object.properties.probability);
+      else onSelectFeature?.((info.object as FireFeature | undefined) ?? null);
+    }} />
     <NavigationControl position="top-right" visualizePitch />
   </Map>;
 }

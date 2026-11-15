@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { GoldCountryComparison } from './GoldCountryComparison';
+import { goldPlaceComparison } from './gold-place-comparison';
 import { ActivityLineChart } from './ActivityLineChart';
 import { dateRangeError, enumerateDates } from './analytics-engine';
 import { metricLabel, metricUnit, type SensorFilter } from './analytics-model';
@@ -13,7 +13,7 @@ import { boundaryAreaKm2, compareMonths, snapshotComparison } from './place-comp
 const countries = Object.entries(countryBoundaries).sort(([, a], [, b]) => a.properties.name.localeCompare(b.properties.name));
 const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
 const densityNumber = new Intl.NumberFormat(undefined, { maximumSignificantDigits: 4 });
-type PlaceResult = ReturnType<typeof compareMonths> & { code: string; area: number };
+type PlaceResult = ReturnType<typeof compareMonths> & { code: string; area: number; snapshot?: string | null; availability?: string };
 type Comparison = { places: PlaceResult[]; start: string; end: string; days: number; source: string };
 
 export function PlaceComparison() {
@@ -21,7 +21,6 @@ export function PlaceComparison() {
   const { country, startDate, endDate, sensor } = state.filters;
   const source = archive.active ? `Raw FIRMS archive · ${archive.platform}` : `${state.collection.metadata.source_name || state.collection.metadata.source} · ${sensor}${state.filters.simulatedPlatform ? ` · ${state.filters.simulatedPlatform}` : ''}`;
   const selectionKey = archive.active ? `archive:${archive.platform}` : source;
-  if (state.collection.metadata.gold) return <GoldCountryComparison />;
   return <ComparisonPanel key={selectionKey} {...{ archive, state, prepared, country, startDate, endDate, sensor, source }} />;
 }
 
@@ -29,7 +28,7 @@ function ComparisonPanel({ archive, state, prepared, country, startDate, endDate
   country: string | null | undefined; startDate: string; endDate: string; sensor: SensorFilter; source: string;
 }) {
   const [first, setFirst] = useState(country && countryBoundaries[country] ? country : 'MAR');
-  const [second, setSecond] = useState(first === 'ESP' ? 'MAR' : 'ESP');
+  const [second, setSecond] = useState(state.collection.metadata.gold ? first === 'DZA' ? 'MAR' : 'DZA' : first === 'ESP' ? 'MAR' : 'ESP');
   const [start, setStart] = useState<string | null>(null);
   const [end, setEnd] = useState<string | null>(null);
   const [density, setDensity] = useState(false);
@@ -40,7 +39,7 @@ function ComparisonPanel({ archive, state, prepared, country, startDate, endDate
   const pending = useRef<AbortController | null>(null);
   useEffect(() => () => pending.current?.abort(), []);
   const from = start ?? startDate, to = end ?? endDate;
-  const shown = comparison && (archive.active || comparison.snapshot === state.collection) ? comparison : null;
+  const shown = comparison && (archive.active || comparison.snapshot === state.collection || state.collection.metadata.gold && comparison.snapshot?.metadata.version === state.collection.metadata.version) ? comparison : null;
   const singleSource = archive.active ? archive.platform !== 'ALL' : sensor !== 'ALL';
 
   async function run(event: FormEvent<HTMLFormElement>) {
@@ -53,7 +52,7 @@ function ComparisonPanel({ archive, state, prepared, country, startDate, endDate
     }
     const dates = enumerateDates(from, to);
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort('timeout'), 30_000);
+    const timeout = window.setTimeout(() => controller.abort('timeout'), 60_000);
     pending.current = controller;
     setBusy(true);
     setError('');
@@ -70,12 +69,14 @@ function ComparisonPanel({ archive, state, prepared, country, startDate, endDate
         }));
         if (summaries[0].metadata?.version !== summaries[1].metadata?.version) throw new Error('The archive changed during the comparison. Run it again.');
         results = summaries.map(summary => compareMonths(dates, new Map(summary.daily.map(day => [day.date, day.count])), new Set()));
+      } else if (state.collection.metadata.gold) {
+        results = await goldPlaceComparison(API_BASE,codes,sensor,dates,controller.signal);
       } else {
         results = codes.map(code => snapshotComparison(dates, prepared, state.collection.metadata, sensor, code, state.filters.simulatedPlatform));
       }
       if (!controller.signal.aborted) {
         setMonth('');
-        setComparison({ start: from, end: to, days: dates.length, source, snapshot: archive.active ? null : state.collection, places: results.map((result, i) => ({ ...result, code: codes[i], area: boundaryAreaKm2(countryBoundaries[codes[i]].geometry) })) });
+        setComparison({ start: from, end: to, days: dates.length, source: state.collection.metadata.gold ? 'Separate committed Gold publications; source versions recorded below' : source, snapshot: archive.active ? null : state.collection, places: results.map((result, i) => ({ ...result, code: codes[i], area: boundaryAreaKm2(countryBoundaries[codes[i]].geometry) })) });
       }
     } catch (failure) {
       if (controller.signal.reason === 'timeout') setError('The comparison timed out. Try a shorter date range.');
@@ -98,16 +99,16 @@ function ComparisonPanel({ archive, state, prepared, country, startDate, endDate
   return <section className="dashboard-section place-comparison" aria-labelledby="places-title">
     <div className="section-toolbar"><div><h2 id="places-title">Compare places</h2><p>Compare monthly {countLabel.toLowerCase()} for two countries over the same UTC dates.</p></div></div>
     <form className="inline-controls place-comparison-form" onSubmit={run}>
-      <label>First country<select value={first} onChange={event => setFirst(event.target.value)}>{countries.map(([code, feature]) => <option key={code} value={code}>{feature.properties.name}</option>)}</select></label>
-      <label>Second country<select value={second} onChange={event => setSecond(event.target.value)}>{countries.map(([code, feature]) => <option key={code} value={code}>{feature.properties.name}</option>)}</select></label>
+      <label>First country<select value={first} onChange={event => setFirst(event.target.value)}>{countries.map(([code, feature]) => <option key={code} value={code}>{feature.properties.name}{state.collection.metadata.gold && (code === 'MAR' || code === 'DZA') ? ' · Gold data' : ''}</option>)}</select></label>
+      <label>Second country<select value={second} onChange={event => setSecond(event.target.value)}>{countries.map(([code, feature]) => <option key={code} value={code}>{feature.properties.name}{state.collection.metadata.gold && (code === 'MAR' || code === 'DZA') ? ' · Gold data' : ''}</option>)}</select></label>
       <label>From (UTC)<input type="date" required value={from} onChange={event => setStart(event.target.value)} /></label>
       <label>To (UTC)<input type="date" required value={to} onChange={event => setEnd(event.target.value)} /></label>
       <button type="submit" disabled={busy || !singleSource || state.status === 'loading'}>{busy ? 'Comparing…' : 'Compare countries'}</button>
     </form>
-    <p className="scientific-note">Source for both countries: {source}.{!singleSource && ' Choose one satellite platform or sensor in Filters to compare.'}</p>
+    <p className="scientific-note">{state.collection.metadata.gold ? 'Gold data is published for Morocco and Algeria (Algeria: 2015 model candidates only). Other countries remain selectable; missing data is shown as unavailable, not zero. Scores are uncalibrated outputs, not confirmed fires or probabilities.' : 'Source for both countries: '+source+'.'}{!singleSource && ' Choose one satellite platform or sensor in Filters to compare.'}</p>
     {error && <p className="dashboard-error" role="alert">{error}</p>}
     {shown && <div className="place-comparison-results" aria-busy={busy}>
-      <div className="section-toolbar"><div><h3>{shown.places.map(place => countryName(place.code)).join(' and ')}</h3><p>{shown.start} to {shown.end} UTC · {shown.source}</p></div><label>Chart metric<select value={density ? 'density' : 'count'} onChange={event => setDensity(event.target.value === 'density')}><option value="count">Total {countLabel.toLowerCase()}</option><option value="density">{countLabel} per 1,000 km²</option></select></label></div>
+      <div className="section-toolbar"><div><h3>{shown.places.map(place => countryName(place.code)).join(' and ')}</h3><p>{shown.start} to {shown.end} UTC · {shown.source}</p></div><label>Chart metric<select value={density ? 'density' : 'count'} onChange={event => setDensity(event.target.value === 'density')}><option value="count">Total {countLabel.toLowerCase()}</option><option value="density" disabled={!!state.collection.metadata.gold}>{countLabel} per 1,000 km²</option></select></label></div>
       <dl className="analytics-metrics place-comparison-metrics" aria-label="Country comparison totals">
         {shown.places.map(place => {
           const counts = [...place.months.values()].flatMap(month => month.count === null ? [] : [month.count]);
@@ -115,6 +116,7 @@ function ComparisonPanel({ archive, state, prepared, country, startDate, endDate
           return <div key={place.code}><dt>{countryName(place.code)}</dt><dd>{total === null ? '—' : (density ? densityNumber : number).format(total)}<small>{unit} · {place.covered ? `${place.covered} of ${shown.days} days with confirmed coverage` : 'Coverage unverified'}</small></dd></div>;
         })}
       </dl>
+      {state.collection.metadata.gold && <><ul className="scientific-note">{shown.places.map(place=><li key={place.code}><strong>{countryName(place.code)}</strong>: {place.availability}</li>)}</ul><details><summary>Source catalog versions</summary><ul>{shown.places.filter(place=>place.snapshot).map(place=><li key={place.code}>{countryName(place.code)}: <code>{place.snapshot}</code></li>)}</ul></details></>}
       <ActivityLineChart key={`${shown.places.map(p => p.code).join('-')}:${shown.start}:${shown.end}:${unit}`} title="Monthly activity comparison" labels={labels} unit={unit} xAxisLabel="UTC month" series={shown.places.map((place, index) => ({
         id: place.code, label: countryName(place.code), color: index === 0 ? 'var(--chart-1, #365f76)' : 'var(--chart-4, #9a641d)', dash: index === 1 ? '6 4' : undefined,
         values: labels.map(label => { const count = place.months.get(label)?.count; return count == null ? null : scaled(count, place.area); }),
@@ -130,7 +132,7 @@ function ComparisonPanel({ archive, state, prepared, country, startDate, endDate
           })}
         </ul>}
       </div>
-      <p className="scientific-note">Gaps indicate unavailable activity. Hollow points and * show recorded counts with incomplete or unknown coverage. Partial months use only the selected dates. Density uses the same map polygons as the country filter.</p>
+      <p className="scientific-note">Gaps indicate unavailable activity. Hollow points and * show recorded counts with incomplete or unknown coverage. Partial months use only the selected dates. {state.collection.metadata.gold ? 'DESCRIPTIVE_ONLY_COVERAGE_UNVERIFIED. Candidate counts do not establish national fire rates or independent accuracy; area-normalized comparison is unavailable without verified coverage.' : 'Density uses the same map polygons as the country filter.'}</p>
     </div>}
   </section>;
 }

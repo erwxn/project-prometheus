@@ -20,8 +20,8 @@
 .brand p { color: var(--muted); }
 .header-nav { align-self: stretch; align-items: stretch; height: auto; gap: 24px; }
 .header-nav :is(a, span) { display: inline-flex; align-items: center; padding: 0 2px; min-height: 44px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); background: transparent; }
-.header-nav a:hover { color: var(--accent); }
-.header-nav .active { color: var(--text); border-bottom: 2px solid var(--accent); background: transparent; box-shadow: none; }
+.header-nav a:hover { color: var(--accent); border-bottom-color: #a2b9c4; }
+.header-nav .active { color: var(--text); font-weight: 650; border-bottom: 2px solid var(--accent); background: transparent; box-shadow: none; }
 .mission-app :is(.export-button, .theme-button, .fit-hotspots, .upload-csv-button) { min-height: 40px; border: 1px solid #cbd4d5; border-radius: 4px; background: transparent; color: var(--text); box-shadow: none; }
 .mission-app :is(.export-button, .theme-button, .fit-hotspots):hover { color: var(--accent); border-color: #7b939f; background: #edf1ef; }
 .mission-app .upload-csv-button { min-height: 44px; background: #365f76; border-color: #365f76; color: #fff; font-weight: 500; }

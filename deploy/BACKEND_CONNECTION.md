@@ -46,3 +46,7 @@ For production identity, identify the actual backend workload and obtain a dedic
 ## Serverless dependency tracing
 
 Gold service helpers use static imports so Vercel includes them in the function bundle. `node --test server/deployment.test.js` verifies the dependency trace from the real `api/index.js` entrypoint, including the Gold map helper and Parquet reader. Local API tests alone do not detect omitted deployment dependencies.
+
+## Production promotion requirement
+
+As verified on 2026-11-15, the existing Vercel project has `autoAssignCustomDomains: false`. A READY build does not establish that `www.prometheusnasa.earth` serves it. Confirm the domain alias deployment ID, explicitly promote the verified production deployment, then verify the public map and request logs. The Gold catalog-null-metrics fix at `eac0e70` was promoted as `dpl_6niqmeyDMTRfSDeBihN8evLqaAQN`; the live domain returned HTTP 200 for `/api/gold/explorer` and displayed 2,448 real model candidates. Automatic assignment was not changed.

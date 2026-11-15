@@ -1,7 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { dashboardReducer, initialDashboardState } from '../src/dashboard-state.ts';
-import { DatasetRequests, loadObservations, parseCollection, uploadObservations, validateUpload } from '../src/fire-api.ts';
+import { DatasetRequests, loadObservations, ObservationRateLimitError, parseCollection, uploadObservations, validateUpload } from '../src/fire-api.ts';
+
+test('observation rate limiting reports the server cooldown', async () => {
+  const start = Date.now();
+  await assert.rejects(
+    loadObservations('', new AbortController().signal, async () => new Response(null, { status: 429, headers: { 'Retry-After': '120' } })),
+    error => error instanceof ObservationRateLimitError && error.retryAt >= start + 120_000 && error.retryAt <= Date.now() + 120_000,
+  );
+});
 import { dashboardPage, navigateDashboard } from '../src/dashboard-navigation.ts';
 import { simulatedHistory } from '../src/historical-demo.ts';
 import { collection, feature, polygon } from './analytics-fixtures.mjs';

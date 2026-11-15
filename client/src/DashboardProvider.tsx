@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState, useRef, type Rea
 import { DashboardContext } from './dashboard-context';
 import { API_BASE, FALLBACK_FIRES } from './fire-data';
 import { dashboardReducer, initialDashboardState, type DashboardAction, type DashboardState } from './dashboard-state';
-import { DatasetRequests, loadObservations, uploadObservations, validateUpload, parseCollection } from './fire-api';
+import { DatasetRequests, loadObservations, ObservationRateLimitError, uploadObservations, validateUpload, parseCollection } from './fire-api';
 import { dailyBuckets, prepareObservations, selectRange, selectScope, summarizeRange } from './analytics-engine';
 
 function useDashboardValue() {
@@ -15,6 +15,7 @@ function useDashboardValue() {
   const camera = useRef<{ longitude: number; latitude: number; zoom: number; pitch: number; bearing: number } | null>(sharedView?.camera ?? null);
   const saveCamera = useCallback((value: NonNullable<typeof camera.current>) => { camera.current = value; }, []);
   const [requests] = useState(() => new DatasetRequests());
+  const observationRetryAt = useRef(0);
   const archive = useArchive(state, dispatch, requests, !sharedView || !!sharedView.platform);
   useEffect(() => {
     if (!sharedView || shareRestored.current || state.status !== 'ready') return;
@@ -39,6 +40,7 @@ function useDashboardValue() {
     window.dispatchEvent(new PopStateEvent('popstate'));
   }, [applyArchive, requests]);
   const retry = useCallback(async () => {
+    if (Date.now() < observationRetryAt.current) return;
     const request = requests.begin();
     dispatch({ type: 'upload', status: 'idle', message: '' });
     dispatch({ type: 'status', status: 'loading' });
@@ -47,14 +49,17 @@ function useDashboardValue() {
       const collection = await loadObservations(API_BASE, request.controller.signal);
       if (requests.current(request.revision)) dispatch({ type: 'loaded', collection, remember: true });
     } catch (error) {
-      if (requests.current(request.revision)) dispatch({ type: 'status', status: 'error', error: error instanceof Error ? error.message : 'The observation API is unavailable.' });
+      if (requests.current(request.revision)) {
+        if (error instanceof ObservationRateLimitError) observationRetryAt.current = error.retryAt;
+        dispatch({ type: 'status', status: 'error', error: error instanceof Error ? error.message : 'The observation API is unavailable.' });
+      }
     } finally { window.clearTimeout(timeout); }
   }, [requests]);
 
   useEffect(() => { void retry(); const gate = requests; return () => gate.cancel(); }, [retry, requests]);
   useEffect(() => {
     if (state.status !== 'error' || state.collection.metadata.uploaded || state.collection.metadata.source === 'simulated' || state.uploadStatus === 'uploading') return;
-    const timer = window.setTimeout(() => void retry(), 5000);
+    const timer = window.setTimeout(() => void retry(), Math.max(30_000, observationRetryAt.current - Date.now()));
     return () => window.clearTimeout(timer);
   }, [retry, state.status, state.collection, state.uploadStatus]);
 

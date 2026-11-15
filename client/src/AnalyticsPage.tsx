@@ -7,7 +7,6 @@ import { SENSOR_IDS, type Sensor } from './analytics-model';
 import { SeasonComparison } from './SeasonComparison';
 import { SearchExport } from './SearchExport';
 import { HarmonizedNotice } from './HarmonizedNotice';
-import { SeasonalHeatmap } from './SeasonalHeatmap';
 import { DatasetStatus } from './DatasetStatus';
 import { MapLoading } from './MapLoading';
 import { mapFeedback } from './map-feedback';
@@ -39,7 +38,6 @@ const formatPower = (value: number | null) => value === null ? '—' : `${decima
 const analysisSections = [
   ['analysis-filters', 'Filters'],
   ['calendar-title', 'Calendar'],
-  ['seasonal-title', 'Seasonality'],
   ['history-title', 'History'],
   ['places-title', 'Places'],
   ['analysis-export', 'Export'],
@@ -250,9 +248,8 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
         </details>
       </section>
       {!loading && !summary.count && <p className="dashboard-unavailable" role="status">No recorded detections match these filters. Change the area, sensor, dates, or selected day. Unknown coverage is not a known zero.</p>}
-      <SeasonComparison />
+      {new URLSearchParams(window.location.search).has('compare') && <SeasonComparison />}
       <ActivityCalendar />
-      <SeasonalHeatmap />
       <HistoricalActivity />
       <PlaceComparison />
       <div id="analysis-export"><SearchExport /></div>

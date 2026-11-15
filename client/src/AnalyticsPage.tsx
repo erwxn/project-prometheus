@@ -138,6 +138,8 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
   const [mapReady, setMapReady] = useState(false);
   const mapRef = useRef<MapRef>(null);
   const restoreCamera = useRef(camera.current !== null);
+  const [showStrictCells, setShowStrictCells] = useState(false);
+  const isCellDelivery = state.collection.metadata.delivery_format === 'modis-viirs-v1' && state.collection.metadata.record_unit === 'predicted_cell';
   const [mapLayers, setMapLayers] = useState<Sensor[]>([...SENSOR_IDS]);
   const [goldRows, setGoldRows] = useState<PreparedObservation[]>([]);
   const [layerError, setLayerError] = useState('');
@@ -160,7 +162,11 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
     return () => { active = false; controller.abort(); window.clearTimeout(timeout); };
   }, [isGold, layerRevision]);
   const mapRows = useMemo(() => selectMapLayers(isGold ? goldRows : prepared, state.filters, SENSOR_IDS), [isGold, goldRows, prepared, state.filters]);
-  const features = useMemo(() => mapRows.filter(row => row.sensor && mapLayers.includes(row.sensor)).map(row => row.feature), [mapRows, mapLayers]);
+  const visibleMapRows = useMemo(() => {
+    if (!isCellDelivery || !showStrictCells) return mapRows;
+    return mapRows.filter(row => row.feature.properties.record_unit !== 'predicted_cell' || (row.feature.properties.p_viirs ?? -1) >= 0.5);
+  }, [mapRows, isCellDelivery, showStrictCells]);
+  const features = useMemo(() => visibleMapRows.filter(row => row.sensor && mapLayers.includes(row.sensor)).map(row => row.feature), [visibleMapRows, mapLayers]);
   const summaryFeatures = useMemo(() => selected.map(row => row.feature), [selected]);
   const localStats = useMemo(() => summarizeObservations(summaryFeatures, 'ALL', '', basis), [summaryFeatures, basis]);
   const stats = useMemo(()=>{
@@ -212,10 +218,14 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
         <fieldset className="analytics-layer-controls">
           <legend>Map layers · combine sources</legend>
           <div>{SENSOR_IDS.map(sensor => {
-            const count = mapRows.filter(row => row.sensor === sensor).length;
-            return <label key={sensor}><input type="checkbox" checked={mapLayers.includes(sensor)} onChange={event => setMapLayers(current => event.target.checked ? [...current, sensor] : current.filter(value => value !== sensor))} />{sensor} <small>{count.toLocaleString()} loaded</small></label>;
+            const count = visibleMapRows.filter(row => row.sensor === sensor).length;
+            return <label key={sensor}><input type="checkbox" checked={mapLayers.includes(sensor)} onChange={event => setMapLayers(current => event.target.checked ? [...current, sensor] : current.filter(value => value !== sensor))} />{sensor} <small>{count.toLocaleString()} matching</small></label>;
           })}<button type="button" onClick={() => setMapLayers([...SENSOR_IDS])}>Show all layers</button></div>
           {isGold && <button type="button" disabled={layersLoading} onClick={() => setLayerRevision(n => n + 1)}>{layersLoading ? 'Loading map layers…' : 'Refresh map layers'}</button>}
+          {isCellDelivery && <label>Model B map threshold <select value={showStrictCells ? 'strict' : 'delivery'} onChange={event => setShowStrictCells(event.target.value === 'strict')}>
+            <option value="delivery">Delivery decisions (detect_f1)</option>
+            <option value="strict">Score ≥ 0.5 · comparison</option>
+          </select></label>}
           {layerError && <p role="alert">{layerError}</p>}
           <p>Combine loaded observations on the map. Dates, area and selected day still apply. Charts and exports use the Sensor filter above. A layer with no loaded records cannot be displayed; overlapping sources are not separate physical fires.</p>
         </fieldset>

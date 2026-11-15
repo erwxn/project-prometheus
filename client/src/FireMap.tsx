@@ -5,6 +5,7 @@ import { ScatterplotLayer } from '@deck.gl/layers';
 import { TerraDraw, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode, type GeoJSONStoreFeatures } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import mapLib from './maplibre';
+import { basemapRequest } from './basemap-boundaries';
 import { BASEMAP_STYLES, INITIAL_BASEMAP_TRANSFORM, INITIAL_VIEW_STATE, RENDER_PIXEL_RATIO, ORBITAL_SKY, FLAT_SKY, atlasBasemap, getFRPColor } from './map-style';
 import { observationFrp, type AreaFeature, type DrawMode } from './analytics-model';
 import { validateArea, validateDrawingArea } from './area-selection';
@@ -162,7 +163,7 @@ export function FireMap({ trackArchive = true, mapRef, features, theme, projecti
   }, [state.collection.metadata.source]);
 
   return <Map mapLib={mapLib} ref={mapRef} initialViewState={camera.current ?? INITIAL_VIEW_STATE} onMoveEnd={event => { const v = event.viewState; saveCamera({ longitude: v.longitude, latitude: v.latitude, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing }); }} onLoad={() => { setReady(true); onLoad?.(); }}
-    mapStyle={BASEMAP_STYLES.dark} projection={{ type: projection }} transformStyle={INITIAL_BASEMAP_TRANSFORM} pixelRatio={RENDER_PIXEL_RATIO}
+    mapStyle={BASEMAP_STYLES.dark} projection={{ type: projection }} transformStyle={INITIAL_BASEMAP_TRANSFORM} transformRequest={basemapRequest} pixelRatio={RENDER_PIXEL_RATIO}
     sky={projection === 'globe' ? ORBITAL_SKY : FLAT_SKY} minZoom={-2} renderWorldCopies={false} dragRotate touchPitch touchZoomRotate keyboard pitchWithRotate maxPitch={85}>
     <DeckGLOverlay useDevicePixels={RENDER_PIXEL_RATIO} interleaved={false} layers={layers} getTooltip={tooltip} onClick={info => { if (mode !== 'static') return; onSelectFeature?.((info.object as FireFeature | undefined) ?? null); }} />
     <NavigationControl position="top-right" visualizePitch />

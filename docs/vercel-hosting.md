@@ -17,6 +17,20 @@ The multi-million-row local raw archive is excluded. Its SQLite index is Git-ign
 
 ## Switch the same deployment to Azure
 
+The connector also accepts the team's separate Azure settings. These three supplied values identify the storage location:
+
+```text
+AZURE_STORAGE_ACCOUNT=stprometheusnasa
+AZURE_GOLD_CONTAINER=gold
+AZURE_BLOB_ENDPOINT=https://stprometheusnasa.blob.core.windows.net
+```
+
+To activate this mode, also set `AZURE_GOLD_BLOB` to the exact published file path inside `gold` (without the container prefix), and `AZURE_STORAGE_SAS_TOKEN` to its read-only SAS query string. The token may start with `?`; only `r` or `rl` permissions are accepted. Configure it directly as a sensitive server variable in Vercel. `AZURE_GOLD_BLOB` is deliberately not guessed: account/container values alone keep the existing preview source unchanged. Publicly readable blobs can omit the token. Account keys, connection strings and automatic Entra credential acquisition are not implemented by this adapter.
+
+When activating Azure mode, remove both `HARMONIZED_LOCAL_FILE` and `HARMONIZED_SOURCE`; using multiple publication modes is rejected. Format is inferred from the blob filename, or set `HARMONIZED_FORMAT=zip`, `parquet`, `csv` or `json` explicitly. Retain `HARMONIZED_SOURCE_NAME` as the public dataset label. The same limits, validation, refresh, and last-valid-publication behavior apply.
+
+Alternatively, use a complete SAS URL through the existing HTTPS configuration below.
+
 When the stable published object is available, remove `HARMONIZED_LOCAL_FILE` and set:
 
 ```text

@@ -3,12 +3,15 @@ const { GoogleAuth } = require('google-auth-library');
 const { pathToFileURL } = require('node:url');
 const fs = require('node:fs/promises');
 const { adaptHarmonized } = require('./harmonized-data');
+const { azureSource } = require('./azure-source');
 
 /** Reads deployment-owned feed configuration; credentials never reach the browser. */
 function feedConfig(env = process.env) {
-  if (!env.HARMONIZED_SOURCE && !env.HARMONIZED_LOCAL_FILE) return null;
+  const azure = azureSource(env);
+  if (azure && (env.HARMONIZED_SOURCE || env.HARMONIZED_LOCAL_FILE)) throw Error('Choose the Azure publication or HARMONIZED_SOURCE/HARMONIZED_LOCAL_FILE, not both.');
+  if (!env.HARMONIZED_SOURCE && !env.HARMONIZED_LOCAL_FILE && !azure) return null;
   if (env.HARMONIZED_SOURCE && env.HARMONIZED_LOCAL_FILE) throw Error('Choose either HARMONIZED_SOURCE or HARMONIZED_LOCAL_FILE.');
-  const source = env.HARMONIZED_LOCAL_FILE ? pathToFileURL(require('node:path').resolve(env.HARMONIZED_LOCAL_FILE)) : new URL(env.HARMONIZED_SOURCE);
+  const source = azure || (env.HARMONIZED_LOCAL_FILE ? pathToFileURL(require('node:path').resolve(env.HARMONIZED_LOCAL_FILE)) : new URL(env.HARMONIZED_SOURCE));
   if (source.protocol === 'gs:' && (!source.hostname || source.pathname.length < 2 || source.search || source.hash)) throw new Error('Use gs://bucket/object for the published snapshot.');
   if (!(env.HARMONIZED_LOCAL_FILE && source.protocol === 'file:') && !['https:', 'gs:'].includes(source.protocol) && !(source.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(source.hostname))) {
     throw new Error('HARMONIZED_SOURCE must use HTTPS, gs://, or local HTTP.');

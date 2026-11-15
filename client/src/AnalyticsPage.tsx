@@ -3,7 +3,7 @@ import { API_BASE } from './fire-data';
 import { prepareObservations } from './analytics-engine';
 import type { PreparedObservation } from './analytics-model';
 import { selectMapLayers, modelCellVisible } from './map-layers';
-import { SENSOR_IDS, type Sensor } from './analytics-model';
+import { SENSOR_IDS, availableSensors, type Sensor } from './analytics-model';
 import { SeasonComparison } from './SeasonComparison';
 import { SearchExport } from './SearchExport';
 import { HarmonizedNotice } from './HarmonizedNotice';
@@ -173,6 +173,19 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
   }, [isGold, goldLayers, goldSnapshot, goldSensor, prepared, state.filters]);
   const visibleMapRows = useMemo(() => mapRows.filter(({feature}) => modelCellVisible(feature.properties, showStrictCells, isCellDelivery)), [mapRows, showStrictCells, isCellDelivery]);
   const features = useMemo(() => visibleMapRows.filter(row => row.sensor && mapLayers.includes(row.sensor)).map(row => row.feature), [visibleMapRows, mapLayers]);
+  const selectableLayers: readonly Sensor[] = isGold
+    ? state.filters.country === 'DZA' ? ['Harmonized'] : SENSOR_IDS
+    : availableSensors(state.collection);
+
+  function toggleLayer(sensor: Sensor, checked: boolean) {
+    const next = checked ? [...mapLayers, sensor] : mapLayers.filter(value => value !== sensor);
+    setMapLayers(next);
+    if (archive.active) return;
+    const remaining = selectableLayers.find(value => next.includes(value));
+    const analysisSource = checked ? sensor : state.filters.sensor === sensor ? remaining : undefined;
+    if (analysisSource) dispatch({ type: 'filters', patch: { sensor: analysisSource } });
+  }
+
   const summaryFeatures = useMemo(() => selected.map(row => row.feature), [selected]);
   const localStats = useMemo(() => summarizeObservations(summaryFeatures, 'ALL', '', basis), [summaryFeatures, basis]);
   const stats = useMemo(()=>{
@@ -220,20 +233,21 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
       <section className="analytics-query" aria-labelledby="analysis-filters">
         <h2 id="analysis-filters">Region and filters</h2>
         <DatasetControls />
-        <GlobalFilters />
+        <GlobalFilters showSensor={false} />
         <fieldset className="analytics-layer-controls">
-          <legend>Map layers · combine sources</legend>
+          <legend>Data sources</legend>
           <div>{SENSOR_IDS.map(sensor => {
             const count = visibleMapRows.filter(row => row.sensor === sensor).length;
-            return <label key={sensor}><input type="checkbox" checked={mapLayers.includes(sensor)} onChange={event => setMapLayers(current => event.target.checked ? [...current, sensor] : current.filter(value => value !== sensor))} />{sensor} <small>{count.toLocaleString()} matching</small></label>;
-          })}<button type="button" onClick={() => setMapLayers([...SENSOR_IDS])}>Show all layers</button></div>
+            const available = selectableLayers.includes(sensor);
+            return <label key={sensor}><input type="checkbox" disabled={!available} checked={available && mapLayers.includes(sensor)} onChange={event => toggleLayer(sensor, event.target.checked)} />{sensor} <small>{available ? `${count.toLocaleString()} matching` : 'Unavailable'}</small></label>;
+          })}<button type="button" onClick={() => setMapLayers([...selectableLayers])}>Show all layers</button></div>
           {isGold && <button type="button" disabled={layersLoading} onClick={() => setLayerRevision(n => n + 1)}>{layersLoading ? 'Loading map layers…' : 'Refresh map layers'}</button>}
           {(isCellDelivery || isGold) && <label>Model B map threshold <select value={showStrictCells ? 'strict' : 'delivery'} onChange={event => setShowStrictCells(event.target.value === 'strict')}>
             <option value="delivery">Delivery decisions (detect_f1)</option>
             <option value="strict">Score ≥ 0.5 · comparison</option>
           </select></label>}
           {layerError && <p role="alert">{layerError}</p>}
-          <p>Harmonized map markers show cells selected by the Model B decision rule when available. Other Gold candidates remain in the analysis data. Combine loaded observations on the map. Dates, area and selected day still apply. Charts and exports use the Sensor filter above. A layer with no loaded records cannot be displayed; overlapping sources are not separate physical fires.</p>
+          <p>Harmonized map markers show cells selected by the Model B decision rule when available. Other Gold candidates remain in the analysis data. Charts and CSV source: {state.filters.sensor === 'ALL' ? 'All loaded sources' : state.filters.sensor}. {archive.active ? 'The archive selection sets the chart source.' : 'Checking a source also selects it for charts and CSV. Show all layers keeps the current chart source.'} Dates, area and selected day apply.</p>
         </fieldset>
         <div className="analytics-map-layout">
         <section className="map-stage analytics-map" data-map-theme={mapTheme} data-projection={projection} aria-label="Analytics fire observation map">

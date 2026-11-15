@@ -1,3 +1,6 @@
+import { comparisonMonth } from './season-comparison';
+import { navigateDashboard } from './dashboard-navigation';
+import { observationCsv } from './observation-csv';
 import { readSharedExplore, shareExplore } from './explore-share';
 import { HarmonizedNotice } from './HarmonizedNotice';
 import { countryCode, countryName } from './country-filter';
@@ -12,7 +15,7 @@ import { MINUTE, STEP_MINUTES, observationTime, defaultWindowStart, fileWindow, 
 import { type FireFeature } from './fire-data';
 import { availableSensors, observationFrp, type DrawMode, type SensorFilter } from './analytics-model';
 import { selectRange, dateTime } from './analytics-engine';
-import { areaBounds } from './area-selection';
+import { areaBounds, radiusArea } from './area-selection';
 import { useDashboard } from './dashboard-context';
 import { AreaControls, GlobalFilters } from './DashboardControls';
 import { FireMap } from './FireMap';
@@ -173,6 +176,31 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
       duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 700 });
   };
 
+  const [comparisonError, setComparisonError] = useState('');
+  const compareHistory = (fire?: FireFeature) => {
+    setComparisonError('');
+    const range = comparisonMonth(fire?.properties.observed_at_utc?.slice(0, 10) || state.filters.selectedDay || endDate);
+    if (!range) {
+      setComparisonError('Choose a dated observation or period to compare.');
+      return;
+    }
+    let area = state.filters.area;
+    if (fire && !area) {
+      const [longitude, latitude] = fire.geometry.coordinates;
+      try {
+        area = radiusArea(latitude, longitude, 25);
+      } catch {
+        setComparisonError('Draw a region to compare activity around this observation.');
+        return;
+      }
+    }
+    const sensor = fire && !archive.active
+      ? availableSensors({ ...state.collection, features: [fire] })[0] ?? selectedSatellite
+      : selectedSatellite;
+    dispatch({ type: 'filters', patch: { ...range, area, sensor, metric: 'detections', selectedDay: null } });
+    navigateDashboard({ button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, preventDefault() {} }, '/analytics/?compare=1');
+  };
+
   const [shareLink,setShareLink] = useState('');
   const [shareStatus,setShareStatus] = useState('');
   const copyView = async () => {
@@ -182,6 +210,28 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
   };
   const [exportStatus, setExportStatus] = useState('');
   const [exporting, setExporting] = useState(false);
+  const downloadFile = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  };
+
+  const csvLabel = archive.active ? 'Download displayed hotspots CSV' : 'Download CSV';
+  const exportCsv = () => {
+    try {
+      const csv = observationCsv(filteredFires, dataMeta);
+      downloadFile(new Blob([csv], { type: 'text/csv;charset=utf-8' }), 'prometheus-hotspots.csv');
+      setExportStatus('CSV download started.');
+    } catch {
+      setExportStatus('CSV could not be created. Please try exporting again.');
+    }
+  };
+
   const exportObservations = async () => {
     setExporting(true);
     setExportStatus('Preparing PDF...');
@@ -195,14 +245,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
         region: [state.filters.country ? countryName(state.filters.country) : '', state.filters.area ? JSON.stringify(state.filters.area.geometry) : ''].filter(Boolean).join(' / ') || 'All locations',
       });
       const blob = pdf.output('blob');
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'prometheus-observations.pdf';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      downloadFile(blob, 'prometheus-observations.pdf');
       setExportStatus('PDF download started.');
     } catch {
       setExportStatus('PDF could not be created. Please try exporting again.');
@@ -221,6 +264,11 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
         <SiteNavigation current="explorer" />
         <div className="challenge-tag"><span className="tiny-orbit" aria-hidden="true" />NASA Space Apps</div>
         <button className="export-button" aria-label="Download PDF report" title="Download PDF report" disabled={exporting} onClick={() => void exportObservations()}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4" /></svg><span>{exporting ? 'Preparing...' : 'Export PDF'}</span></button>
+        <button className="export-button" type="button" aria-label={csvLabel} title={csvLabel}
+          disabled={state.status === 'loading' || archive.mapLoading || !filteredFires.length} onClick={exportCsv}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 19h16" /></svg>
+          <span>{archive.active ? 'CSV (displayed)' : 'Download CSV'}</span>
+        </button>
         <MapAppearance value={theme} onChange={setTheme} />
       </header>
 
@@ -242,6 +290,11 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
           </div>
 
           <section className="panel-section explore-share"><button className="fit-hotspots" onClick={() => void copyView()}>Share this view</button>{shareStatus && <p role="status">{shareStatus}</p>}{shareLink && <input aria-label="Shareable Explore link" readOnly value={shareLink} onFocus={e=>e.currentTarget.select()} />}{shareNotice && <p role="status">{shareNotice}</p>}</section>
+          <section className="panel-section">
+            <button className="fit-hotspots" type="button" disabled={!endDate || !(state.filters.area || state.filters.country)} onClick={() => compareHistory()}>Compare with history</button>
+            <p className="scientific-note">Select a country or draw an area to compare a full month.</p>
+            {comparisonError && !activeFire && <p role="status">{comparisonError}</p>}
+          </section>
           <ExploreControls onPeriodChange={() => { setTimeScope('file'); setAllHoursMode(true); setIsPlaying(false); setWindowStartOverride(null); }} />
           <HarmonizedNotice />
           <details className="explore-advanced"><summary>Region and research controls</summary>
@@ -327,6 +380,9 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
             {activeFire.properties.fire_id && <p>Group: {activeFire.properties.fire_id}{activeFire.properties.frp_group_viirs_eq_mw !== undefined && <> · Group FRP: {activeFire.properties.frp_group_viirs_eq_mw.toFixed(1)} MW (shared across cells; do not sum per row)</>}</p>}
             <p>FRP is the rate of energy released, measured in megawatts. It does not measure the burned area.</p>
             <p>Confidence: {activeFire.properties.confidence || 'Not supplied'}{activeFire.properties.confidence_percent !== undefined ? ` (${activeFire.properties.confidence_percent}%)` : ''}. {activeFire.properties.record_unit ? 'Producer model-confidence label.' : 'This is a detection-quality field, not a forecast.'}</p>
+            <button className="fit-hotspots" type="button" disabled={!activeFire.properties.observed_at_utc} onClick={() => compareHistory(activeFire)}>Compare with history</button>
+            <p className="scientific-note">{activeFire.properties.observed_at_utc ? 'Uses the selected area or a 25 km radius around this point.' : 'A dated observation is required.'}</p>
+            {comparisonError && <p role="status">{comparisonError}</p>}
             <p>Product: {activeFire.properties.product_version || 'Not supplied'} · {dataMeta.source_name || dataMeta.source}</p>
             <p>Observation point, not a fire perimeter. Acquisition time above is UTC.</p>
           </section>}

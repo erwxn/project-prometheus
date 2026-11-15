@@ -1,7 +1,8 @@
 import { navigateDashboard } from './dashboard-navigation';
 
 const pages = [
-  { id: 'explorer', href: '/', label: 'Explore' },
+  { id: 'home', href: '/', label: 'Home' },
+  { id: 'explorer', href: '/explore/', label: 'Explore' },
   { id: 'analytics', href: '/analytics/', label: 'Analyze' },
   { id: 'monitor', href: '/monitor/', label: 'Monitor' },
   { id: 'about', href: '/about/', label: 'About the data' },

@@ -1,3 +1,4 @@
+import { SeasonComparison } from './SeasonComparison';
 import { SearchExport } from './SearchExport';
 import { HarmonizedNotice } from './HarmonizedNotice';
 import { SeasonalHeatmap } from './SeasonalHeatmap';
@@ -199,6 +200,7 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
         </details>
       </section>
       {!loading && !summary.count && <p className="dashboard-unavailable" role="status">No recorded detections match these filters. Change the area, sensor, dates, or selected day. Unknown coverage is not a known zero.</p>}
+      <SeasonComparison />
       <ActivityCalendar />
       <SeasonalHeatmap />
       <HistoricalActivity />

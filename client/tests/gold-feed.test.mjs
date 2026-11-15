@@ -76,3 +76,12 @@ test('unchanged Algeria refresh is one authenticated conditional request, not ei
  const refreshed=await loadObservations('',new AbortController().signal,async(url,options)=>{calls++;assert.equal(options.headers['If-None-Match'],'"verified-algeria-page"');return new Response(null,{status:304});},'Harmonized',previous,'DZA');
  assert.equal(calls,1);assert.equal(refreshed,previous);
 });
+
+test('Morocco extra map layers retain the requested catalog snapshot after the country merge',async()=>{
+ const result=await loadObservations('',new AbortController().signal,async(url,options)=>{
+  assert.equal(new URL(url,'http://localhost').searchParams.get('snapshot'),hash);
+  assert.equal(options.headers['If-None-Match'],undefined);
+  return new Response(JSON.stringify(page()));
+ },'Harmonized',undefined,'MAR',hash);
+ assert.equal(result.metadata.gold_snapshot,hash);
+});

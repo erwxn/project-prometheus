@@ -2,7 +2,7 @@ import { loadObservations } from './fire-api';
 import { API_BASE } from './fire-data';
 import { prepareObservations } from './analytics-engine';
 import type { PreparedObservation } from './analytics-model';
-import { selectMapLayers } from './map-layers';
+import { selectMapLayers, modelCellVisible } from './map-layers';
 import { SENSOR_IDS, type Sensor } from './analytics-model';
 import { SeasonComparison } from './SeasonComparison';
 import { SearchExport } from './SearchExport';
@@ -140,31 +140,38 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
   const [showStrictCells, setShowStrictCells] = useState(false);
   const isCellDelivery = state.collection.metadata.delivery_format === 'modis-viirs-v1' && state.collection.metadata.record_unit === 'predicted_cell';
   const [mapLayers, setMapLayers] = useState<Sensor[]>([...SENSOR_IDS]);
-  const [goldRows, setGoldRows] = useState<PreparedObservation[]>([]);
+  const [goldLayers, setGoldLayers] = useState<{ snapshot: string; sensor: string; rows: PreparedObservation[] } | null>(null);
   const [layerError, setLayerError] = useState('');
   const [layersLoading, setLayersLoading] = useState(false);
   const [layerRevision, setLayerRevision] = useState(0);
   const isGold = !!state.collection.metadata.gold;
+  const { gold_snapshot: goldSnapshot, gold_sensor: goldSensor } = state.collection.metadata;
+  const goldCountry = state.collection.metadata.country_iso3 === 'DZA' ? 'DZA' : 'MAR';
   useEffect(() => {
-    if (!isGold) return;
+    if (!isGold || !goldSnapshot || !goldSensor || goldCountry !== (state.filters.country === 'DZA' ? 'DZA' : 'MAR')) {
+      setLayersLoading(false);
+      setLayerError('');
+      return;
+    }
     let active = true;
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 60000);
-    setLayersLoading(true); setLayerError(''); setGoldRows([]);
-    Promise.all((state.filters.country === 'DZA' ? ['Harmonized'] as const : SENSOR_IDS).map(sensor => loadObservations(API_BASE, controller.signal, fetch, sensor, undefined, state.filters.country === 'DZA' ? 'DZA' : 'MAR')))
+    setLayersLoading(true);
+    setLayerError('');
+    const extraSensors = goldCountry === 'DZA' ? [] : SENSOR_IDS.filter(sensor => sensor !== goldSensor);
+    Promise.all(extraSensors.map(sensor => loadObservations(API_BASE, controller.signal, fetch, sensor, undefined, goldCountry, goldSnapshot)))
       .then(collections => {
         if (controller.signal.aborted) return;
-        if (new Set(collections.map(c => c.metadata.gold_snapshot)).size !== 1) throw Error('The publication changed while loading layers. Retry map layers.');
-        setGoldRows(prepareObservations(collections.flatMap(c => c.features)));
+        setGoldLayers({ snapshot: goldSnapshot, sensor: goldSensor, rows: prepareObservations(collections.flatMap(c => c.features)) });
       }).catch(error => { if (active) setLayerError(error instanceof Error ? error.message : 'Map layers could not be loaded.'); })
       .finally(() => { window.clearTimeout(timeout); if (active) setLayersLoading(false); });
     return () => { active = false; controller.abort(); window.clearTimeout(timeout); };
-  }, [isGold, layerRevision, state.filters.country]);
-  const mapRows = useMemo(() => selectMapLayers(isGold ? goldRows : prepared, state.filters, SENSOR_IDS), [isGold, goldRows, prepared, state.filters]);
-  const visibleMapRows = useMemo(() => {
-    if (!isCellDelivery || !showStrictCells) return mapRows;
-    return mapRows.filter(row => row.feature.properties.record_unit !== 'predicted_cell' || (row.feature.properties.p_viirs ?? -1) >= 0.5);
-  }, [mapRows, isCellDelivery, showStrictCells]);
+  }, [isGold, goldSnapshot, goldSensor, goldCountry, state.filters.country, layerRevision]);
+  const mapRows = useMemo(() => {
+    const extra = isGold && goldLayers?.snapshot === goldSnapshot && goldLayers?.sensor === goldSensor ? goldLayers?.rows : undefined;
+    return selectMapLayers(extra ? [...prepared, ...extra] : prepared, state.filters, SENSOR_IDS);
+  }, [isGold, goldLayers, goldSnapshot, goldSensor, prepared, state.filters]);
+  const visibleMapRows = useMemo(() => mapRows.filter(({feature}) => modelCellVisible(feature.properties, showStrictCells, isCellDelivery)), [mapRows, showStrictCells, isCellDelivery]);
   const features = useMemo(() => visibleMapRows.filter(row => row.sensor && mapLayers.includes(row.sensor)).map(row => row.feature), [visibleMapRows, mapLayers]);
   const summaryFeatures = useMemo(() => selected.map(row => row.feature), [selected]);
   const localStats = useMemo(() => summarizeObservations(summaryFeatures, 'ALL', '', basis), [summaryFeatures, basis]);
@@ -179,7 +186,7 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
   },[archive.active,archive.data,localStats,state.filters.selectedDay,basis,summary]);
   const clock = basis === 'utc' ? 'UTC' : 'local mean solar time';
   const loading = state.status === 'loading' || archive.busy || (archive.active && !archive.data);
-  const mapState = mapFeedback(layersLoading || state.status === 'loading' || archive.mapLoading, layerError || (archive.active ? archive.error : state.error), features.length);
+  const mapState = mapFeedback(!features.length && (layersLoading || state.status === 'loading' || archive.mapLoading), features.length ? '' : layerError || (archive.active ? archive.error : state.error), features.length);
   const changeMode = (next: DrawMode) => { if (next !== 'static') setProjection('mercator'); setMode(next); };
   useEffect(() => {
     if (!mapReady || archive.active || restoreCamera.current) return;
@@ -221,12 +228,12 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
             return <label key={sensor}><input type="checkbox" checked={mapLayers.includes(sensor)} onChange={event => setMapLayers(current => event.target.checked ? [...current, sensor] : current.filter(value => value !== sensor))} />{sensor} <small>{count.toLocaleString()} matching</small></label>;
           })}<button type="button" onClick={() => setMapLayers([...SENSOR_IDS])}>Show all layers</button></div>
           {isGold && <button type="button" disabled={layersLoading} onClick={() => setLayerRevision(n => n + 1)}>{layersLoading ? 'Loading map layers…' : 'Refresh map layers'}</button>}
-          {isCellDelivery && <label>Model B map threshold <select value={showStrictCells ? 'strict' : 'delivery'} onChange={event => setShowStrictCells(event.target.value === 'strict')}>
+          {(isCellDelivery || isGold) && <label>Model B map threshold <select value={showStrictCells ? 'strict' : 'delivery'} onChange={event => setShowStrictCells(event.target.value === 'strict')}>
             <option value="delivery">Delivery decisions (detect_f1)</option>
             <option value="strict">Score ≥ 0.5 · comparison</option>
           </select></label>}
           {layerError && <p role="alert">{layerError}</p>}
-          <p>Combine loaded observations on the map. Dates, area and selected day still apply. Charts and exports use the Sensor filter above. A layer with no loaded records cannot be displayed; overlapping sources are not separate physical fires.</p>
+          <p>Harmonized map markers show cells selected by the Model B decision rule when available. Other Gold candidates remain in the analysis data. Combine loaded observations on the map. Dates, area and selected day still apply. Charts and exports use the Sensor filter above. A layer with no loaded records cannot be displayed; overlapping sources are not separate physical fires.</p>
         </fieldset>
         <div className="analytics-map-layout">
         <section className="map-stage analytics-map" data-map-theme={mapTheme} data-projection={projection} aria-label="Analytics fire observation map">

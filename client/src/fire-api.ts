@@ -34,7 +34,7 @@ export class ObservationRateLimitError extends Error {
   }
 }
 
-export async function loadObservations(base: string, signal: AbortSignal, request: typeof fetch = fetch, sensor: SensorFilter = 'Harmonized', previous?: FireCollection, country: 'MAR' | 'DZA' = 'MAR'): Promise<FireCollection> {
+export async function loadObservations(base: string, signal: AbortSignal, request: typeof fetch = fetch, sensor: SensorFilter = 'Harmonized', previous?: FireCollection, country: 'MAR' | 'DZA' = 'MAR', snapshot?: string): Promise<FireCollection> {
   if (import.meta.env?.VITE_OBSERVATION_SOURCE === 'snapshot') {
     const response = await request(`${base}/api/v1/fires`, { signal });
     if (!response.ok) throw Error('Historical preview unavailable.');
@@ -45,15 +45,16 @@ export async function loadObservations(base: string, signal: AbortSignal, reques
   let first: FireCollection | undefined;
   for (let page = 1; ; page++) {
     const query = new URLSearchParams({ sensor: sensor === 'ALL' ? 'Harmonized' : sensor, page: String(page) });
-    if (first) query.set('snapshot', first.metadata.gold_snapshot!);
+    const expectedSnapshot = first?.metadata.gold_snapshot ?? snapshot;
+    if (expectedSnapshot) query.set('snapshot', expectedSnapshot);
     const headers: Record<string, string> = {};
-    if (page === 1 && previous?.metadata.gold_sensor === sensor && previous.metadata.version) headers['If-None-Match'] = `"${previous.metadata.version}:1"`;
+    if (!snapshot && page === 1 && previous?.metadata.gold_sensor === sensor && previous.metadata.version) headers['If-None-Match'] = `"${previous.metadata.version}:1"`;
     const response = await request(`${base}/api/gold/explorer?${query}`, { signal, cache: 'no-store', headers });
     if (response.status === 304 && previous) return previous;
     if (response.status === 429) throw new ObservationRateLimitError(response.headers.get('Retry-After'));
     if (!response.ok) throw new Error(`Morocco Gold data could not be loaded (HTTP ${response.status}). Check the backend connection.`);
     const collection = parseCollection(await response.json());
-    validateGoldPage(collection, sensor === 'ALL' ? 'Harmonized' : sensor, first?.metadata.gold_snapshot);
+    validateGoldPage(collection, sensor === 'ALL' ? 'Harmonized' : sensor, expectedSnapshot);
     if (collection.metadata.gold_page !== page || first && collection.metadata.total_features !== first.metadata.total_features) throw Error('Morocco Gold publication changed during download. Retry the source.');
     first ??= collection;
     features.push(...collection.features);

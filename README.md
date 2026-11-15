@@ -58,6 +58,14 @@ web-service-Nasa-Space-Apps/
 
 ## 💻 Local Development Setup
 
+### Docker quick start for judges
+
+With Docker running, execute `docker compose up --build -d` from the repository root,
+then open http://localhost:8080. This includes the web app, API and a labeled Morocco
+2014 historical preview; it does not run ML training or provide the full live archive.
+See [Docker setup and image handoff](docs/docker.md) for checks, shutdown and sharing
+the exact prebuilt images without requiring Node.js on the judges' computers.
+
 ### Prerequisites
 * Node.js (v18+)
 * npm (v9+)

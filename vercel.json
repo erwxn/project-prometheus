@@ -27,6 +27,10 @@
       "handle": "filesystem"
     },
     {
+      "src": "/explore/?",
+      "dest": "/client/index.html"
+    },
+    {
       "src": "/about/?",
       "dest": "/client/about/index.html"
     },

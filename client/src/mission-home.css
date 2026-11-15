@@ -1,0 +1,118 @@
+.mission-home {
+  --ember: #ff754d;
+  background: #080f19;
+  color: #f5f7fb;
+  font-family: Inter, "Segoe UI", sans-serif;
+}
+.mission-home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px clamp(18px, 5vw, 76px);
+  border-bottom: 1px solid #334359;
+}
+.mission-home-header .brand-name { color: #f5f7fb; font-size: 1.1rem; }
+.mission-home-header .brand-mark { color: #a5c7e8; }
+.mission-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 650px;
+  display: grid;
+  align-items: center;
+  padding: 72px clamp(20px, 8vw, 128px);
+}
+.mission-earth {
+  position: absolute;
+  top: 3%;
+  right: 4%;
+  width: min(55vw, 680px);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  filter: drop-shadow(0 0 48px #427ccc55);
+  object-position: center;
+  z-index: -2;
+  animation: orbit-arrival 1.7s ease-out both;
+}
+.mission-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, #080f19 8%, #080f19ca 34%, transparent 76%), linear-gradient(0deg, #080f19, transparent 40%);
+}
+.mission-hero-content { max-width: 630px; animation: mission-in 750ms ease-out both; }
+.mission-eyebrow { color: #a5c7e8; font: 700 .76rem/1.5 "IBM Plex Mono", monospace; letter-spacing: .14em; text-transform: uppercase; }
+.mission-hero h1 { margin: 19px 0; font-size: clamp(3.4rem, 8vw, 8rem); line-height: .93; letter-spacing: -.065em; }
+.mission-hero h1 span { color: var(--ember); }
+.mission-hero-content > p:not(.mission-eyebrow), .mission-method p { color: #c0ccdc; line-height: 1.6; }
+.mission-hero-content > p:not(.mission-eyebrow) { max-width: 470px; font-size: 1.12rem; }
+.mission-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.mission-button, .mission-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 10px 17px;
+  border-radius: 5px;
+  font-weight: 700;
+}
+.mission-button { color: #141019; background: var(--ember); }
+.mission-secondary { color: #eef6ff; border: 1px solid #645f70; background: #101c2b; }
+.mission-button:hover { background: #ffa686; }
+.mission-secondary:hover { background: #233a53; }
+.mission-method { margin-inline: auto; width: min(1240px, 92%); }
+
+@keyframes orbit-arrival { from { opacity: .45; transform: scale(1.08) translateX(2%); } to { opacity: 1; transform: none; } }
+@keyframes mission-in { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@media (max-width: 700px) {
+  .mission-hero { min-height: 570px; align-items: end; }
+  .mission-earth { width: min(105vw, 510px); right: -8%; top: 2%; }
+  .mission-hero::after { background: linear-gradient(0deg, #080f19 10%, #080f19be 60%, #080f1910); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mission-hero-content, .mission-earth { animation: none; }
+}
+
+
+.mission-method { padding: 42px 0 64px; scroll-margin-top: 20px; }
+.mission-method-heading { display: flex; gap: 20px; flex-wrap: wrap; align-items: end; justify-content: space-between; margin-bottom: 24px; }
+.mission-method-heading h2 { font-size: clamp(1.8rem, 4vw, 3rem); line-height: 1.1; margin: 8px 0 0; }
+.mission-replay { cursor: pointer; font: inherit; }
+.mission-stages { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.mission-stages article { padding: 16px; background: #101b2a; border: 1px solid #34485f; border-radius: 9px; }
+.mission-stages h3 { margin-top: 16px; }
+.mission-stages .mission-diagram-key, .mission-diagram-key a { color: #ffc3a9; font-size: .9rem; }
+.mission-diagram-key span { color: #85e2ef; margin-left: 14px; }
+.mission-diagram { position: relative; height: 144px; overflow: hidden; border: 1px solid #34485f; border-radius: 6px; background: #0a1422; }
+.mission-scan { background: repeating-linear-gradient(0deg, transparent 0 23px, #28405a 24px 25px), repeating-linear-gradient(90deg, #0a1422 0 23px, #28405a 24px 25px); }
+.scan-sweep { position: absolute; inset: 0 auto 0 0; width: 28%; background: linear-gradient(90deg, transparent, #7edaee50); border-right: 1px solid #85e2ef; animation: mission-sweep 2.4s ease-out both; }
+.modis-mark, .viirs-mark { position: absolute; left: 38%; top: 46%; animation: mission-detection .45s .9s ease-out both; }
+.modis-mark { border-inline: 8px solid transparent; border-bottom: 14px solid #ff9e74; }
+.viirs-mark { left: 63%; top: 33%; width: 11px; height: 11px; border-radius: 50%; background: #85e2ef; animation-delay: 1.5s; }
+.viirs-mark:last-child { left: 72%; top: 65%; animation-delay: 1.7s; }
+.mission-footprint { display: grid; place-items: center; }
+.mission-cell-grid { display: grid; grid-template-columns: repeat(3, 30px); gap: 4px; transform: rotate(-12deg); }
+.mission-cell-grid span { height: 30px; border: 1px solid #5c7b9a; background: #203950; }
+.mission-cell-grid span:nth-child(5), .mission-cell-grid span:nth-child(6) { background: #ff8a5b; animation: mission-detection .6s 1.7s ease-out both; }
+.mission-cell-grid span:nth-child(6) { background: #c65934; animation-delay: 2s; }
+.mission-timeline { display: flex; flex-direction: column; justify-content: center; padding: 16px; }
+.mission-time-track { position: relative; display: flex; justify-content: space-around; align-items: center; height: 5px; background: #395671; }
+.mission-time-track span { width: 10px; height: 10px; border-radius: 50%; background: #85e2ef; }
+.mission-time-track span:nth-child(2) { background: #ff9e74; }
+.mission-time-track i { position: absolute; left: 83%; height: 28px; width: 2px; background: #fff; animation: mission-playhead 2.1s 1.5s ease-out both; }
+.mission-time-labels { display: flex; justify-content: space-between; margin-top: 20px; color: #bfd2e8; font: .7rem monospace; }
+.mission-example { font-size: .9rem; }
+@keyframes mission-sweep { from { transform: translateX(-100%); } to { transform: translateX(255%); opacity: .35; } }
+@keyframes mission-detection { from { opacity: .2; scale: .6; } to { opacity: 1; scale: 1; } }
+@keyframes mission-playhead { from { left: 0; } to { left: 83%; } }
+@media (max-width: 760px) { .mission-stages { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) {
+  .mission-diagram * { animation: none; }
+  .mission-replay { display: none; }
+}
+
+.mission-stages[data-animate="false"] .mission-diagram * { animation-play-state: paused; }

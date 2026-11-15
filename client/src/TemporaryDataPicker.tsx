@@ -30,7 +30,7 @@ export function TemporaryDataPicker(){
  const setPeriod=(year:string,month:string)=>setDraft({...draft,year,month,startDate:`${year}-${month==='ALL'?'01':month}-01`,endDate:month==='ALL'?`${year}-12-31`:new Date(Date.UTC(Number(year),Number(month),0)).toISOString().slice(0,10)});
  const totals=archive.data?.totals;
  return <section className="temporary-data-picker" aria-labelledby="archive-title" aria-busy={archive.busy}>
- <h2 id="archive-title">Historical Fire Archive Explorer</h2><p>{c.total.toLocaleString()} unique observations indexed locally. Raw NASA FIRMS records for temporary testing; satellite coverage is unknown. Original ZIP files remain unchanged.</p>
+ <h2 id="archive-title">Morocco Fire Archive Explorer</h2><p>{c.total.toLocaleString()} unique observations indexed locally. Morocco-only NASA FIRMS observations, filtered by the study polygon. Observation dates do not establish complete satellite coverage.</p>
  <form className="archive-toolbar" onSubmit={e=>{e.preventDefault();const message=dateRangeError(draft.startDate,draft.endDate);if(message){setError(message);return;}setError('');archive.apply(draft);}}>
  <label>Satellite<select value={draft.platform} onChange={e=>{const platform=e.target.value;const next=archiveDefaults(c,platform==='ALL'?undefined:platform);setDraft({...next,platform});}}>{[...new Set(c.partitions.map(p=>p.platform))].map(p=><option key={p} value={p}>{names[p]||p}</option>)}<option value="ALL">{names.ALL}</option></select></label>
  <label>Year<select value={draft.year} onChange={e=>setPeriod(e.target.value,'ALL')}>{years.map(y=><option key={y}>{y}</option>)}</select></label>
@@ -46,6 +46,6 @@ export function TemporaryDataPicker(){
  <div className="control-actions"><button disabled={!archive.data||archive.busy||exporting} onClick={()=>void exportPdf()}>{exporting?'Preparing PDF...':'Export aggregate PDF'}</button><button disabled={!archive.cursor||archive.mapBusy} onClick={()=>archive.setCursor(Math.max(0,archive.cursor-10000))}>Previous map page</button><button disabled={archive.mapInfo.nextCursor===null||archive.mapBusy} onClick={()=>archive.setCursor(archive.mapInfo.nextCursor!)}>Next map page</button></div>
  {exportMessage&&<p role="status">{exportMessage}</p>}
  </div>}
- <small>No harmonized predictions or complete-coverage guarantees are supplied. Missing records are not zero activity.</small>
+ <small>FIRMS archive records are unharmonized observations. Model estimates are loaded separately. Missing records are not zero activity.</small>
  </section>;
 }

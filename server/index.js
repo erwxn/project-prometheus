@@ -3,7 +3,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { gzipSync } = require('node:zlib');
 const { loadModisCsv, parseModisCsv } = require('./modis-csv');
-const testData = require('./test-data').openTestData();
+const morocco = require('./morocco-scope');
+const testData = require('./test-data').openTestData(morocco.database);
 
 const { feedConfig, createHarmonizedFeed } = require('./harmonized-feed');
 
@@ -37,6 +38,7 @@ const limiter = rateLimit({
   }
 });
 app.use(limiter);
+app.use('/api/v1/fires', morocco.middleware);
 
 /**
  * Diurnal Mock Fire Dataset
@@ -723,7 +725,7 @@ const remoteConfig = feedConfig();
 const remoteFeed = remoteConfig ? createHarmonizedFeed(remoteConfig) : null;
 const csvPath = process.env.FIRES_CSV_PATH || path.join(__dirname, 'data', 'modis.csv');
 const imported = !remoteFeed && (process.env.FIRES_CSV_PATH || fs.existsSync(csvPath)) ? loadModisCsv(csvPath) : null;
-const activeData = (testData && testData.collection()) || imported || { type: 'FeatureCollection', metadata: { source: 'demo', source_name: 'Illustrative demo dataset', total_features: FIRES_DATASET.length }, features: FIRES_DATASET };
+const activeData = (testData && testData.collection()) || imported || { type: 'FeatureCollection', metadata: { source: 'unavailable', source_name: 'Morocco dataset not loaded', total_features: 0 }, features: [] };
 
 if (imported) console.log(`Loaded ${imported.features.length} MODIS observations (${imported.metadata.rejected_rows} rejected rows)`);
 // Resolve production snapshots on requests, including on serverless instances.
@@ -741,7 +743,7 @@ app.get('/api/v1/fires', (req, res) => {
   res.json(res.locals.fireData);
 });
 
-const archiveService = require('./archive-service').createArchiveService();
+const archiveService = require('./archive-service').createArchiveService(morocco.database);
 for (const kind of ['summary', 'comparison', 'observations']) app.post(`/api/v1/fires/archive/${kind}`, async (req, res) => {
   if (!archiveService) return res.status(404).json({error:'Local archive index unavailable. Run npm run test-data:ingest first.'});
   const controller = new AbortController();
@@ -793,16 +795,10 @@ app.get('/health', (req, res) => {
 });
 
 // Endpoint: Sample Harmonized Fire Anomalies
-app.get('/api/v1/fires/sample', (req, res) => {
-  res.json({
-    type: 'FeatureCollection',
-    metadata: {
-      description: 'Project Prometheus — Harmonized MODIS and VIIRS Fire Hotspots',
-      resolution_bridge: 'MODIS 1km -> VIIRS 375m Spatial Harmonization & Diurnal Cycle Gap Fill',
-      total_features: FIRES_DATASET.length
-    },
-    features: FIRES_DATASET
-  });
+app.get('/api/v1/fires/sample', (req, res) => res.json({type:'FeatureCollection',metadata:{source:'unavailable',source_name:'Illustrative samples disabled for Morocco study',total_features:0},features:[]}));
+app.get('/api/v1/fires/predictions', (req,res) => {
+  try { const data=morocco.predictions(); if(!data.features.length)return res.status(404).json({error:'No verified Morocco model predictions available.'}); res.set('Cache-Control','no-store').json(data); }
+  catch { res.status(503).json({error:'Verified Morocco prediction snapshot unavailable.'}); }
 });
 
 // Endpoint: Diurnal Filtered Fire Anomalies (?hour=HH)

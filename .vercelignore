@@ -10,3 +10,4 @@ node_modules
 client/dist
 server/data
 server/data/**
+test-data/vis-data/**

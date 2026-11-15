@@ -163,8 +163,12 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
   }, [isGold, layerRevision]);
   const mapRows = useMemo(() => selectMapLayers(isGold ? goldRows : prepared, state.filters, SENSOR_IDS), [isGold, goldRows, prepared, state.filters]);
   const visibleMapRows = useMemo(() => {
-    if (!isCellDelivery || !showStrictCells) return mapRows;
-    return mapRows.filter(row => row.feature.properties.record_unit !== 'predicted_cell' || (row.feature.properties.p_viirs ?? -1) >= 0.5);
+    return mapRows.filter(({ feature: { properties } }) => {
+      if (properties.record_unit === 'model_candidate') {
+        return properties.detect_f1 === true && (!showStrictCells || (properties.harmonization_score ?? -1) >= 0.5);
+      }
+      return !isCellDelivery || !showStrictCells || properties.record_unit !== 'predicted_cell' || (properties.p_viirs ?? -1) >= 0.5;
+    });
   }, [mapRows, isCellDelivery, showStrictCells]);
   const features = useMemo(() => visibleMapRows.filter(row => row.sensor && mapLayers.includes(row.sensor)).map(row => row.feature), [visibleMapRows, mapLayers]);
   const summaryFeatures = useMemo(() => selected.map(row => row.feature), [selected]);
@@ -222,12 +226,12 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
             return <label key={sensor}><input type="checkbox" checked={mapLayers.includes(sensor)} onChange={event => setMapLayers(current => event.target.checked ? [...current, sensor] : current.filter(value => value !== sensor))} />{sensor} <small>{count.toLocaleString()} matching</small></label>;
           })}<button type="button" onClick={() => setMapLayers([...SENSOR_IDS])}>Show all layers</button></div>
           {isGold && <button type="button" disabled={layersLoading} onClick={() => setLayerRevision(n => n + 1)}>{layersLoading ? 'Loading map layers…' : 'Refresh map layers'}</button>}
-          {isCellDelivery && <label>Model B map threshold <select value={showStrictCells ? 'strict' : 'delivery'} onChange={event => setShowStrictCells(event.target.value === 'strict')}>
+          {(isCellDelivery || isGold) && <label>Model B map threshold <select value={showStrictCells ? 'strict' : 'delivery'} onChange={event => setShowStrictCells(event.target.value === 'strict')}>
             <option value="delivery">Delivery decisions (detect_f1)</option>
             <option value="strict">Score ≥ 0.5 · comparison</option>
           </select></label>}
           {layerError && <p role="alert">{layerError}</p>}
-          <p>Combine loaded observations on the map. Dates, area and selected day still apply. Charts and exports use the Sensor filter above. A layer with no loaded records cannot be displayed; overlapping sources are not separate physical fires.</p>
+          <p>Harmonized map markers show cells selected by the Model B decision rule when available. Other Gold candidates remain in the analysis data. Combine loaded observations on the map. Dates, area and selected day still apply. Charts and exports use the Sensor filter above. A layer with no loaded records cannot be displayed; overlapping sources are not separate physical fires.</p>
         </fieldset>
         <div className="analytics-map-layout">
         <section className="map-stage analytics-map" data-map-theme={mapTheme} data-projection={projection} aria-label="Analytics fire observation map">

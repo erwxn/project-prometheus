@@ -3,7 +3,7 @@ export function dashboardPage(pathname: string): 'explorer' | 'analytics' | 'mon
   return /^\/analytics\/?$/.test(pathname) ? 'analytics' : 'explorer';
 }
 export function navigateDashboard(event: { button: number; metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; preventDefault(): void }, href: string) {
-  if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || !['/', '/explore/', '/analytics/', '/monitor/'].includes(href)) return;
+  if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || !['/', '/explore/', '/analytics/', '/analytics/?compare=1', '/monitor/'].includes(href)) return;
   event.preventDefault();
-  if (window.location.pathname !== href || window.location.search) { window.history.pushState({}, '', href); window.dispatchEvent(new PopStateEvent('popstate')); }
+  if (window.location.pathname + window.location.search !== href) { window.history.pushState({}, '', href); window.dispatchEvent(new PopStateEvent('popstate')); }
 }

@@ -30,7 +30,7 @@ export default function DashboardApp() {
     document.title = page === 'home' ? 'Prometheus | Follow fire from orbit' : page === 'monitor' ? 'Monitor recent fires | Prometheus' : page === 'analytics' ? 'Fire analytics | Prometheus' : 'Prometheus | Fire explorer';
     window.scrollTo(0, 0);
   }, [page]);
-  if (page === 'home') return <MissionHome />;
+  if (page === 'home') return <MissionHome theme={theme} setTheme={setTheme} />;
   return <DashboardProvider><Suspense fallback={<p className="page-loading" role="status">Loading view…</p>}>{page === 'monitor' ? <MonitorPage {...appearance} /> : page === 'analytics' ? <AnalyticsPage {...appearance} /> : <App {...appearance} />}</Suspense></DashboardProvider>;
 }
 

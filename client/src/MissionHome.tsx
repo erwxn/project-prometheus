@@ -1,84 +1,48 @@
-import { useEffect, useRef, useState } from 'react';
+import { MapAppearance } from './MapAppearance';
+import type { ThemeProps } from './theme';
+import MissionJourney from './MissionJourney';
 import { SiteBrand, SiteNavigation } from './SiteHeader';
-import earth from './assets/mission-earth.webp';
+import earthMobile from './assets/earth-at-night-768.webp';
+import earthDesktop from './assets/earth-at-night-1920.webp';
 import './mission-home.css';
 
-export default function MissionHome() {
-  const [replay, setReplay] = useState(0);
-
-  const [visible, setVisible] = useState(false);
-  const method = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const section = method.current;
-    if (!section) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setVisible(true);
-        observer.disconnect();
-      }
-    }, { threshold: 0.15 });
-    observer.observe(section);
-    return () => observer.disconnect();
-  }, []);
-
+export default function MissionHome({ theme, setTheme }: Pick<ThemeProps, 'theme' | 'setTheme'>) {
   return (
     <div className="mission-home">
       <header className="mission-home-header">
         <SiteBrand />
         <SiteNavigation current="home" />
+        <MapAppearance value={theme} onChange={setTheme} />
       </header>
       <main>
         <section className="mission-hero" aria-labelledby="hero-heading">
-          <img className="mission-earth" src={earth} alt="" />
+          <img className="mission-earth" src={earthDesktop}
+            srcSet={`${earthMobile} 768w, ${earthDesktop} 1920w`} sizes="100vw"
+            width={1920} height={1920} fetchPriority="high" alt="" />
           <div className="mission-hero-content">
-            <p className="mission-eyebrow">NASA Space Apps Challenge / Earth observation</p>
-            <h1 id="hero-heading">Follow fire<br />from orbit<span>.</span></h1>
-            <p>Explore MODIS and VIIRS fire detections, then inspect how Prometheus estimates where VIIRS would detect fire inside a MODIS footprint.</p>
+            <p className="mission-eyebrow">NASA Space Apps Challenge / MODIS + VIIRS</p>
+            <h1 id="hero-heading">Fire activity across<br />seasons<span>.</span></h1>
+            <p>Prometheus connects MODIS and VIIRS fire observations to explore when and where burning activity occurs, and how it changes across seasons.</p>
             <div className="mission-actions">
               <a className="mission-button" href="/explore/">Explore observations <span aria-hidden="true">↗</span></a>
-              <a className="mission-secondary" href="#how-it-works">See how it works <span aria-hidden="true">↓</span></a>
+              <a className="mission-secondary" href="/analytics/">Analyze activity <span aria-hidden="true">↗</span></a>
             </div>
+            <a className="mission-method-link" href="#how-it-works">See how it works ↓</a>
+          </div>
+          <a className="mission-image-credit" href="https://science.nasa.gov/earth/earth-observatory/city-lights-of-africa-europe-and-the-middle-east-79793/">
+            City lights, 2012 · NASA Earth Observatory / Robert Simmon · Suomi NPP VIIRS
+          </a>
+        </section>
+        <section className="mission-project" aria-labelledby="project-heading">
+          <h2 id="project-heading">Two satellite instruments. One fire history to understand.</h2>
+          <div>
+            <p>MODIS, aboard Terra and Aqua, provides a long record of active-fire observations. VIIRS provides finer spatial detail and extends that record through newer satellite missions. Both detect thermal anomalies: a hotspot is a satellite observation, not necessarily a separate wildfire.</p>
+            <p><strong>Why harmonize?</strong> Different resolutions, overpass times and observation conditions affect what each instrument detects. Prometheus aims to make fire activity comparable across missions, so a change in sensor is not mistaken for a change in burning activity.</p>
+            <p><strong>Our spatial model:</strong> Model B uses MODIS Aqua measurements to estimate the probability of a VIIRS detection in candidate 500 m cells. This is an estimated layer, with its own limits and provenance; it does not replace the original observations or establish a globally validated historical record.</p>
+            <p><strong>For the user:</strong> select a region and period, inspect the map, explore the burning calendar, compare seasons where coverage allows, and export observations. The goal is to help researchers, land managers and emergency teams understand an area’s fire history.</p>
           </div>
         </section>
-        <section className="mission-method" id="how-it-works" ref={method} aria-labelledby="method-heading">
-          <div className="mission-method-heading">
-            <div>
-              <p className="mission-eyebrow">How it works</p>
-              <h2 id="method-heading">From a satellite pass to the explorer</h2>
-            </div>
-            <button className="mission-secondary mission-replay" type="button" onClick={() => setReplay(value => value + 1)}>Replay animation</button>
-          </div>
-          <div className="mission-stages" data-animate={visible} key={replay}>
-            <article>
-              <div className="mission-diagram mission-scan" aria-hidden="true">
-                <div className="scan-sweep" />
-                <span className="modis-mark" /><span className="viirs-mark" /><span className="viirs-mark" />
-              </div>
-              <h3>Observe from orbit</h3>
-              <p>MODIS and VIIRS detect thermal anomalies during satellite passes. Each detection has a location and acquisition time.</p>
-              <p className="mission-diagram-key">▲ MODIS <span>● VIIRS</span></p>
-            </article>
-            <article>
-              <div className="mission-diagram mission-footprint" aria-hidden="true">
-                <div className="mission-cell-grid">{Array.from({ length: 9 }, (_, cell) => <span key={cell} />)}</div>
-              </div>
-              <h3>Score candidate cells</h3>
-              <p>Inside a detected Aqua MODIS fire footprint, Model B scores each 500 × 500 m candidate for a possible VIIRS detection.</p>
-              <p className="mission-diagram-key">■ Higher model score</p>
-            </article>
-            <article>
-              <div className="mission-diagram mission-timeline" aria-hidden="true">
-                <div className="mission-time-track"><span /><span /><span /><i /></div>
-                <div className="mission-time-labels"><span>00:00</span><span>12:00</span><span>24:00 UTC</span></div>
-              </div>
-              <h3>Compare in Explore</h3>
-              <p>Filter by place, date or sensor. Play the timeline to see when detections appear and open a point to inspect its details.</p>
-              <p className="mission-diagram-key"><a href="/explore/">Open the explorer ↗</a></p>
-            </article>
-          </div>
-          <p className="mission-example">Illustrative diagrams. Open Explore for the observations and controls.</p>
-        </section>
+        <MissionJourney />
       </main>
     </div>
   );

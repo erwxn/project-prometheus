@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('node:fs');
 const path = require('node:path');
+require('./gold-config').loadGoldLocal();
 const { gzipSync } = require('node:zlib');
 const { loadModisCsv, parseModisCsv } = require('./modis-csv');
 const testData = require('./test-data').openTestData();
@@ -38,6 +39,7 @@ const limiter = rateLimit({
   }
 });
 app.use(limiter);
+require('./gold-routes').registerGoldRoutes(app);
 
 /**
  * Diurnal Mock Fire Dataset

@@ -11,6 +11,9 @@
     "server"
   ],
   "scripts": {
+    "gold:start": "node server/index.js",
+    "gold:test": "node --test server/gold.test.js",
+    "gold:check": "node server/check-gold.mjs",
     "harmonized:preview": "node server/preview-harmonized.js",
     "harmonized:check": "node server/check-harmonized.js",
     "archive:prepare": "node server/archive-cache.js",

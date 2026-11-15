@@ -1,0 +1,104 @@
+{
+  "mode": "live-azure",
+  "checked_at_utc": "2026-11-15T08:07:42.335Z",
+  "status": "passed",
+  "azure_writes_performed": false,
+  "supplied_catalog_sha256": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+  "supplied_catalog_sha256_verified": true,
+  "supplied_inventory": {
+    "morocco_fire_observations": {
+      "files": 1,
+      "rows": 77793
+    },
+    "morocco_harmonization_daily_summary": {
+      "files": 3,
+      "rows": 126
+    },
+    "morocco_harmonized_fire_groups": {
+      "files": 3,
+      "rows": 160
+    },
+    "morocco_harmonized_predictions": {
+      "files": 134,
+      "rows": 1826
+    },
+    "morocco_model_evaluation": {
+      "files": 2,
+      "rows": 117
+    },
+    "morocco_producer_reported_evaluation": {
+      "files": 3,
+      "rows": 1430
+    }
+  },
+  "supplied_parquet_files": 146,
+  "tested_snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+  "verified": {
+    "morocco_fire_observations": {
+      "files": 1,
+      "parsed_rows": 77793,
+      "dated_2026_rows": 6880,
+      "scoped_rows": 70913,
+      "pages_verified": 71
+    },
+    "morocco_harmonization_daily_summary": {
+      "files": 3,
+      "parsed_rows": 126,
+      "dated_2026_rows": 0,
+      "scoped_rows": 126,
+      "pages_verified": 1
+    },
+    "morocco_harmonized_fire_groups": {
+      "files": 3,
+      "parsed_rows": 160,
+      "dated_2026_rows": 0,
+      "scoped_rows": 160,
+      "pages_verified": 1
+    },
+    "morocco_harmonized_predictions": {
+      "files": 134,
+      "parsed_rows": 1826,
+      "dated_2026_rows": 0,
+      "scoped_rows": 1826,
+      "pages_verified": 2
+    },
+    "morocco_model_evaluation": {
+      "files": 2,
+      "parsed_rows": 117,
+      "dated_2026_rows": 0,
+      "scoped_rows": 117,
+      "pages_verified": 1
+    },
+    "morocco_producer_reported_evaluation": {
+      "files": 3,
+      "parsed_rows": 1430,
+      "dated_2026_rows": 0,
+      "scoped_rows": 1430,
+      "pages_verified": 2
+    }
+  },
+  "evaluation_metrics": {
+    "population": "Selected observable candidate cells only; not national accuracy or probability calibration",
+    "filtered_rows": 117,
+    "known_labels": 79,
+    "unknown_labels": 38,
+    "observable_known_labels": 79,
+    "missing_scores": 0,
+    "evaluated_rows": 79,
+    "tp": 4,
+    "fp": 2,
+    "tn": 63,
+    "fn": 10,
+    "accuracy": 0.8481012658227848,
+    "precision": 0.6666666666666666,
+    "recall": 0.2857142857142857,
+    "f1": 0.4,
+    "thresholds": {
+      "A2012181.1420": 0.5,
+      "A2013223.1330": 0.5
+    },
+    "calculation": "Recomputed from verified evaluation rows; classification thresholds supplied by the committed catalog."
+  },
+  "pagination_filter_empty_and_conflict_checks": "passed",
+  "positive_filter_2019_viirs_count": 5757
+}

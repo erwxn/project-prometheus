@@ -41,3 +41,6 @@ Thumbs.db
 server/data/
 .vercel
 .env*
+**/.env.gold.local
+**/gold-access.json
+**/*.private.json

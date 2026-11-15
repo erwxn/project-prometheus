@@ -252,6 +252,8 @@ dependencies, launch commands, feature walkthrough, limitations, and validation.
 
 ## Production harmonized results
 
+The separate committed Azure Gold APIs are documented in [the Gold backend contract](docs/gold-backend.md). See [local verification and Vercel handoff](deploy/BACKEND_CONNECTION.md) before configuring credentials. Existing `/api/v1/*` behavior is unchanged.
+
 The actual team ZIP/cell schema is supported in Explore and Analyze. Run `npm run harmonized:preview` alongside `npm run client:dev` to preview the included 2014 Morocco delivery. See [the delivery format and GCP setup](docs/harmonized-delivery.md) for model-counting rules and the cloud publication contract.
 
 The service supports configurable API or private Google Cloud Storage snapshots in CSV, Parquet, or tabular JSON. See [the integration and teammate handoff guide](docs/harmonized-feed.md) for environment settings, column mapping, credentials, local fixtures, validation commands, and cache limitations. The MODIS upload remains a separate temporary testing tool.

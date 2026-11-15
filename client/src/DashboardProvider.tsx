@@ -2,13 +2,13 @@ import { readSharedExplore } from './explore-share';
 import { useArchive } from './useArchive';
 import { useCallback, useEffect, useMemo, useReducer, useState, useRef, type ReactNode } from 'react';
 import { DashboardContext } from './dashboard-context';
-import { API_BASE, FALLBACK_FIRES } from './fire-data';
+import { API_BASE } from './fire-data';
 import { dashboardReducer, initialDashboardState, type DashboardAction, type DashboardState } from './dashboard-state';
 import { DatasetRequests, loadObservations, uploadObservations, validateUpload, parseCollection } from './fire-api';
 import { dailyBuckets, prepareObservations, selectRange, selectScope, summarizeRange } from './analytics-engine';
 
 function useDashboardValue() {
-  const [state, dispatch] = useReducer(dashboardReducer, { type: 'FeatureCollection', features: FALLBACK_FIRES, metadata: { source: 'demo', source_name: 'Undated illustrative demo' } }, initialDashboardState);
+  const [state, dispatch] = useReducer(dashboardReducer, { type: 'FeatureCollection', features: [], metadata: { source: 'unavailable', source_name: 'Morocco dataset loading' } }, initialDashboardState);
   const [sharedView] = useState(() => readSharedExplore(window.location.search));
   const shareNotice = sharedView ? 'Shared selection requested. Available observations may have changed; this link does not store the dataset.' : '';
   const shareRestored = useRef(false);
@@ -75,13 +75,14 @@ function useDashboardValue() {
   }, [requests]);
 
   const showSimulatedHistory = useCallback(async () => {
-    const request = requests.begin();
-    dispatch({ type: 'upload', status: 'idle', message: '' });
+    const request=requests.begin();
     try {
-      const { simulatedHistory } = await import('./historical-demo');
-      if (requests.current(request.revision)) dispatch({ type: 'loaded', collection: simulatedHistory(), remember: false });
-    } catch { if (requests.current(request.revision)) dispatch({ type: 'status', status: 'error', error: 'Could not load simulated history. Your current dataset has been kept.' }); }
-  }, [requests]);
+      const response=await fetch(`${API_BASE}/api/v1/fires/predictions`,{signal:request.controller.signal,cache:'no-store'});
+      if(!response.ok)throw Error('Verified Morocco model pilot is unavailable.');
+      const collection=parseCollection(await response.json());
+      if(requests.current(request.revision))dispatch({type:'loaded',collection,remember:false});
+    } catch(error) { if(requests.current(request.revision))dispatch({type:'status',status:'error',error:error instanceof Error?error.message:'Prediction data unavailable.'}); }
+  },[requests]);
   const loadTemporary = useCallback(async (platform: string, month: string, page = 0) => {
     const request = requests.begin();
     dispatch({type:'status',status:'loading'});

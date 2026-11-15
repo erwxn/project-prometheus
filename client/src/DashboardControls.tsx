@@ -12,15 +12,16 @@ export function DatasetControls() {
   const input = useRef<HTMLInputElement>(null);
   const id = useId();
   const simulated = state.collection.metadata.source === 'simulated';
+  const predictions = state.collection.features.some(f => typeof f.properties.harmonization_score === 'number');
   return <div className="dataset-controls">
     <TemporaryDataPicker />
     <div className={`dataset-notice${simulated ? ' simulated' : ''}`} role="status">
       <strong>{state.status === 'loading' ? 'Loading observations…' : simulated ? 'SIMULATED HISTORY · 2021–2025' : state.collection.metadata.source === 'csv' ? state.collection.metadata.source_name || 'Imported MODIS snapshot' : state.collection.metadata.source === 'demo' ? 'Illustrative demo · no acquisition dates' : 'Loaded observation snapshot'}</strong>
-      <span>{simulated ? 'Synthetic examples for exploring the tools. These are not NASA satellite observations.' : state.collection.metadata.source === 'csv' ? 'Recorded detections only. This file does not establish complete satellite coverage.' : state.collection.metadata.source === 'demo' ? 'The current dataset has no dated history. Select simulated history to try the calendar and comparisons.' : 'Source provenance and complete satellite coverage are not established by this API response.'}</span>
+      <span>{predictions ? 'Probabilities for candidate 500 m cells. No VIIRS truth or accuracy estimate for this historical pilot.' : simulated ? 'Synthetic examples for exploring the tools. These are not NASA satellite observations.' : state.collection.metadata.source === 'csv' ? 'Recorded detections only. This file does not establish complete satellite coverage.' : state.collection.metadata.source === 'demo' ? 'The current dataset has no dated history. Only verified Morocco observations are available.' : 'Source provenance and complete satellite coverage are not established by this API response.'}</span>
     </div>
-    {state.error && <p role="alert" className="dashboard-error">{state.error} Current examples/data remain visible. <button onClick={() => void retry()}>Retry server</button></p>}
+    {state.error && <p role="alert" className="dashboard-error">{state.error} The last loaded Morocco data remains visible. <button onClick={() => void retry()}>Retry server</button></p>}
     <div className="control-actions">
-      {simulated ? <button onClick={() => state.loadedCollection ? returnToLoaded() : void retry()}>{state.loadedCollection ? 'Return to loaded dataset' : 'Load server dataset'}</button> : <button onClick={() => void showSimulatedHistory()}>Use simulated history</button>}
+      {simulated ? <button onClick={() => state.loadedCollection ? returnToLoaded() : void retry()}>{state.loadedCollection ? 'Return to loaded dataset' : 'Load server dataset'}</button> : <button onClick={() => void showSimulatedHistory()}>Load verified model pilot</button>}
       {import.meta.env.VITE_ENABLE_CSV_UPLOAD !== 'false' && <>
         <input ref={input} id={id} className="visually-hidden" type="file" accept=".csv,text/csv" tabIndex={-1} aria-label="NASA FIRMS MODIS CSV, up to 3 MB" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void uploadCsv(file); }} />
         <button disabled={state.uploadStatus === 'uploading'} onClick={() => input.current?.click()}>{state.uploadStatus === 'uploading' ? 'Loading CSV…' : 'Upload MODIS CSV'}</button>

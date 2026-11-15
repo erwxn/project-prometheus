@@ -1,7 +1,8 @@
+import { observationFootprint } from './observation-footprint';
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import Map, { NavigationControl, useControl, type MapRef } from 'react-map-gl/maplibre';
 import { MapLibreOverlay, type MapLibreOverlayProps } from '@deck.gl/maplibre';
-import { GeoJsonLayer, IconLayer, ScatterplotLayer } from '@deck.gl/layers';
+import { GeoJsonLayer, IconLayer, PolygonLayer, ScatterplotLayer } from '@deck.gl/layers';
 import type { Layer, PickingInfo } from '@deck.gl/core';
 import { TerraDraw, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode, type GeoJSONStoreFeatures } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
@@ -23,6 +24,7 @@ function DeckGLOverlay(props: MapLibreOverlayProps) {
 
 interface FireMapProps {
   trackArchive?: boolean;
+  showFootprints?: boolean;
   simulated?: boolean;
   mapRef: RefObject<MapRef | null>;
   features: FireFeature[];
@@ -38,7 +40,7 @@ interface FireMapProps {
   onLoad?(): void;
 }
 
-export function FireMap({ trackArchive = true, simulated = false, mapRef, features, theme, projection, selectedFeature, onSelectFeature, forecast, onSelectForecast, mode, onModeChange, onDrawingError, onLoad }: FireMapProps) {
+export function FireMap({ trackArchive = true, showFootprints = false, simulated = false, mapRef, features, theme, projection, selectedFeature, onSelectFeature, forecast, onSelectForecast, mode, onModeChange, onDrawingError, onLoad }: FireMapProps) {
   const { state, dispatch, archive, camera, saveCamera } = useDashboard();
   const [ready, setReady] = useState(false);
   const area = state.filters.area;
@@ -153,24 +155,41 @@ export function FireMap({ trackArchive = true, simulated = false, mapRef, featur
       getLineColor: theme === 'light' ? [33, 41, 73, 155] : [222, 232, 248, 135],
       lineWidthMinPixels: 0.35, pickable: mode === 'static',
     }));
-    const symbols = {
-      data: features, iconAtlas: satelliteIconAtlas, iconMapping: satelliteIconMapping,
-      getPosition: (feature: FireFeature) => feature.geometry.coordinates,
-      getIcon: (feature: FireFeature) => satelliteMarker(feature.properties),
-    };
-    layers.push(new IconLayer<FireFeature>({
-      ...symbols, id: 'fire-observation-outlines', getSize: simulated ? 9 : 14, opacity: simulated ? .5 : 1, getColor: [16, 34, 45, 255],
-    }), new IconLayer<FireFeature>({
-      ...symbols, id: 'fire-observations', getSize: simulated ? 7 : 11, opacity: simulated ? .72 : 1,
-      getColor: feature => getFRPColor(observationFrp(feature)), pickable: mode === 'static',
-    }));
+    if (showFootprints) {
+      const footprints = features.flatMap(feature => {
+        const polygon = observationFootprint(feature);
+        return polygon ? [{ feature, polygon }] : [];
+      });
+      layers.push(new PolygonLayer<typeof footprints[number]>({
+        id: 'observation-footprints', data: footprints, getPolygon: row => row.polygon,
+        getFillColor: ({ feature }) => [...getFRPColor(observationFrp(feature)).slice(0, 3), 75] as [number, number, number, number],
+        getLineColor: theme === 'light' ? [38, 52, 60, 180] : [255, 255, 255, 165],
+        stroked: true, lineWidthMinPixels: 1,
+      }), new ScatterplotLayer<FireFeature>({
+        id: 'observation-centres', data: features, getPosition: feature => feature.geometry.coordinates,
+        radiusUnits: 'pixels', getRadius: 3, getFillColor: feature => getFRPColor(observationFrp(feature)),
+        stroked: true, getLineColor: [16, 34, 45, 255], lineWidthMinPixels: 1, pickable: mode === 'static',
+      }));
+    } else {
+      const symbols = {
+        data: features, iconAtlas: satelliteIconAtlas, iconMapping: satelliteIconMapping,
+        getPosition: (feature: FireFeature) => feature.geometry.coordinates,
+        getIcon: (feature: FireFeature) => satelliteMarker(feature.properties),
+      };
+      layers.push(new IconLayer<FireFeature>({
+        ...symbols, id: 'fire-observation-outlines', getSize: simulated ? 9 : 14, opacity: simulated ? .5 : 1, getColor: [16, 34, 45, 255],
+      }), new IconLayer<FireFeature>({
+        ...symbols, id: 'fire-observations', getSize: simulated ? 7 : 11, opacity: simulated ? .72 : 1,
+        getColor: feature => getFRPColor(observationFrp(feature)), pickable: mode === 'static',
+      }));
+    }
     if (selectedFeature) layers.push(new ScatterplotLayer<FireFeature>({
       id: 'selected-observation', data: [selectedFeature], getPosition: d => d.geometry.coordinates,
       radiusUnits: 'pixels', getRadius: 10, filled: false, stroked: true,
       getLineColor: theme === 'light' ? [38, 52, 60, 255] : [255, 255, 255, 255], lineWidthMinPixels: 2, pickable: false,
     }));
     return layers;
-  }, [features, selectedFeature, theme, mode, simulated, forecast]);
+  }, [features, selectedFeature, theme, mode, simulated, forecast, showFootprints]);
 
   const tooltip = useCallback((info: PickingInfo) => {
     if (!info.object) return null;

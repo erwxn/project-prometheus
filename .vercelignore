@@ -11,3 +11,8 @@ client/dist
 server/data
 server/data/**
 test-data/vis-data/**
+**/gold-access.json
+**/*.private.json
+server/fixtures/gold-catalog/**
+server/fixtures/gold-fixture.mjs
+deploy/evidence/**

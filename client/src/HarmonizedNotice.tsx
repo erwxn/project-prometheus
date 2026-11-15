@@ -4,6 +4,12 @@ import {useDashboard} from './dashboard-context';
 export function HarmonizedNotice() {
   const {state, archive} = useDashboard();
   const meta = state.collection.metadata;
+  if (meta.gold) return <section className="harmonized-notice" aria-label="Morocco Gold data"><h3>Morocco · Azure Gold</h3>
+    <p>{meta.gold_sensor === 'Harmonized' ? 'Model candidate cells from the committed Gold catalog. Scores are uncalibrated model outputs, not probabilities or confirmed fire detections.' : `${meta.gold_sensor || 'Satellite'} observations from the committed Gold catalog.`}</p>
+    <p>{state.collection.features.length.toLocaleString()} loaded records · Historical data · 2026 excluded. Missing records do not mean zero activity.</p>
+    {meta.feed_status === 'stale' && <p role="status">The update failed; showing the last verified Morocco publication.</p>}
+    {state.error && <p role="alert">{state.error}</p>}
+  </section>;
   if (archive.active || !meta.delivery_format) return null;
   return <section className="harmonized-notice" aria-label="Harmonized data interpretation">
     <h3>{meta.preview ? 'Historical delivery preview' : 'Harmonized historical data'}</h3>

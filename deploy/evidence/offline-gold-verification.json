@@ -1,0 +1,103 @@
+{
+  "mode": "offline-synthetic-parquet",
+  "checked_at_utc": "2026-11-15T08:05:48.603Z",
+  "status": "passed",
+  "azure_writes_performed": false,
+  "supplied_catalog_sha256": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+  "supplied_catalog_sha256_verified": true,
+  "supplied_inventory": {
+    "morocco_fire_observations": {
+      "files": 1,
+      "rows": 77793
+    },
+    "morocco_harmonization_daily_summary": {
+      "files": 3,
+      "rows": 126
+    },
+    "morocco_harmonized_fire_groups": {
+      "files": 3,
+      "rows": 160
+    },
+    "morocco_harmonized_predictions": {
+      "files": 134,
+      "rows": 1826
+    },
+    "morocco_model_evaluation": {
+      "files": 2,
+      "rows": 117
+    },
+    "morocco_producer_reported_evaluation": {
+      "files": 3,
+      "rows": 1430
+    }
+  },
+  "supplied_parquet_files": 146,
+  "tested_snapshot": "7f1355fae36ca6b7977b3606f2db43d3e3ef5bd09f4063dc0b1750fff28cfc12",
+  "verified": {
+    "morocco_fire_observations": {
+      "files": 1,
+      "parsed_rows": 107,
+      "dated_2026_rows": 1,
+      "scoped_rows": 105,
+      "pages_verified": 1
+    },
+    "morocco_harmonization_daily_summary": {
+      "files": 3,
+      "parsed_rows": 3,
+      "dated_2026_rows": 0,
+      "scoped_rows": 3,
+      "pages_verified": 1
+    },
+    "morocco_harmonized_fire_groups": {
+      "files": 3,
+      "parsed_rows": 3,
+      "dated_2026_rows": 0,
+      "scoped_rows": 3,
+      "pages_verified": 1
+    },
+    "morocco_harmonized_predictions": {
+      "files": 134,
+      "parsed_rows": 133,
+      "dated_2026_rows": 0,
+      "scoped_rows": 133,
+      "pages_verified": 1
+    },
+    "morocco_model_evaluation": {
+      "files": 2,
+      "parsed_rows": 4,
+      "dated_2026_rows": 0,
+      "scoped_rows": 4,
+      "pages_verified": 1
+    },
+    "morocco_producer_reported_evaluation": {
+      "files": 3,
+      "parsed_rows": 3,
+      "dated_2026_rows": 0,
+      "scoped_rows": 3,
+      "pages_verified": 1
+    }
+  },
+  "evaluation_metrics": {
+    "population": "Selected observable candidate cells only; not national accuracy or probability calibration",
+    "filtered_rows": 4,
+    "known_labels": 3,
+    "unknown_labels": 1,
+    "observable_known_labels": 2,
+    "missing_scores": 0,
+    "evaluated_rows": 2,
+    "tp": 1,
+    "fp": 1,
+    "tn": 0,
+    "fn": 0,
+    "accuracy": 0.5,
+    "precision": 0.5,
+    "recall": 1,
+    "f1": 0.6666666666666666,
+    "thresholds": {
+      "A2012181.1420": 0.5,
+      "A2013223.1330": 0.5
+    },
+    "calculation": "Recomputed from verified evaluation rows; classification thresholds supplied by the committed catalog."
+  },
+  "pagination_filter_empty_and_conflict_checks": "passed"
+}

@@ -2,6 +2,8 @@ import type { FireCollection, FireMetadata } from './analytics-model.ts';
 import { SENSOR_IDS } from './analytics-model.ts';
 import { validDate } from './analytics-engine.ts';
 import type { FireFeature } from './fire-data.ts';
+import type { SensorFilter } from './analytics-model.ts';
+import { validateGoldPage } from './gold-feed.ts';
 
 export function parseCollection(data: unknown): FireCollection {
   const collection = data as FireCollection;
@@ -32,11 +34,32 @@ export class ObservationRateLimitError extends Error {
   }
 }
 
-export async function loadObservations(base: string, signal: AbortSignal, request: typeof fetch = fetch): Promise<FireCollection> {
-  const response = await request(`${base}/api/v1/fires`, { signal, cache: 'no-store' });
-  if (response.status === 429) throw new ObservationRateLimitError(response.headers.get('Retry-After'));
-  if (!response.ok) throw new Error(`Could not load observations (HTTP ${response.status}).`);
-  return parseCollection(await response.json());
+export async function loadObservations(base: string, signal: AbortSignal, request: typeof fetch = fetch, sensor: SensorFilter = 'Harmonized', previous?: FireCollection): Promise<FireCollection> {
+  if (import.meta.env?.VITE_OBSERVATION_SOURCE === 'snapshot') {
+    const response = await request(`${base}/api/v1/fires`, { signal });
+    if (!response.ok) throw Error('Historical preview unavailable.');
+    return parseCollection(await response.json());
+  }
+  const features: FireFeature[] = [];
+  let first: FireCollection | undefined;
+  for (let page = 1; ; page++) {
+    const query = new URLSearchParams({ sensor: sensor === 'ALL' ? 'Harmonized' : sensor, page: String(page) });
+    if (first) query.set('snapshot', first.metadata.gold_snapshot!);
+    const headers: Record<string, string> = {};
+    if (page === 1 && previous?.metadata.gold_sensor === sensor && previous.metadata.version) headers['If-None-Match'] = `"${previous.metadata.version}:1"`;
+    const response = await request(`${base}/api/gold/explorer?${query}`, { signal, cache: 'no-store', headers });
+    if (response.status === 304 && previous) return previous;
+    if (response.status === 429) throw new ObservationRateLimitError(response.headers.get('Retry-After'));
+    if (!response.ok) throw new Error(`Morocco Gold data could not be loaded (HTTP ${response.status}). Check the backend connection.`);
+    const collection = parseCollection(await response.json());
+    validateGoldPage(collection, sensor === 'ALL' ? 'Harmonized' : sensor, first?.metadata.gold_snapshot);
+    if (collection.metadata.gold_page !== page || first && collection.metadata.total_features !== first.metadata.total_features) throw Error('Morocco Gold publication changed during download. Retry the source.');
+    first ??= collection;
+    features.push(...collection.features);
+    if (page >= collection.metadata.gold_pages!) break;
+  }
+  if (features.length !== first!.metadata.total_features) throw Error('Morocco Gold download is incomplete. Retry the source.');
+  return { ...first!, features };
 }
 
 export async function uploadObservations(base: string, file: File, signal: AbortSignal, request: typeof fetch = fetch): Promise<FireCollection> {

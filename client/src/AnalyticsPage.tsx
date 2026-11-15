@@ -1,3 +1,7 @@
+import { loadObservations } from './fire-api';
+import { API_BASE } from './fire-data';
+import { prepareObservations } from './analytics-engine';
+import type { PreparedObservation } from './analytics-model';
 import { selectMapLayers } from './map-layers';
 import { SENSOR_IDS, type Sensor } from './analytics-model';
 import { SeasonComparison } from './SeasonComparison';
@@ -135,7 +139,27 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
   const mapRef = useRef<MapRef>(null);
   const restoreCamera = useRef(camera.current !== null);
   const [mapLayers, setMapLayers] = useState<Sensor[]>([...SENSOR_IDS]);
-  const mapRows = useMemo(() => selectMapLayers(prepared, state.filters, SENSOR_IDS), [prepared, state.filters]);
+  const [goldRows, setGoldRows] = useState<PreparedObservation[]>([]);
+  const [layerError, setLayerError] = useState('');
+  const [layersLoading, setLayersLoading] = useState(false);
+  const [layerRevision, setLayerRevision] = useState(0);
+  const isGold = !!state.collection.metadata.gold;
+  useEffect(() => {
+    if (!isGold) return;
+    let active = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 60000);
+    setLayersLoading(true); setLayerError(''); setGoldRows([]);
+    Promise.all(SENSOR_IDS.map(sensor => loadObservations(API_BASE, controller.signal, fetch, sensor)))
+      .then(collections => {
+        if (controller.signal.aborted) return;
+        if (new Set(collections.map(c => c.metadata.gold_snapshot)).size !== 1) throw Error('The publication changed while loading layers. Retry map layers.');
+        setGoldRows(prepareObservations(collections.flatMap(c => c.features)));
+      }).catch(error => { if (active) setLayerError(error instanceof Error ? error.message : 'Map layers could not be loaded.'); })
+      .finally(() => { window.clearTimeout(timeout); if (active) setLayersLoading(false); });
+    return () => { active = false; controller.abort(); window.clearTimeout(timeout); };
+  }, [isGold, layerRevision]);
+  const mapRows = useMemo(() => selectMapLayers(isGold ? goldRows : prepared, state.filters, SENSOR_IDS), [isGold, goldRows, prepared, state.filters]);
   const features = useMemo(() => mapRows.filter(row => row.sensor && mapLayers.includes(row.sensor)).map(row => row.feature), [mapRows, mapLayers]);
   const summaryFeatures = useMemo(() => selected.map(row => row.feature), [selected]);
   const localStats = useMemo(() => summarizeObservations(summaryFeatures, 'ALL', '', basis), [summaryFeatures, basis]);
@@ -150,7 +174,7 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
   },[archive.active,archive.data,localStats,state.filters.selectedDay,basis,summary]);
   const clock = basis === 'utc' ? 'UTC' : 'local mean solar time';
   const loading = state.status === 'loading' || archive.busy || (archive.active && !archive.data);
-  const mapState = mapFeedback(state.status === 'loading' || archive.mapLoading, archive.active ? archive.error : state.error, features.length);
+  const mapState = mapFeedback(layersLoading || state.status === 'loading' || archive.mapLoading, layerError || (archive.active ? archive.error : state.error), features.length);
   const changeMode = (next: DrawMode) => { if (next !== 'static') setProjection('mercator'); setMode(next); };
   useEffect(() => {
     if (!mapReady || archive.active || restoreCamera.current) return;
@@ -173,7 +197,7 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
         </div>
       </section>
       <dl className="analytics-metrics" aria-label="Fire statistics" aria-busy={loading}>
-        <div><dt>{state.collection.metadata.record_unit === 'predicted_cell' && !archive.active ? 'Predicted cells' : state.collection.metadata.record_unit === 'fire_group' && !archive.active ? 'Fire groups' : 'Total hotspot detections'}</dt><dd>{loading ? '—' : whole.format(summary.count)}<small>Records matching the filters</small></dd></div>
+        <div><dt>{state.collection.metadata.record_unit === 'model_candidate' && !archive.active ? 'Model candidate cells' : state.collection.metadata.record_unit === 'predicted_cell' && !archive.active ? 'Predicted cells' : state.collection.metadata.record_unit === 'fire_group' && !archive.active ? 'Fire groups' : 'Total hotspot detections'}</dt><dd>{loading ? '—' : whole.format(summary.count)}<small>Records matching the filters</small></dd></div>
         <div><dt>Active observation days</dt><dd>{loading || summary.activeDays === null ? '—' : whole.format(summary.activeDays)}<small>{summary.activeDays === null ? 'Acquisition dates unavailable' : 'UTC days with at least one record'}</small></dd></div>
         <div><dt>Average FRP</dt><dd>{loading ? '—' : formatPower(summary.meanFrp)}<small>{whole.format(summary.frpCount)} valid readings{state.filters.sensor === 'Harmonized' ? ' · stored estimates' : ' · measured FRP'}</small></dd></div>
         <div><dt>Peak activity day</dt><dd className="peak-day" title={summary.peakDays.join(', ')}>{loading ? '—' : summary.peakDays[0] || '—'}<small>{summary.peak === null ? 'No dated activity value available' : `${decimal.format(summary.peak)} ${metricUnit(state.filters.metric, state.collection.metadata.record_unit)}${summary.peakDays.length > 1 ? ` · ${summary.peakDays.length} days tied` : ''}`}</small></dd></div>
@@ -191,6 +215,8 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
             const count = mapRows.filter(row => row.sensor === sensor).length;
             return <label key={sensor}><input type="checkbox" checked={mapLayers.includes(sensor)} onChange={event => setMapLayers(current => event.target.checked ? [...current, sensor] : current.filter(value => value !== sensor))} />{sensor} <small>{count.toLocaleString()} loaded</small></label>;
           })}<button type="button" onClick={() => setMapLayers([...SENSOR_IDS])}>Show all layers</button></div>
+          {isGold && <button type="button" disabled={layersLoading} onClick={() => setLayerRevision(n => n + 1)}>{layersLoading ? 'Loading map layers…' : 'Refresh map layers'}</button>}
+          {layerError && <p role="alert">{layerError}</p>}
           <p>Combine loaded observations on the map. Dates, area and selected day still apply. Charts and exports use the Sensor filter above. A layer with no loaded records cannot be displayed; overlapping sources are not separate physical fires.</p>
         </fieldset>
         <div className="analytics-map-layout">
@@ -200,10 +226,11 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
           <div className="map-top-controls"><div className="map-heading"><h2>{state.filters.area ? 'Selected area' : 'All locations'} <span>/ {whole.format(features.length)} map records</span></h2></div><CountrySearch onSelect={([, , bounds]) => { if (!mapRef.current) return false; mapRef.current.fitBounds(bounds, { padding: 75, pitch: 0, maxZoom: 9 }); return true; }} /><div className="projection-switch" role="group" aria-label="Map projection"><button aria-pressed={projection === 'mercator'} onClick={() => { setMode('static'); setProjection('mercator'); }}>Flat map</button><button aria-pressed={projection === 'globe'} onClick={() => { setMode('static'); setProjection('globe'); }}>3D globe</button></div><BasemapAppearance value={mapPreference} onChange={setMapPreference} /></div>
           {mode !== 'static' && <p className="map-drawing-status" role="status">{mode === 'select' ? 'Editing selected area' : `Drawing ${mode}`} · Finish or cancel in the area controls</p>}
           {mapState === 'loading' && <MapLoading />}
-          {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry archive in the filters to try again.</p>}
+          {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Refresh Morocco data in the filters to try again.</p>}
           {mapState === 'empty' && mode === 'static' && <p className="analytics-map-empty" role="status">No records in the enabled map layers for this selection. Enable a layer or change the dates or area. This does not establish an absence of fires.</p>}
           {!!features.length && <div className="platform-legend"><SatelliteMarkerKey features={features} /></div>}
-          <div className="map-activity-caption">{archive.active ? 'RAW TEST ARCHIVE' : state.collection.metadata.source === 'harmonized' ? 'HARMONIZED RESULTS' : state.collection.metadata.source === 'simulated' ? 'SIMULATED' : state.collection.metadata.source === 'csv' ? 'IMPORTED SNAPSHOT' : 'ILLUSTRATIVE DEMO'} · {mapLayers.join(" + ") || "No layers selected"} · Points show records, not fire perimeters</div>
+          <div className="map-activity-caption">{state.collection.metadata.gold ? 'MOROCCO · AZURE GOLD' : archive.active ? 'RAW TEST ARCHIVE' : state.collection.metadata.source === 'harmonized' ? 'HARMONIZED RESULTS' : state.collection.metadata.source === 'simulated' ? 'SIMULATED' : state.collection.metadata.source === 'csv' ? 'IMPORTED SNAPSHOT' : 'ILLUSTRATIVE DEMO'} · {mapLayers.join(" + ") || "No layers selected"} · Points show records, not fire perimeters</div>
+
         </section>
         <aside className="analytics-area-panel" aria-label="Geographic area selection"><AreaControls mapRef={mapRef} mode={mode} onModeChange={changeMode} error={drawingError} onError={setDrawingError} /></aside>
         </div>

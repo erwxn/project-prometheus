@@ -21,8 +21,14 @@ export interface CoverageInterval {
 }
 
 export interface FireMetadata {
+  gold?: boolean;
+  gold_sensor?: SensorFilter;
+  gold_snapshot?: string;
+  gold_page?: number;
+  gold_pages?: number;
+  country_iso3?: string;
   delivery_format?: string;
-  record_unit?: 'predicted_cell' | 'fire_group';
+  record_unit?: 'predicted_cell' | 'fire_group' | 'model_candidate';
   preview?: boolean;
   candidate_cells?: number;
   predicted_cells?: number;
@@ -125,5 +131,5 @@ export function availableSensors(collection: FireCollection): Sensor[] {
   return SENSOR_IDS.filter(sensor => available.has(sensor));
 }
 
-export const metricLabel = (metric: ActivityMetric, unit?: FireMetadata['record_unit']) => metric === 'detections' ? unit === 'predicted_cell' ? 'Predicted cells' : unit === 'fire_group' ? 'Fire groups' : 'Hotspot detections' : 'Mean FRP';
-export const metricUnit = (metric: ActivityMetric, unit?: FireMetadata['record_unit']) => metric === 'detections' ? unit === 'predicted_cell' ? 'predicted cells' : unit === 'fire_group' ? 'fire groups' : 'detections' : 'MW';
+export const metricLabel = (metric: ActivityMetric, unit?: FireMetadata['record_unit']) => metric === 'detections' ? unit === 'model_candidate' ? 'Model candidate cells' : unit === 'predicted_cell' ? 'Predicted cells' : unit === 'fire_group' ? 'Fire groups' : 'Hotspot detections' : 'Mean FRP';
+export const metricUnit = (metric: ActivityMetric, unit?: FireMetadata['record_unit']) => metric === 'detections' ? unit === 'model_candidate' ? 'candidate cells' : unit === 'predicted_cell' ? 'predicted cells' : unit === 'fire_group' ? 'fire groups' : 'detections' : 'MW';

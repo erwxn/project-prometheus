@@ -247,6 +247,13 @@
 .monitor-detections button[aria-pressed='true'] { border-color: var(--accent); }
 .monitor-page :is(summary, button):focus-visible, #calendar-title:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .monitor-history li { padding-block: 8px; border-bottom: 1px solid var(--border); }
+.morocco-prediction label { display: grid; gap: 6px; margin-block: 12px; }
+.morocco-prediction select { min-height: 44px; min-width: 0; width: 100%; padding: 6px; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 4px; }
+.morocco-prediction :is(button, summary) { min-height: 44px; }
+.morocco-prediction select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.morocco-prediction li { display: flex; align-items: center; gap: 8px; padding-block: 5px; border: 0; }
+.morocco-prediction li i { width: 14px; height: 14px; flex: none; border: 1px solid var(--border); border-radius: 2px; }
+.morocco-prediction summary { display: list-item; padding-block: 12px; cursor: pointer; }
 .monitor-map { position: relative; min-height: 580px; }
 .monitor-page .experience-workspace { min-height: calc(100dvh - 78px); }
 .monitor-playback { position: absolute; z-index: 4; bottom: 40px; left: 20px; right: 20px; padding: 18px; background: var(--map-tool); color: var(--map-tool-text); border-radius: 5px; }

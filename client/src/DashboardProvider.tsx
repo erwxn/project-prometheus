@@ -2,13 +2,16 @@ import { readSharedExplore } from './explore-share';
 import { useArchive } from './useArchive';
 import { useCallback, useEffect, useMemo, useReducer, useState, useRef, type ReactNode } from 'react';
 import { DashboardContext } from './dashboard-context';
-import { API_BASE, FALLBACK_FIRES } from './fire-data';
+import { API_BASE } from './fire-data';
+import { emptyGoldCollection } from './gold-feed';
 import { dashboardReducer, initialDashboardState, type DashboardAction, type DashboardState } from './dashboard-state';
 import { DatasetRequests, loadObservations, ObservationRateLimitError, uploadHarmonized, uploadObservations, validateUpload, parseCollection } from './fire-api';
 import { dailyBuckets, prepareObservations, selectRange, selectScope, summarizeRange } from './analytics-engine';
 
 function useDashboardValue() {
-  const [state, dispatch] = useReducer(dashboardReducer, { type: 'FeatureCollection', features: FALLBACK_FIRES, metadata: { source: 'demo', source_name: 'Undated illustrative demo' } }, initialDashboardState);
+  const [state, dispatch] = useReducer(dashboardReducer, undefined, () => initialDashboardState(emptyGoldCollection()));
+  const sourceRef = useRef(state.filters.sensor), collectionRef = useRef(state.collection);
+  useEffect(() => { sourceRef.current = state.filters.sensor; collectionRef.current = state.collection; }, [state.filters.sensor, state.collection]);
   const [sharedView] = useState(() => readSharedExplore(window.location.search));
   const shareNotice = sharedView ? 'Shared selection requested. Available observations may have changed; this link does not store the dataset.' : '';
   const shareRestored = useRef(false);
@@ -16,16 +19,16 @@ function useDashboardValue() {
   const saveCamera = useCallback((value: NonNullable<typeof camera.current>) => { camera.current = value; }, []);
   const [requests] = useState(() => new DatasetRequests());
   const observationRetryAt = useRef(0);
-  const archive = useArchive(state, dispatch, requests, !sharedView || !!sharedView.platform);
+  const archive = useArchive(state, dispatch, requests, false);
   useEffect(() => {
     if (!sharedView || shareRestored.current || state.status !== 'ready') return;
     if (sharedView.platform && !archive.catalog && state.collection.metadata.temporary) return;
     shareRestored.current = true;
-    if (sharedView.platform && archive.catalog?.partitions.some(p => sharedView.platform === 'ALL' || p.platform === sharedView.platform)) {
+    if (!state.collection.metadata.gold && sharedView.platform && archive.catalog?.partitions.some(p => sharedView.platform === 'ALL' || p.platform === sharedView.platform)) {
       archive.apply({ platform: sharedView.platform, year: sharedView.filters.endDate.slice(0,4), month:'ALL', startDate:sharedView.filters.startDate, endDate:sharedView.filters.endDate });
     }
     dispatch({type:'filters',patch:sharedView.filters});
-  }, [sharedView,state.status,state.collection.metadata.temporary,archive]);
+  }, [sharedView,state.status,state.collection.metadata.temporary,state.collection.metadata.gold,archive]);
   const applyArchive = archive.apply;
   const [calendarFocus, setCalendarFocus] = useState(false);
   const openCalendar = useCallback((range: { startDate: string; endDate: string }, platform: string | null,
@@ -46,24 +49,31 @@ function useDashboardValue() {
       dispatch({ type: 'upload', status: 'idle', message: '' });
       dispatch({ type: 'status', status: 'loading' });
     }
-    const timeout = window.setTimeout(() => request.controller.abort(), 12000);
+    const timeout = window.setTimeout(() => request.controller.abort(), 60000);
     try {
-      const collection = await loadObservations(API_BASE, request.controller.signal);
+      const collection = await loadObservations(API_BASE, request.controller.signal, fetch, sourceRef.current, quiet ? collectionRef.current : undefined);
       if (requests.current(request.revision)) dispatch(quiet ? { type: 'refreshed', collection } : { type: 'loaded', collection, remember: true });
     } catch (error) {
       if (requests.current(request.revision)) {
         if (error instanceof ObservationRateLimitError) observationRetryAt.current = error.retryAt;
+        if (quiet && collectionRef.current.metadata.gold) dispatch({ type: 'refreshed', collection: { ...collectionRef.current, metadata: { ...collectionRef.current.metadata, feed_status: 'stale' } } });
         if (!quiet) dispatch({ type: 'status', status: 'error', error: error instanceof Error ? error.message : 'The observation API is unavailable.' });
       }
     } finally { window.clearTimeout(timeout); }
   }, [requests]);
 
   useEffect(() => { void retry(); const gate = requests; return () => gate.cancel(); }, [retry, requests]);
+  const previousSensor = useRef(state.filters.sensor);
   useEffect(() => {
-    if (state.status !== 'ready' || state.collection.metadata.source !== 'harmonized' || state.collection.metadata.archive || state.collection.metadata.uploaded || state.uploadStatus === 'uploading') return;
+    if (previousSensor.current === state.filters.sensor) return;
+    previousSensor.current = state.filters.sensor;
+    if (state.collection.metadata.gold && state.filters.sensor !== state.collection.metadata.gold_sensor) void retry();
+  }, [state.filters.sensor, state.collection.metadata.gold, state.collection.metadata.gold_sensor, retry]);
+  useEffect(() => {
+    if (state.status !== 'ready' || !state.collection.metadata.gold && state.collection.metadata.source !== 'harmonized' || state.collection.metadata.archive || state.collection.metadata.uploaded || state.uploadStatus === 'uploading') return;
     const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void retry(true); }, 60_000);
     return () => window.clearInterval(timer);
-  }, [retry, state.status, state.collection.metadata.source, state.collection.metadata.archive, state.collection.metadata.uploaded, state.uploadStatus]);
+  }, [retry, state.status, state.collection.metadata.gold, state.collection.metadata.source, state.collection.metadata.archive, state.collection.metadata.uploaded, state.uploadStatus]);
   useEffect(() => {
     if (state.status !== 'error' || state.collection.metadata.uploaded || state.collection.metadata.source === 'simulated' || state.uploadStatus === 'uploading') return;
     const timer = window.setTimeout(() => void retry(), Math.max(30_000, observationRetryAt.current - Date.now()));

@@ -22,3 +22,7 @@
 **/*.pem
 **/*.key
 server/data
+
+!deploy/
+!deploy/backend/
+!deploy/backend/gold_reader.mjs

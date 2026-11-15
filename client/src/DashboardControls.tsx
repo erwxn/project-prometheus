@@ -15,13 +15,14 @@ export function DatasetControls() {
   const simulated = state.collection.metadata.source === 'simulated';
   const harmonized = state.collection.metadata.source === 'harmonized';
   return <div className="dataset-controls">
-    {harmonized ? <details><summary>Optional raw satellite test archive</summary><TemporaryDataPicker /></details> : <TemporaryDataPicker />}
+    {!state.collection.metadata.gold && (harmonized ? <details><summary>Optional raw satellite test archive</summary><TemporaryDataPicker /></details> : <TemporaryDataPicker />)}
     <div className={`dataset-notice${simulated ? ' simulated' : ''}`} role="status">
-      <strong>{state.status === 'loading' ? 'Loading observations…' : harmonized ? state.collection.metadata.source_name || 'Team harmonized results' : simulated ? 'Example dataset · 2021–2025' : state.collection.metadata.source === 'csv' ? state.collection.metadata.source_name || 'Imported MODIS snapshot' : state.collection.metadata.source === 'demo' ? 'Illustrative demo · no acquisition dates' : 'Loaded observation snapshot'}</strong>
-      <span>{harmonized ? state.collection.metadata.feed_status === 'stale' ? 'Update failed; the last valid publication remains visible. Coverage is unknown.' : 'Harmonized model output. Counts use the record unit described above; coverage is unknown.' : simulated ? 'Synthetic observations. Use Sensor and Simulated satellite in Filters to explore example platforms.' : state.collection.metadata.source === 'csv' ? 'Recorded detections only. This file does not establish complete satellite coverage.' : state.collection.metadata.source === 'demo' ? 'The current dataset has no dated history. Select simulated history to try the calendar and comparisons.' : 'Source provenance and complete satellite coverage are not established by this API response.'}</span>
+      <strong>{state.status === 'loading' ? 'Loading observations…' : state.collection.metadata.gold ? state.collection.metadata.source_name || 'Morocco Azure Gold' : harmonized ? state.collection.metadata.source_name || 'Team harmonized results' : simulated ? 'Example dataset · 2021–2025' : state.collection.metadata.source === 'csv' ? state.collection.metadata.source_name || 'Imported MODIS snapshot' : state.collection.metadata.source === 'demo' ? 'Illustrative demo · no acquisition dates' : 'Loaded observation snapshot'}</strong>
+      <span>{state.collection.metadata.gold ? 'Verified Morocco Gold publication. Coverage is unknown; model scores are uncalibrated outputs.' : harmonized ? state.collection.metadata.feed_status === 'stale' ? 'Update failed; the last valid publication remains visible. Coverage is unknown.' : 'Harmonized model output. Counts use the record unit described above; coverage is unknown.' : simulated ? 'Synthetic observations. Use Sensor and Simulated satellite in Filters to explore example platforms.' : state.collection.metadata.source === 'csv' ? 'Recorded detections only. This file does not establish complete satellite coverage.' : state.collection.metadata.source === 'demo' ? 'The current dataset has no dated history. Select simulated history to try the calendar and comparisons.' : 'Source provenance and complete satellite coverage are not established by this API response.'}</span>
     </div>
-    {state.error && <p role="alert" className="dashboard-error">{state.error} Current examples/data remain visible. <button onClick={() => void retry()}>Retry server</button></p>}
-    <div className="control-actions">
+    {state.error && <p role="alert" className="dashboard-error">{state.error} <button onClick={() => void retry()}>Retry Morocco data</button></p>}
+    {state.collection.metadata.gold && <button onClick={() => void retry()}>Refresh Morocco data</button>}
+    {(!state.collection.metadata.gold || import.meta.env.DEV) && <div className="control-actions">
       {simulated ? <button onClick={() => state.loadedCollection ? returnToLoaded() : void retry()}>{state.loadedCollection ? 'Return to loaded dataset' : 'Load server dataset'}</button> : <button onClick={() => void showSimulatedHistory()}>Use simulated history</button>}
       {import.meta.env.VITE_ENABLE_CSV_UPLOAD !== 'false' && <>
         <input ref={input} id={id} className="visually-hidden" type="file" accept=".csv,text/csv" tabIndex={-1} aria-label="NASA FIRMS MODIS CSV, up to 3 MB" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void uploadDataset(file); }} />
@@ -30,9 +31,9 @@ export function DatasetControls() {
         <button disabled={state.uploadStatus === 'uploading'} onClick={() => harmonizedInput.current?.click()}>Load harmonized results</button>
       </>}
       {state.collection.metadata.uploaded && <button onClick={() => void retry()}>Restore server dataset</button>}
-    </div>
+    </div>}
     {state.uploadMessage && <p className={`upload-feedback ${state.uploadStatus}`} role={state.uploadStatus === 'error' ? 'alert' : 'status'}>{state.uploadMessage}</p>}
-    <small>Harmonized uploads accept team delivery ZIPs, CSV, JSON, or Parquet. Uploads are limited to 3 MB and 50,000 records and stay in this browser session.</small>
+    {(!state.collection.metadata.gold || import.meta.env.DEV) && <small>Harmonized uploads accept team delivery ZIPs, CSV, JSON, or Parquet. Uploads are limited to 3 MB and 50,000 records and stay in this browser session.</small>}
   </div>;
 }
 
@@ -53,14 +54,14 @@ export function GlobalFilters({ compact = false }: { compact?: boolean }) {
       <button disabled={!filters.startDate}>Apply dates</button>
     </form>}
     {!archive.active && <label htmlFor={`${id}-sensor`}>Sensor<select id={`${id}-sensor`} value={filters.sensor} onChange={event => dispatch({ type: 'filters', patch: { sensor: event.target.value as SensorFilter } })}>
-      <option value="ALL">All sources · overview</option>{SENSOR_IDS.map(sensor => <option key={sensor} value={sensor}>{sensor}{available.includes(sensor) ? '' : ' · no loaded data'}</option>)}
+      {!state.collection.metadata.gold && <option value="ALL">All sources · overview</option>}{SENSOR_IDS.map(sensor => <option key={sensor} value={sensor}>{sensor}{available.includes(sensor) ? '' : state.collection.metadata.gold ? ' · load from Gold' : ' · no loaded data'}</option>)}
     </select></label>}
     {state.collection.metadata.source === 'simulated' && simulatedPlatforms.length > 0 && <label htmlFor={`${id}-platform`}>Simulated satellite<select id={`${id}-platform`} value={filters.simulatedPlatform ?? ''} onChange={event => dispatch({ type: 'filters', patch: { simulatedPlatform: (event.target.value || null) as SimulatedPlatform | null } })}>
       <option value="">All simulated satellites</option>{simulatedPlatforms.map(platform => <option key={platform}>{platform}</option>)}
     </select></label>}
     <label htmlFor={`${id}-metric`}>Activity metric<select id={`${id}-metric`} value={filters.metric} onChange={event => dispatch({ type: 'filters', patch: { metric: event.target.value as ActivityMetric } })}>{(['detections', 'mean-frp'] as const).map(metric => <option key={metric} value={metric}>{metricLabel(metric, state.collection.metadata.record_unit)}</option>)}</select></label>
     {filters.selectedDay && <button className="day-filter" onClick={() => dispatch({ type: 'filters', patch: { selectedDay: null } })}>Clear selected day · {filters.selectedDay} ×</button>}
-    {!filters.startDate && <p className="filter-help">Date filters require dated observations. The current illustrative data is undated.</p>}
+    {!filters.startDate && <p className="filter-help">{state.collection.metadata.gold ? 'Dates become available when Morocco data loads.' : 'Date filters require dated observations. The current illustrative data is undated.'}</p>}
     {filters.sensor === 'ALL' && <p className="filter-help">Mixed sensor counts describe records, not equivalent fire activity. Select one sensor for historical comparisons.</p>}
     {error && <p role="alert" className="dashboard-error">{error}</p>}
   </div>;

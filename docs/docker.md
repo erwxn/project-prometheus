@@ -8,7 +8,7 @@ docker compose up --build -d
 
 Open http://localhost:8080. Home, Explore, Analyze, Monitor and About are served by Nginx; `/api/` and `/health` are forwarded to the Node 24 API. Compose waits for the API health check before starting the web service.
 
-The default configuration loads the bundled **Morocco 2014 historical delivery preview**, not current fires or the full archive. The interface retains the dataset's preview/provenance labels. No NASA account, Azure token or private `.env` file is needed for this preview. Basemap tiles and external searches still require Internet. Initial image builds also require Internet.
+The default configuration loads the bundled **Morocco 2014 historical delivery preview**, not current fires or the full archive. The Docker frontend is explicitly built with `VITE_OBSERVATION_SOURCE=snapshot` to use this local feed; regular builds keep the Azure Gold connection. The interface retains the dataset's preview/provenance labels. No NASA account, Azure token or private `.env` file is needed for this preview. Basemap tiles and external searches still require Internet. Initial image builds also require Internet.
 
 ## Verify and stop
 
@@ -42,6 +42,6 @@ Images are built locally; no registry publication is configured. Tags are local 
 
 This packages the web application and API, not the ML training/collection pipeline. The built frontend includes the homepage's images and animations. Only the small historical preview ZIP is bundled; private files, local databases, `.env` files and host dependencies are excluded from the build context.
 
-To use another data source, configure the API environment using [harmonized-feed.md](harmonized-feed.md), remove `HARMONIZED_LOCAL_FILE` when selecting a remote source, and supply credentials only at runtime. Do not bake credentials into images. Local CSV uploads are temporary; this Compose setup does not create persistent data volumes. The default host port is bound to loopback for local review.
+To use another snapshot source, configure the API environment using [harmonized-feed.md](harmonized-feed.md), remove `HARMONIZED_LOCAL_FILE` when selecting a remote source, and supply credentials only at runtime. For the production Gold experience, remove the Docker build's snapshot override, rebuild the web image and configure the API using [gold-backend.md](gold-backend.md). Do not bake credentials into images. Local CSV uploads are temporary; this Compose setup does not create persistent data volumes. The default host port is bound to loopback for local review.
 
 Design references: [Docker multi-stage builds](https://docs.docker.com/build/building/multi-stage/) and [Compose startup order](https://docs.docker.com/compose/how-tos/startup-order/).

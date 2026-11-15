@@ -1,0 +1,466 @@
+{
+  "mode": "live-azure",
+  "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+  "responses": {
+    "/api/gold/catalog": {
+      "status": "COMMITTED",
+      "schema_version": 1,
+      "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+      "datasets": {
+        "morocco_fire_observations": {
+          "kind": "source_observation",
+          "catalog_row_count": 77793,
+          "file_count": 1
+        },
+        "morocco_harmonization_daily_summary": {
+          "kind": "harmonization_daily_summary",
+          "catalog_row_count": 126,
+          "file_count": 3
+        },
+        "morocco_harmonized_fire_groups": {
+          "kind": "harmonized_fire_group",
+          "catalog_row_count": 160,
+          "file_count": 3
+        },
+        "morocco_harmonized_predictions": {
+          "kind": "model_candidate",
+          "catalog_row_count": 1826,
+          "file_count": 134
+        },
+        "morocco_model_evaluation": {
+          "kind": "model_evaluation",
+          "catalog_row_count": 117,
+          "file_count": 2
+        },
+        "morocco_producer_reported_evaluation": {
+          "kind": "producer_reported_evaluation",
+          "catalog_row_count": 1430,
+          "file_count": 3
+        }
+      },
+      "capture_note": "Dataset inventory summary; the endpoint itself returns complete safe file inventories."
+    },
+    "/api/fire-observations": {
+      "metadata": {
+        "source": "Azure Gold",
+        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "country_iso3": "MAR",
+        "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
+        "study_area": "Morocco; Western Sahara separate",
+        "excluded_years": [
+          2026
+        ],
+        "dataset": "morocco_fire_observations",
+        "kind": "source_observation",
+        "geographic_scope": "Committed Gold MAR country and boundary assignment; no basemap reclassification.",
+        "probability_calibration_established": false,
+        "score_interpretation": "not_applicable",
+        "coverage_status": "Unknown; missing records are not zero activity."
+      },
+      "filters": {},
+      "catalog_count": 77793,
+      "scoped_count": 70913,
+      "filtered_count": 70913,
+      "page": 1,
+      "page_size": 1000,
+      "total_pages": 71,
+      "data": [
+        {
+          "latitude": 35.01784,
+          "longitude": -5.02617,
+          "frp_mw": 0.52,
+          "observed_at_utc": "2019-04-19T02:44:00.000Z",
+          "sensor": "VIIRS",
+          "satellite": "Suomi-NPP",
+          "confidence": "n",
+          "confidence_percent": null,
+          "version": "2",
+          "daynight": "N",
+          "scan": "0.54",
+          "track": "0.51",
+          "type": "0",
+          "bright_ti4": null,
+          "bright_ti5": null,
+          "brightness": "295.53",
+          "bright_t31": "272.74",
+          "country_iso3": "MAR",
+          "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
+          "source_archive": "DL_FIRE_SV-C2_848193.zip",
+          "source_member": "fire_archive_SV-C2_848193.csv",
+          "source_kind": "archive",
+          "source_archive_sha256": "9f6b924403bea849f607ddc85a971f298f26dac0e386f6417eb10a7d2e7e6a12",
+          "source_row": 1485444,
+          "observation_id": "000079b9591173d448aee19ca7e3e7938e47ee49598fbe70efa11ffc1672fe79",
+          "sources_json": "[{\"source_archive\": \"DL_FIRE_SV-C2_848193.zip\", \"source_member\": \"fire_archive_SV-C2_848193.csv\", \"source_row\": 1485444, \"source_archive_sha256\": \"9f6b924403bea849f607ddc85a971f298f26dac0e386f6417eb10a7d2e7e6a12\", \"version\": \"2\"}, {\"source_archive\": \"DL_FIRE_SV-C2_848206.zip\", \"source_member\": \"fire_archive_SV-C2_848206.csv\", \"source_row\": 1448921, \"source_archive_sha256\": \"c602179233a064a8fb92375a98c27d126a27145f21f4b310a8606118d15c69fa\", \"version\": \"2\"}, {\"source_archive\": \"DL_FIRE_SV-C2_848214.zip\", \"source_member\": \"fire_archive_SV-C2_848214.csv\", \"source_row\": 1610838, \"source_archive_sha256\": \"55b7236b1e29135e4e5b9e161ea84e699ffa0ee1408b7207e40e4e649fb21e59\", \"version\": \"2\"}]",
+          "harmonization_score": null,
+          "prediction_status": "source_observation",
+          "model_version": null,
+          "run_id": "d2e1fc0af5674b5b5abdfb53",
+          "gold_provenance": {
+            "processing_version": "firms-morocco-v1",
+            "model_sha256": null,
+            "source_acquisition": null
+          }
+        }
+      ],
+      "capture_note": "First public row only; not a full data export."
+    },
+    "/api/harmonization-daily-summary": {
+      "metadata": {
+        "source": "Azure Gold",
+        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "country_iso3": "MAR",
+        "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
+        "study_area": "Morocco; Western Sahara separate",
+        "excluded_years": [
+          2026
+        ],
+        "dataset": "morocco_harmonization_daily_summary",
+        "kind": "harmonization_daily_summary",
+        "geographic_scope": "Committed Gold MAR country and boundary assignment; no basemap reclassification.",
+        "probability_calibration_established": false,
+        "score_interpretation": "aggregate_of_model_scores_not_observed_fires",
+        "evidence_status": "Imported producer results; independent VIIRS support QA and model-score replay were not supplied",
+        "coverage_status": "Unknown; missing records are not zero activity."
+      },
+      "filters": {},
+      "catalog_count": 126,
+      "scoped_count": 126,
+      "filtered_count": 126,
+      "page": 1,
+      "page_size": 1000,
+      "total_pages": 1,
+      "data": [
+        {
+          "record_id": "b702873d964b0a2dcdfb8253ed59659b07bc63aa00c7e6639db682d53a237edb",
+          "date": "2014-01-04",
+          "observed_at_utc": "2014-01-04T00:00:00.000Z",
+          "country_iso3": "MAR",
+          "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
+          "source_archive_sha256": "1b920e2eeabc73211fb2860b0c1aa03ed7f6c82d77f85bd097bd66e554bc329f",
+          "passes": 1,
+          "fire_groups": 1,
+          "candidate_cells": 4,
+          "sum_model_scores": 0.43913057811098455,
+          "cells_score_at_least_half": 0,
+          "known_group_frp_viirs_eq_mw": 7.705085784745926,
+          "unknown_boundary_groups": 0,
+          "model_verification_status": "user_attested_reference_weights_not_replayed",
+          "run_id": "2091648c36874c8cafd6082b",
+          "gold_provenance": {
+            "processing_version": "morocco-delivery-import-v1",
+            "model_sha256": "206bd8ff48c7d5efcd798917351a4b3843affe90e92b9d11a755e5d6ee852d40",
+            "reference_model_sha256": "206bd8ff48c7d5efcd798917351a4b3843affe90e92b9d11a755e5d6ee852d40",
+            "model_score_replay_verified": false,
+            "model_verification_status": "user_attested_reference_weights_not_replayed",
+            "time_policy": "Canonical UTC from acquisition filename; supplied scan timestamps retained without asserting their conversion is correct",
+            "source_provenance": "Imported derived output; original four-product HDF files/checksums and complete acquisition inventory not supplied",
+            "source_acquisition": "delivery-2014"
+          }
+        }
+      ],
+      "capture_note": "First public row only; not a full data export."
+    },
+    "/api/harmonized-fire-groups": {
+      "metadata": {
+        "source": "Azure Gold",
+        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "country_iso3": "MAR",
+        "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
+        "study_area": "Morocco; Western Sahara separate",
+        "excluded_years": [
+          2026
+        ],
+        "dataset": "morocco_harmonized_fire_groups",
+        "kind": "harmonized_fire_group",
+        "geographic_scope": "Committed Gold MAR country and boundary assignment; no basemap reclassification.",
+        "probability_calibration_established": false,
+        "score_interpretation": "not_a_cell_score",
+        "evidence_status": "Imported producer results; independent VIIRS support QA and model-score replay were not supplied",
+        "coverage_status": "Unknown; missing records are not zero activity."
+      },
+      "filters": {},
+      "catalog_count": 160,
+      "scoped_count": 160,
+      "filtered_count": 160,
+      "page": 1,
+      "page_size": 1000,
+      "total_pages": 1,
+      "data": [
+        {
+          "fire_id": "A2014004.1320-g1",
+          "source_acquisition": "A2014004.1320",
+          "region": "Morocco",
+          "date": "2014-01-04",
+          "source_reported_time_utc": "2014-01-04T13:22:44.191Z",
+          "month": 1,
+          "season": "DJF",
+          "longitude": -4.301353931427002,
+          "latitude": 33.9207878112793,
+          "n_modis_pixels": 1,
+          "n_cells": 4,
+          "expected_viirs_cells": 0.43913057811098455,
+          "cells_detected_f1": 0,
+          "max_p_viirs": 0.12457818860817707,
+          "bt31_max_k": 287.7840980083455,
+          "modis_frp_mw": 13.397295951843262,
+          "source_frp_viirs_eq_mw": 7.705085784745926,
+          "data_mode": "modis_only",
+          "fully_observed_by_viirs": false,
+          "viirs_obs_frp_mw": null,
+          "country_iso3": "MAR",
+          "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
+          "source_archive_sha256": "1b920e2eeabc73211fb2860b0c1aa03ed7f6c82d77f85bd097bd66e554bc329f",
+          "observed_at_utc": "2014-01-04T13:20:00.000Z",
+          "retained_morocco_cells": 4,
+          "boundary_group_clipped": false,
+          "frp_viirs_eq_mw": 7.705085784745926,
+          "record_id": "b1623a5d5560f072ea49fd259eed744f8d6a5b06ed5118828bfd50847ff15a7c",
+          "model_version": "B-frozen-206bd8ff48c7",
+          "model_verification_status": "user_attested_reference_weights_not_replayed",
+          "run_id": "2091648c36874c8cafd6082b",
+          "gold_provenance": {
+            "processing_version": "morocco-delivery-import-v1",
+            "model_sha256": "206bd8ff48c7d5efcd798917351a4b3843affe90e92b9d11a755e5d6ee852d40",
+            "reference_model_sha256": "206bd8ff48c7d5efcd798917351a4b3843affe90e92b9d11a755e5d6ee852d40",
+            "model_score_replay_verified": false,
+            "model_verification_status": "user_attested_reference_weights_not_replayed",
+            "time_policy": "Canonical UTC from acquisition filename; supplied scan timestamps retained without asserting their conversion is correct",
+            "source_provenance": "Imported derived output; original four-product HDF files/checksums and complete acquisition inventory not supplied",
+            "source_acquisition": "delivery-2014"
+          }
+        }
+      ],
+      "capture_note": "First public row only; not a full data export."
+    },
+    "/api/model-predictions": {
+      "metadata": {
+        "source": "Azure Gold",
+        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "country_iso3": "MAR",
+        "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
+        "study_area": "Morocco; Western Sahara separate",
+        "excluded_years": [
+          2026
+        ],
+        "dataset": "morocco_harmonized_predictions",
+        "kind": "model_candidate",
+        "geographic_scope": "Committed Gold MAR country and boundary assignment; no basemap reclassification.",
+        "probability_calibration_established": false,
+        "score_interpretation": "uncalibrated_model_output_score",
+        "provenance_note": "Includes explicit producer-declared/attested imported outputs where indicated per file; those scores were not independently replayed. Raw scientific acquisition coverage is a separate measure.",
+        "coverage_status": "Unknown; missing records are not zero activity."
+      },
+      "filters": {},
+      "catalog_count": 1826,
+      "scoped_count": 1826,
+      "filtered_count": 1826,
+      "page": 1,
+      "page_size": 1000,
+      "total_pages": 2,
+      "data": [
+        {
+          "longitude": -2.64948514573334,
+          "latitude": 34.6245986657749,
+          "cell_column": 6307,
+          "cell_row": 2764,
+          "source_line": 495,
+          "source_sample": 238,
+          "harmonization_score": 0.3863138971545078,
+          "frp_cell_mw": 11.991252426091846,
+          "parent_frp_mw": 314.3191833496094,
+          "missing_feature_count": 0,
+          "boundary_group_clipped": false,
+          "record_id": "7eae622d7c6c4b6c1382024dc446ce9a1cd519b062e4e610a17a9fb66d77fb38",
+          "country_iso3": "MAR",
+          "source_acquisition": "A2011168.1345",
+          "model_version": "B-frozen-206bd8ff48c7",
+          "model_sha256": "206bd8ff48c7d5efcd798917351a4b3843affe90e92b9d11a755e5d6ee852d40",
+          "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
+          "run_id": "f7f6ac530c0d3864fad6849d",
+          "sensor": "MODIS",
+          "satellite": "Aqua",
+          "acquisition_start_utc": "2011-06-17T13:45:00.000Z",
+          "scan_time_tai93": 582471980.4243267,
+          "observed_at_utc": "2011-06-17T13:45:00.000Z",
+          "time_precision": "granule_start_5_minutes",
+          "prediction_status": "historical_estimate_unvalidated_for_2011",
+          "viirs_observed_label": null,
+          "gold_provenance": {
+            "processing_version": "cloud-v1-349a91fc6a5e5cd0",
+            "model_sha256": "206bd8ff48c7d5efcd798917351a4b3843affe90e92b9d11a755e5d6ee852d40",
+            "time_policy": "UTC acquisition start with 5-minute granule precision; original TAI93 scan times retained",
+            "source_acquisition": "A2011168.1345"
+          }
+        }
+      ],
+      "capture_note": "First public row only; not a full data export."
+    },
+    "/api/model-evaluations": {
+      "metadata": {
+        "source": "Azure Gold",
+        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "country_iso3": "MAR",
+        "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
+        "study_area": "Morocco; Western Sahara separate",
+        "excluded_years": [
+          2026
+        ],
+        "dataset": "morocco_model_evaluation",
+        "kind": "model_evaluation",
+        "geographic_scope": "Committed Gold MAR country and boundary assignment; no basemap reclassification.",
+        "probability_calibration_established": false,
+        "score_interpretation": "attached_uncalibrated_model_output_score",
+        "coverage_status": "Unknown; missing records are not zero activity."
+      },
+      "filters": {},
+      "catalog_count": 117,
+      "scoped_count": 117,
+      "filtered_count": 117,
+      "page": 1,
+      "page_size": 1000,
+      "total_pages": 1,
+      "data": [
+        {
+          "longitude": -5.383657698757856,
+          "latitude": 35.849445404589034,
+          "cell_column": 5856,
+          "cell_row": 3121,
+          "source_line": 1687,
+          "source_sample": 6,
+          "harmonization_score": 0.07049576949680031,
+          "frp_cell_mw": 14.686797720823783,
+          "parent_frp_mw": 707.1115112304688,
+          "missing_feature_count": 0,
+          "boundary_group_clipped": false,
+          "record_id": "ab3679fa918ccca8678649ae940a5214e91ab301c5ae0e58e8de81bf27b462b9",
+          "country_iso3": "MAR",
+          "source_acquisition": "A2012181.1420",
+          "model_version": "B-frozen-206bd8ff48c7",
+          "model_sha256": "206bd8ff48c7d5efcd798917351a4b3843affe90e92b9d11a755e5d6ee852d40",
+          "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
+          "run_id": "a432c289b25fb8d57e0cd99b",
+          "sensor": "MODIS",
+          "satellite": "Aqua",
+          "acquisition_start_utc": "2012-06-29T14:20:00.000Z",
+          "scan_time_tai93": 615133456.7992226,
+          "observed_at_utc": "2012-06-29T14:20:00.000Z",
+          "time_precision": "granule_start_5_minutes",
+          "prediction_status": "model_estimate_no_viirs_evaluation",
+          "viirs_observed_label": 0,
+          "diagnostic_label": 0,
+          "evaluation_status": "OBSERVABLE",
+          "evaluation_source_viirs": "A2012181.1354",
+          "evaluation_version": "viirs-footprint-v1",
+          "gold_provenance": {
+            "processing_version": "morocco-viirs-evaluation-v1",
+            "model_sha256": "206bd8ff48c7d5efcd798917351a4b3843affe90e92b9d11a755e5d6ee852d40",
+            "time_policy": "Common TAI93 seconds, absolute per-scan gap <=1800 seconds; Aqua scan-start timestamps",
+            "source_acquisition": "A2012181.1420"
+          }
+        }
+      ],
+      "capture_note": "First public row only; not a full data export."
+    },
+    "/api/producer-reported-evaluations": {
+      "metadata": {
+        "source": "Azure Gold",
+        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "country_iso3": "MAR",
+        "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
+        "study_area": "Morocco; Western Sahara separate",
+        "excluded_years": [
+          2026
+        ],
+        "dataset": "morocco_producer_reported_evaluation",
+        "kind": "producer_reported_evaluation",
+        "geographic_scope": "Committed Gold MAR country and boundary assignment; no basemap reclassification.",
+        "probability_calibration_established": false,
+        "score_interpretation": "attached_uncalibrated_model_output_score",
+        "evidence_status": "Imported producer results; independent VIIRS support QA and model-score replay were not supplied",
+        "independently_verified": false,
+        "coverage_status": "Unknown; missing records are not zero activity."
+      },
+      "filters": {},
+      "catalog_count": 1430,
+      "scoped_count": 1430,
+      "filtered_count": 1430,
+      "page": 1,
+      "page_size": 1000,
+      "total_pages": 2,
+      "data": [
+        {
+          "record_id": "f4dde8a806740be7c5b47a8bc467e3aea19cadcebf86fc8de7dc5647b2e589ed",
+          "source_acquisition": "A2014004.1320",
+          "country_iso3": "MAR",
+          "longitude": -4.301677554895103,
+          "latitude": 33.91876746391469,
+          "observed_at_utc": "2014-01-04T13:20:00.000Z",
+          "harmonization_score": 0.12457818860817707,
+          "model_version": "B-frozen-206bd8ff48c7",
+          "model_sha256": "206bd8ff48c7d5efcd798917351a4b3843affe90e92b9d11a755e5d6ee852d40",
+          "model_verification_status": "user_attested_reference_weights_not_replayed",
+          "source_archive_sha256": "1b920e2eeabc73211fb2860b0c1aa03ed7f6c82d77f85bd097bd66e554bc329f",
+          "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
+          "reported_viirs_observed_label": null,
+          "source_viirs_granule": null,
+          "evaluation_status": "PRODUCER_REPORTED_NOT_INDEPENDENTLY_VERIFIED",
+          "label_support_verified": false,
+          "run_id": "2091648c36874c8cafd6082b",
+          "gold_provenance": {
+            "processing_version": "morocco-delivery-import-v1",
+            "model_sha256": "206bd8ff48c7d5efcd798917351a4b3843affe90e92b9d11a755e5d6ee852d40",
+            "reference_model_sha256": "206bd8ff48c7d5efcd798917351a4b3843affe90e92b9d11a755e5d6ee852d40",
+            "model_score_replay_verified": false,
+            "model_verification_status": "user_attested_reference_weights_not_replayed",
+            "time_policy": "Canonical UTC from acquisition filename; supplied scan timestamps retained without asserting their conversion is correct",
+            "source_provenance": "Imported derived output; original four-product HDF files/checksums and complete acquisition inventory not supplied",
+            "source_acquisition": "delivery-2014"
+          }
+        }
+      ],
+      "capture_note": "First public row only; not a full data export."
+    },
+    "/api/model-evaluations/metrics": {
+      "metadata": {
+        "source": "Azure Gold",
+        "snapshot": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+        "country_iso3": "MAR",
+        "boundary_sha256": "cbbdf0725be84e16be86ca4cbc96fae56e983b9b204278b35fee35b86d6bfcfd",
+        "study_area": "Morocco; Western Sahara separate",
+        "excluded_years": [
+          2026
+        ],
+        "dataset": "morocco_model_evaluation",
+        "kind": "model_evaluation",
+        "geographic_scope": "Committed Gold MAR country and boundary assignment; no basemap reclassification.",
+        "probability_calibration_established": false,
+        "score_interpretation": "attached_uncalibrated_model_output_score",
+        "coverage_status": "Unknown; missing records are not zero activity."
+      },
+      "filters": {},
+      "metrics": {
+        "population": "Selected observable candidate cells only; not national accuracy or probability calibration",
+        "filtered_rows": 117,
+        "known_labels": 79,
+        "unknown_labels": 38,
+        "observable_known_labels": 79,
+        "missing_scores": 0,
+        "evaluated_rows": 79,
+        "tp": 4,
+        "fp": 2,
+        "tn": 63,
+        "fn": 10,
+        "accuracy": 0.8481012658227848,
+        "precision": 0.6666666666666666,
+        "recall": 0.2857142857142857,
+        "f1": 0.4,
+        "thresholds": {
+          "A2012181.1420": 0.5,
+          "A2013223.1330": 0.5
+        },
+        "calculation": "Recomputed from verified evaluation rows; classification thresholds supplied by the committed catalog."
+      }
+    }
+  }
+}

@@ -7,8 +7,8 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 60,
-      "includeFiles": "{shared/**,test-data/harmonized/**}",
-      "excludeFiles": "{server/data/**,test-data/vis-data/**,server/*.test.js}"
+      "includeFiles": "{shared/**,test-data/harmonized/**,deploy/backend/**}",
+      "excludeFiles": "{server/data/**,test-data/vis-data/**,server/*.test.js,server/fixtures/gold-catalog/**,deploy/evidence/**,**/.env*,**/gold-access.json,**/*.private.json}"
     }
   },
   "routes": [

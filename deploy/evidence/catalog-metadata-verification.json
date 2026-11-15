@@ -1,0 +1,35 @@
+{
+  "mode": "metadata-only",
+  "checked_at_utc": "2026-11-15T07:59:29.130Z",
+  "status": "passed",
+  "azure_writes_performed": false,
+  "supplied_catalog_sha256": "3784da0a527f3ed02b89383dabc93a5eb1041fe066140d1db21e0484c202ab2e",
+  "supplied_catalog_sha256_verified": true,
+  "supplied_inventory": {
+    "morocco_fire_observations": {
+      "files": 1,
+      "rows": 77793
+    },
+    "morocco_harmonization_daily_summary": {
+      "files": 3,
+      "rows": 126
+    },
+    "morocco_harmonized_fire_groups": {
+      "files": 3,
+      "rows": 160
+    },
+    "morocco_harmonized_predictions": {
+      "files": 134,
+      "rows": 1826
+    },
+    "morocco_model_evaluation": {
+      "files": 2,
+      "rows": 117
+    },
+    "morocco_producer_reported_evaluation": {
+      "files": 3,
+      "rows": 1430
+    }
+  },
+  "supplied_parquet_files": 146
+}

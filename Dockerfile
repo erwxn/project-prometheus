@@ -9,6 +9,7 @@ COPY .husky/install.mjs ./.husky/install.mjs
 RUN npm ci
 
 FROM dependencies AS client-build
+ENV VITE_OBSERVATION_SOURCE=snapshot
 COPY shared/ ./shared/
 COPY client/ ./client/
 RUN npm run build
@@ -21,6 +22,7 @@ WORKDIR /app
 ENV NODE_ENV=production PORT=5000
 COPY --from=production-dependencies /app/node_modules ./node_modules
 COPY server/ ./server/
+COPY deploy/backend/gold_reader.mjs ./deploy/backend/gold_reader.mjs
 COPY shared/ ./shared/
 COPY docker/smoke.cjs ./docker-smoke.cjs
 COPY test-data/harmonized/delivery_2014_morocco.zip ./test-data/harmonized/delivery_2014_morocco.zip

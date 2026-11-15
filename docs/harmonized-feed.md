@@ -1,6 +1,6 @@
 # Harmonized data integration
 
-The web service can pull complete published snapshots from a teammate API or Google Cloud Storage. It accepts CSV, Parquet, or a JSON array of tabular records. This connection is separate from the temporary MODIS testing uploader. No cloud resources or credentials are created by the application.
+The web service can pull complete published snapshots from a teammate API or Google Cloud Storage. It accepts the team delivery ZIP, native cell/group CSV or Parquet tables, and the earlier flat CSV/Parquet/JSON contract. See [the delivery contract](harmonized-delivery.md) for exact counting rules and a runnable preview. This connection is separate from the temporary MODIS testing uploader. No cloud resources or credentials are created by the application.
 
 ## Configuration
 
@@ -9,7 +9,7 @@ Set environment variables on the Express process or hosting platform. Express do
 | Variable | Purpose / default |
 | --- | --- |
 | `HARMONIZED_SOURCE` | `https://team.example/results.csv` or `gs://bucket/published/results.parquet`. Unset preserves existing local MODIS/demo behavior. Local HTTP is allowed only for loopback addresses. |
-| `HARMONIZED_FORMAT` | `csv`, `parquet`, or `json`; otherwise inferred from the source filename. Set explicitly for API paths without an extension or signed download URLs. |
+| `HARMONIZED_FORMAT` | `csv`, `parquet`, `json`, or `zip`; otherwise inferred from the source filename. Set explicitly for API paths without an extension or signed download URLs. |
 | `HARMONIZED_SOURCE_NAME` | Public dataset label; default `Team harmonized results`. Use an honest label for fixtures. |
 | `HARMONIZED_API_TOKEN` | Optional bearer token for an HTTPS API. Server-side only. |
 | `HARMONIZED_COLUMNS` | JSON mapping from canonical names below to the team's column names. |
@@ -21,7 +21,7 @@ Set environment variables on the Express process or hosting platform. Express do
 
 For GCS, use Google Application Default Credentials with read access to the published object. On GCP, attach an appropriate service account to the runtime. For local development, `gcloud auth application-default login` is an option. Outside GCP, configure supported workload identity federation or a server-only `GOOGLE_APPLICATION_CREDENTIALS` file. Never put credentials in `VITE_*`, source files, or Git. A Vercel deployment does not acquire GCP access automatically.
 
-The backend reads GCS through Google's authenticated Storage JSON API using ADC. It does not make the bucket public, upload files, or grant permissions. HTTPS connections can return tabular JSON, CSV, or Parquet directly. Redirects are rejected; configure the final URL. API pagination, archive files, incremental batches, and APIs that only return download links require a further adapter.
+The backend reads GCS through Google's authenticated Storage JSON API using ADC. It does not make the bucket public, upload files, or grant permissions. HTTPS connections can return tabular JSON, CSV, or Parquet directly. Redirects are rejected; configure the final URL. API pagination, arbitrary archives, incremental batches, and APIs that only return download links require a further adapter.
 
 ## Record contract
 
@@ -51,7 +51,7 @@ $env:HARMONIZED_COLUMNS = '{"latitude":"y","longitude":"x","observed_at_utc":"ti
 
 An upstream JSON API may return an array of these records or an envelope selected by `HARMONIZED_JSON_PATH`. This is not a GeoJSON input contract. Parquet uses the same columns and supports Snappy and additional codecs through hyparquet-compressors. Confirm the team's actual Parquet schema and codec with a representative file before launch. Flat latitude/longitude columns are required; nested geometry-only GeoParquet needs mapping code.
 
-Invalid coordinates, dates, FRP, duplicate identifiers, schema errors, and limit violations reject the **whole snapshot**. The adapter never invents raw sensor measurements, confidence, or a model version. It labels all accepted records `Harmonized`, stores the estimate in `normalized_frp`, leaves `raw_frp` null, and derives local mean solar clocks from the original UTC instant. Other input columns are currently ignored. Empty CSVs with valid headers, empty Parquet tables with valid schema, and empty JSON arrays represent zero observations.
+Invalid coordinates, dates, FRP, duplicate identifiers, schema errors, and limit violations reject the **whole snapshot**. The adapter never invents raw sensor measurements, confidence, or a model version. It labels all accepted records `Harmonized`, stores the estimate in `normalized_frp`, leaves `raw_frp` null, and derives local mean solar clocks from the original UTC instant. For the generic contract, other input columns are ignored. Native delivery tables preserve the model and cell fields described in the delivery contract. Empty CSVs with valid headers, empty Parquet tables with valid schema, and empty JSON arrays represent zero observations.
 
 ## Publishing and refresh behavior
 

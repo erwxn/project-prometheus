@@ -14,6 +14,29 @@ import { dashboardPage, navigateDashboard } from '../src/dashboard-navigation.ts
 import { simulatedHistory } from '../src/historical-demo.ts';
 import { collection, feature, polygon } from './analytics-fixtures.mjs';
 
+test('harmonized refresh preserves search filters and never replaces an archive or upload', () => {
+  let state = initialDashboardState(collection([feature('2014-03-16', 2, 'Harmonized')], { source: 'harmonized', version: 'v1' }));
+  state = dashboardReducer(state, { type: 'filters', patch: { country: 'MAR', selectedDay: '2014-03-16', metric: 'mean-frp' } });
+  const updated = collection([feature('2014-03-17', 3, 'Harmonized')], { source: 'harmonized', version: 'v2' });
+  const next = dashboardReducer(state, { type: 'refreshed', collection: updated });
+  assert.equal(next.filters, state.filters);
+  assert.equal(next.collection.metadata.version, 'v2');
+  const unchanged = dashboardReducer(next, { type: 'refreshed', collection: { ...updated, features: [...updated.features], metadata: { ...updated.metadata, feed_status: 'stale' } } });
+  assert.equal(unchanged.collection.features, next.collection.features);
+  assert.equal(unchanged.collection.metadata.feed_status, 'stale');
+  for (const metadata of [{ source: 'csv', uploaded: true }, { source: 'csv', archive: true }, { source: 'simulated' }]) {
+    const protectedState = { ...state, collection: collection([], metadata) };
+    assert.equal(dashboardReducer(protectedState, { type: 'refreshed', collection: updated }), protectedState);
+  }
+});
+
+test('empty predicted-cell publication retains harmonized sensor and candidate time bounds', () => {
+  const state = initialDashboardState(collection([], { source: 'harmonized', has_harmonized: true, delivery_format: 'modis-viirs-v1', observed_from: '2014-01-04T13:22:44Z', observed_to: '2014-11-09T13:41:11Z' }));
+  assert.equal(state.filters.sensor, 'Harmonized');
+  assert.equal(state.filters.startDate, '2014-01-04');
+  assert.equal(state.filters.endDate, '2014-11-09');
+});
+
 test('dataset replacement clears focused dates, resets date bounds/sensor, and keeps the chosen area/metric', () => {
   let state = initialDashboardState(collection([feature('2025-01-01')]));
   const area = polygon([[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]);

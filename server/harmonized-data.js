@@ -8,8 +8,8 @@ const defaults = {
   id: ['id', 'observation_id'], model_version: ['model_version'],
 };
 
-/** Converts complete tabular snapshots to the explorer's observation contract. */
-async function adaptHarmonized(buffer, { format = 'csv', columns = {}, jsonPath = '', maxRows = 100000 } = {}) {
+/** Reads bounded CSV, JSON or Parquet tables while retaining typed values. */
+async function readTable(buffer, { format = 'csv', jsonPath = '', maxRows = 100000 } = {}) {
   let rows;
   let headers;
   if (format === 'csv') {
@@ -33,11 +33,24 @@ async function adaptHarmonized(buffer, { format = 'csv', columns = {}, jsonPath 
     if (BigInt(metadata.num_rows) > BigInt(maxRows)) throw new Error('Snapshot exceeds the observation limit.');
     headers = metadata.schema.filter(field => field.type !== undefined).map(field => field.name);
     rows = await parquetReadObjects({ file, compressors });
-  } else throw new Error('Unsupported feed format; use csv, parquet, or json.');
+  } else throw new Error('Unsupported table format; use csv, parquet, or json.');
   if (rows.length > maxRows) throw new Error('Snapshot exceeds the observation limit.');
+  return { rows, headers };
+}
+
+/** Converts complete tabular snapshots or team delivery ZIPs to observations. */
+async function adaptHarmonized(buffer, options = {}) {
+  if (options.format === 'zip') return require('./harmonized-delivery').readDelivery(buffer, options);
+  const { columns = {} } = options;
+  const { rows, headers: tableHeaders } = await readTable(buffer, options);
+  let headers = tableHeaders;
   headers ??= rows.length ? Object.keys(rows[0]) : Object.keys(defaults).map(key => columns[key] || key);
   const normalize = key => key.trim().toLowerCase();
   if (new Set(headers.map(normalize)).size !== headers.length) throw new Error('Duplicate column names.');
+  const fields = headers.map(normalize);
+  const nativeRows = () => rows.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [normalize(key), value])));
+  if (fields.includes('cell_lon') && fields.includes('p_viirs')) return require('./harmonized-delivery').adaptCells(nativeRows());
+  if (fields.includes('fire_id') && fields.includes('frp_viirs_eq_mw')) return require('./harmonized-delivery').adaptGroups(nativeRows());
   const fieldMap = {};
   for (const [field, aliases] of Object.entries(defaults)) {
     const candidates = columns[field] ? [columns[field]] : aliases;
@@ -85,4 +98,4 @@ async function adaptHarmonized(buffer, { format = 'csv', columns = {}, jsonPath 
   }, features };
 }
 
-module.exports = { adaptHarmonized };
+module.exports = { adaptHarmonized, readTable };

@@ -1,4 +1,5 @@
 import { readSharedExplore, shareExplore } from './explore-share';
+import { HarmonizedNotice } from './HarmonizedNotice';
 import { countryCode, countryName } from './country-filter';
 import { ExploreControls } from './ExploreControls';
 import { MapLoading } from './MapLoading';
@@ -36,7 +37,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
   const [mapReady, setMapReady] = useState(false);
   const [drawMode, setDrawMode] = useState<DrawMode>('static');
   const [drawingError, setDrawingError] = useState('');
-  const [timeScope, setTimeScope] = useState<'day' | 'file'>(archive.active ? 'file' : 'day');
+  const [timeScope, setTimeScope] = useState<'day' | 'file'>(archive.active || dataMeta.delivery_format ? 'file' : 'day');
   const [timeBasis, setTimeBasis] = useState<TimeBasis>('utc');
   const [windowStartOverride, setWindowStartOverride] = useState<number | null>(null);
   const [cursorMinute, setCursorMinute] = useState(1440);
@@ -54,7 +55,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
   const [previousCollection, setPreviousCollection] = useState(datasetKey);
   if (previousCollection !== datasetKey) {
     setPreviousCollection(datasetKey);
-    setTimeBasis('utc'); setTimeScope(archive.active ? 'file' : 'day'); setWindowStartOverride(null);
+    setTimeBasis('utc'); setTimeScope(archive.active || dataMeta.delivery_format ? 'file' : 'day'); setWindowStartOverride(null);
     setCursorMinute(1440); setIsPlaying(false); setAllHoursMode(true); setSelectedFire(null);
   }
   const [previousDay, setPreviousDay] = useState(state.filters.selectedDay);
@@ -233,14 +234,15 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
             <p>Find satellite detections, choose a period, and inspect what was observed.</p>
             <div className={`data-status ${backendStatus}`} role="status">
               <span className="status-dot" />
-              {backendStatus === 'online' ? dataMeta.source === 'csv' ? 'Imported observations' : dataMeta.source === 'simulated' ? 'Simulated history' : 'Demo API connected' : backendStatus === 'checking' ? 'Connecting to data source' : dataMeta.source === 'csv' ? 'API unavailable · loaded snapshot kept' : 'API unavailable · illustrative demo shown'}
-              <span className="status-label">{backendStatus === 'online' ? dataMeta.source === 'csv' ? 'CSV' : 'DEMO' : backendStatus === 'checking' ? 'WAIT' : 'SAMPLE'}</span>
+              {backendStatus === 'online' ? dataMeta.source === 'harmonized' ? dataMeta.preview ? 'Historical model preview' : dataMeta.feed_status === 'stale' ? 'Last valid harmonized publication' : 'Harmonized feed connected' : dataMeta.source === 'csv' ? 'Imported observations' : dataMeta.source === 'simulated' ? 'Simulated history' : 'Demo API connected' : backendStatus === 'checking' ? 'Connecting to data source' : ['csv','harmonized'].includes(dataMeta.source) ? 'API unavailable · loaded snapshot kept' : 'API unavailable · illustrative demo shown'}
+              <span className="status-label">{backendStatus === 'online' ? dataMeta.source === 'harmonized' ? 'MODEL' : dataMeta.source === 'csv' ? 'CSV' : 'DEMO' : backendStatus === 'checking' ? 'WAIT' : 'SAMPLE'}</span>
             </div>
             {backendStatus === 'fallback' && <button className="retry-data" onClick={() => void retry()}>Retry real data</button>}
           </div>
 
           <section className="panel-section explore-share"><button className="fit-hotspots" onClick={() => void copyView()}>Share this view</button>{shareStatus && <p role="status">{shareStatus}</p>}{shareLink && <input aria-label="Shareable Explore link" readOnly value={shareLink} onFocus={e=>e.currentTarget.select()} />}{shareNotice && <p role="status">{shareNotice}</p>}</section>
           <ExploreControls onPeriodChange={() => { setTimeScope('file'); setAllHoursMode(true); setIsPlaying(false); setWindowStartOverride(null); }} />
+          <HarmonizedNotice />
           <details className="explore-advanced"><summary>Region and research controls</summary>
 
           <section className="panel-section shared-controls"><AreaControls mapRef={mapRef} mode={drawMode} onModeChange={changeDrawMode} error={drawingError} onError={setDrawingError} /></section>
@@ -264,7 +266,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
           </details>
           <section className="panel-section" aria-labelledby="summary-title">
             <div className="section-heading"><h3 id="summary-title">Observation summary</h3><span>Current selection</span></div>
-            <div className="primary-stat"><strong>{stats.count.toLocaleString()}</strong><span>detections on this map</span></div>
+            <div className="primary-stat"><strong>{stats.count.toLocaleString()}</strong><span>{dataMeta.record_unit === 'predicted_cell' ? 'predicted cells' : dataMeta.record_unit === 'fire_group' ? 'fire groups' : 'detections'} on this map</span></div>
             <div className="stat-grid">
               <div><span>Peak FRP</span><strong>{stats.peakFrp}<small> MW</small></strong></div>
               <div><span>Mean FRP</span><strong>{stats.avgNormalizedFrp}<small> MW</small></strong></div>
@@ -319,14 +321,16 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
             <p>{activeFire.geometry.coordinates[1].toFixed(3)}°, {activeFire.geometry.coordinates[0].toFixed(3)}°</p>
             <dl><div><dt>{activeFire.properties.satellite.toLowerCase().includes('harmonized') ? 'Estimated FRP' : 'Measured FRP'}</dt><dd>{observationFrp(activeFire)?.toFixed(1) ?? 'Unavailable'} MW</dd></div>
             <div><dt>Acquired UTC</dt><dd>{activeFire.properties.observed_at_utc ? activeFire.properties.observed_at_utc.replace('T', ' ').slice(0, 16) : `${activeFire.properties.acq_time_utc} · Undated demo`}</dd></div></dl>
-            <p><strong>What this means</strong><br />A satellite detected heat at this location. Nearby points may belong to the same fire.</p>
+            <p><strong>What this means</strong><br />{activeFire.properties.record_unit === 'predicted_cell' ? 'The model selected this 500 m cell as a predicted detection. Its centre is shown; this is not a measured fire perimeter.' : activeFire.properties.record_unit === 'fire_group' ? 'A group of connected MODIS pixels from one pass, harmonized to VIIRS-equivalent FRP.' : 'A satellite detected heat at this location. Nearby points may belong to the same fire.'}</p>
+            {activeFire.properties.p_viirs !== undefined && <p>VIIRS detection probability: {(activeFire.properties.p_viirs * 100).toFixed(1)}%. Model uncertainty: {activeFire.properties.p_uncertainty?.toFixed(3) ?? 'Not supplied'}.</p>}
+            {activeFire.properties.fire_id && <p>Group: {activeFire.properties.fire_id}{activeFire.properties.frp_group_viirs_eq_mw !== undefined && <> · Group FRP: {activeFire.properties.frp_group_viirs_eq_mw.toFixed(1)} MW (shared across cells; do not sum per row)</>}</p>}
             <p>FRP is the rate of energy released, measured in megawatts. It does not measure the burned area.</p>
-            <p>Confidence: {activeFire.properties.confidence || 'Not supplied'}{activeFire.properties.confidence_percent !== undefined ? ` (${activeFire.properties.confidence_percent}%)` : ''}. This is a detection-quality field, not a forecast.</p>
+            <p>Confidence: {activeFire.properties.confidence || 'Not supplied'}{activeFire.properties.confidence_percent !== undefined ? ` (${activeFire.properties.confidence_percent}%)` : ''}. {activeFire.properties.record_unit ? 'Producer model-confidence label.' : 'This is a detection-quality field, not a forecast.'}</p>
             <p>Product: {activeFire.properties.product_version || 'Not supplied'} · {dataMeta.source_name || dataMeta.source}</p>
             <p>Observation point, not a fire perimeter. Acquisition time above is UTC.</p>
           </section>}
           <div className="thermal-legend" hidden={!!activeFire} aria-label="Fire radiative power color scale">
-            <p className="marker-key"><span className="fire-dot" aria-hidden="true" /> {dataMeta.source === 'csv' ? `${selectedSatellite === 'ALL' ? 'Satellite' : selectedSatellite} detection` : dataMeta.source === 'simulated' ? 'SIMULATED observation' : 'Sample fire observation'}</p><div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Points are not fire size.</p>
+            <p className="marker-key"><span className="fire-dot" aria-hidden="true" /> {dataMeta.source === 'csv' ? `${selectedSatellite === 'ALL' ? 'Satellite' : selectedSatellite} detection` : dataMeta.source === 'simulated' ? 'SIMULATED observation' : dataMeta.record_unit === 'predicted_cell' ? 'Predicted cell centre' : dataMeta.source === 'harmonized' ? 'Harmonized record' : 'Sample fire observation'}</p><div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Points are not fire size.</p>
           </div>
 
           <div className="map-bottom-controls">

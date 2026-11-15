@@ -16,3 +16,10 @@ test('snapshot CSV includes every supplied search row, provenance and zero value
  const csv=snapshotCsv(features,'Test,"archive"','v1');assert.equal(csv.trim().split('\r\n').length,10004);assert.match(csv,/10002,/);assert.match(csv,/-5.8/);assert.match(csv,/v1/);assert.match(csv,/"Test,""archive"""/);
  assert.equal(csvCell(-5.8),'-5.8');assert.equal(csvCell('@formula'),"'@formula");
 });
+
+test('harmonized CSV retains cell probability, group ID and geometry without inventing raw FRP', () => {
+ const cell=feature('2014-03-16',3,'Harmonized',[-5,34]);
+ Object.assign(cell.properties,{raw_frp:null,record_unit:'predicted_cell',fire_id:'pass-g1',p_viirs:0.25,p_uncertainty:0.1,detect_f1:true,cell_wkt:'POLYGON((-5 34, -4 34, -5 34))',frp_group_viirs_eq_mw:12});
+ const csv=snapshotCsv([cell],'Team results','v1');
+ assert.match(csv,/record_unit,fire_id/);assert.match(csv,/predicted_cell,pass-g1/);assert.match(csv,/,0.25,0.1,true,/);assert.match(csv,/"POLYGON/);
+});

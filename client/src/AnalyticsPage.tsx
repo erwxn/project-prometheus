@@ -1,4 +1,5 @@
 import { SearchExport } from './SearchExport';
+import { HarmonizedNotice } from './HarmonizedNotice';
 import { SeasonalHeatmap } from './SeasonalHeatmap';
 import { DatasetStatus } from './DatasetStatus';
 import { MapLoading } from './MapLoading';
@@ -165,12 +166,13 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
         </div>
       </section>
       <dl className="analytics-metrics" aria-label="Fire statistics" aria-busy={loading}>
-        <div><dt>Total hotspot detections</dt><dd>{loading ? '—' : whole.format(summary.count)}<small>Satellite records matching the filters</small></dd></div>
+        <div><dt>{state.collection.metadata.record_unit === 'predicted_cell' && !archive.active ? 'Predicted cells' : state.collection.metadata.record_unit === 'fire_group' && !archive.active ? 'Fire groups' : 'Total hotspot detections'}</dt><dd>{loading ? '—' : whole.format(summary.count)}<small>Records matching the filters</small></dd></div>
         <div><dt>Active observation days</dt><dd>{loading || summary.activeDays === null ? '—' : whole.format(summary.activeDays)}<small>{summary.activeDays === null ? 'Acquisition dates unavailable' : 'UTC days with at least one detection'}</small></dd></div>
         <div><dt>Average FRP</dt><dd>{loading ? '—' : formatPower(summary.meanFrp)}<small>{whole.format(summary.frpCount)} valid readings{state.filters.sensor === 'Harmonized' ? ' · stored estimates' : ' · measured FRP'}</small></dd></div>
-        <div><dt>Peak activity day</dt><dd className="peak-day" title={summary.peakDays.join(', ')}>{loading ? '—' : summary.peakDays[0] || '—'}<small>{summary.peak === null ? 'No dated activity value available' : `${decimal.format(summary.peak)} ${metricUnit(state.filters.metric)}${summary.peakDays.length > 1 ? ` · ${summary.peakDays.length} days tied` : ''}`}</small></dd></div>
+        <div><dt>Peak activity day</dt><dd className="peak-day" title={summary.peakDays.join(', ')}>{loading ? '—' : summary.peakDays[0] || '—'}<small>{summary.peak === null ? 'No dated activity value available' : `${decimal.format(summary.peak)} ${metricUnit(state.filters.metric, state.collection.metadata.record_unit)}${summary.peakDays.length > 1 ? ` · ${summary.peakDays.length} days tied` : ''}`}</small></dd></div>
       </dl>
       <AnalysisNavigation />
+      <HarmonizedNotice />
       {state.filters.selectedDay && <p className="selected-day-note" role="status">Map and summaries focus on {state.filters.selectedDay} UTC. Calendar and historical charts retain the selected range.</p>}
       <section className="analytics-query" aria-labelledby="analysis-filters">
         <h2 id="analysis-filters">Region and filters</h2>
@@ -185,7 +187,7 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
           {mapState === 'loading' && <MapLoading />}
           {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry archive in the filters to try again.</p>}
           {mapState === 'empty' && mode === 'static' && <p className="analytics-map-empty" role="status">No matching detections in the loaded snapshot. This does not establish an absence of fires.</p>}
-          <div className="map-activity-caption">{state.collection.metadata.source === 'simulated' ? 'SIMULATED' : state.collection.metadata.source === 'csv' ? 'IMPORTED SNAPSHOT' : 'ILLUSTRATIVE DEMO'} · {state.filters.sensor} · Points show detections, not fire perimeters</div>
+          <div className="map-activity-caption">{archive.active ? 'RAW TEST ARCHIVE' : state.collection.metadata.source === 'harmonized' ? 'HARMONIZED RESULTS' : state.collection.metadata.source === 'simulated' ? 'SIMULATED' : state.collection.metadata.source === 'csv' ? 'IMPORTED SNAPSHOT' : 'ILLUSTRATIVE DEMO'} · {state.filters.sensor} · Points show records, not fire perimeters</div>
         </section>
         <aside className="analytics-area-panel" aria-label="Geographic area selection"><AreaControls mapRef={mapRef} mode={mode} onModeChange={changeMode} error={drawingError} onError={setDrawingError} /></aside>
         </div>

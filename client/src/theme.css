@@ -116,3 +116,9 @@
   font: inherit;
 }
 @media (pointer: coarse) { .basemap-appearance select { min-height: 44px; } }
+
+.harmonized-notice { padding: 20px; border-block: 1px solid var(--border-color, #a9bac5); }
+.harmonized-notice h3 { margin: 0 0 8px; font-size: 16px; }
+.harmonized-notice p, .harmonized-notice li { max-width: 72ch; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.harmonized-notice summary { cursor: pointer; padding-block: 10px; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.harmonized-notice pre { max-width: 100%; overflow: auto; max-height: 280px; font-size: 12px; }

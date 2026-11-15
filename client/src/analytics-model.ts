@@ -19,6 +19,16 @@ export interface CoverageInterval {
 }
 
 export interface FireMetadata {
+  delivery_format?: string;
+  record_unit?: 'predicted_cell' | 'fire_group';
+  preview?: boolean;
+  candidate_cells?: number;
+  predicted_cells?: number;
+  fire_groups?: number;
+  group_frp_total_mw?: number;
+  selection_rule?: string;
+  limitations?: string[];
+  validation?: Record<string, unknown>;
   source: string;
   live?: boolean;
   version?: string;
@@ -107,9 +117,10 @@ export function observationFrp(feature: FireFeature): number | null {
 
 export function availableSensors(collection: FireCollection): Sensor[] {
   const available = new Set(collection.features.map(sensorOf));
+  if (collection.metadata.has_harmonized) available.add('Harmonized');
   if (collection.metadata.coverage_scope === 'global') for (const interval of collection.metadata.coverage ?? []) available.add(interval.sensor);
   return SENSOR_IDS.filter(sensor => available.has(sensor));
 }
 
-export const metricLabel = (metric: ActivityMetric) => metric === 'detections' ? 'Hotspot detections' : 'Mean FRP';
-export const metricUnit = (metric: ActivityMetric) => metric === 'detections' ? 'detections' : 'MW';
+export const metricLabel = (metric: ActivityMetric, unit?: FireMetadata['record_unit']) => metric === 'detections' ? unit === 'predicted_cell' ? 'Predicted cells' : unit === 'fire_group' ? 'Fire groups' : 'Hotspot detections' : 'Mean FRP';
+export const metricUnit = (metric: ActivityMetric, unit?: FireMetadata['record_unit']) => metric === 'detections' ? unit === 'predicted_cell' ? 'predicted cells' : unit === 'fire_group' ? 'fire groups' : 'detections' : 'MW';

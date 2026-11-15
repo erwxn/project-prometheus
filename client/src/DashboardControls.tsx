@@ -12,11 +12,12 @@ export function DatasetControls() {
   const input = useRef<HTMLInputElement>(null);
   const id = useId();
   const simulated = state.collection.metadata.source === 'simulated';
+  const harmonized = state.collection.metadata.source === 'harmonized';
   return <div className="dataset-controls">
-    <TemporaryDataPicker />
+    {harmonized ? <details><summary>Optional raw satellite test archive</summary><TemporaryDataPicker /></details> : <TemporaryDataPicker />}
     <div className={`dataset-notice${simulated ? ' simulated' : ''}`} role="status">
-      <strong>{state.status === 'loading' ? 'Loading observations…' : simulated ? 'SIMULATED HISTORY · 2021–2025' : state.collection.metadata.source === 'csv' ? state.collection.metadata.source_name || 'Imported MODIS snapshot' : state.collection.metadata.source === 'demo' ? 'Illustrative demo · no acquisition dates' : 'Loaded observation snapshot'}</strong>
-      <span>{simulated ? 'Synthetic examples for exploring the tools. These are not NASA satellite observations.' : state.collection.metadata.source === 'csv' ? 'Recorded detections only. This file does not establish complete satellite coverage.' : state.collection.metadata.source === 'demo' ? 'The current dataset has no dated history. Select simulated history to try the calendar and comparisons.' : 'Source provenance and complete satellite coverage are not established by this API response.'}</span>
+      <strong>{state.status === 'loading' ? 'Loading observations…' : harmonized ? state.collection.metadata.source_name || 'Team harmonized results' : simulated ? 'SIMULATED HISTORY · 2021–2025' : state.collection.metadata.source === 'csv' ? state.collection.metadata.source_name || 'Imported MODIS snapshot' : state.collection.metadata.source === 'demo' ? 'Illustrative demo · no acquisition dates' : 'Loaded observation snapshot'}</strong>
+      <span>{harmonized ? state.collection.metadata.feed_status === 'stale' ? 'Update failed; the last valid publication remains visible. Coverage is unknown.' : 'Harmonized model output. Counts use the record unit described above; coverage is unknown.' : simulated ? 'Synthetic examples for exploring the tools. These are not NASA satellite observations.' : state.collection.metadata.source === 'csv' ? 'Recorded detections only. This file does not establish complete satellite coverage.' : state.collection.metadata.source === 'demo' ? 'The current dataset has no dated history. Select simulated history to try the calendar and comparisons.' : 'Source provenance and complete satellite coverage are not established by this API response.'}</span>
     </div>
     {state.error && <p role="alert" className="dashboard-error">{state.error} Current examples/data remain visible. <button onClick={() => void retry()}>Retry server</button></p>}
     <div className="control-actions">
@@ -50,7 +51,7 @@ export function GlobalFilters({ compact = false }: { compact?: boolean }) {
     {!archive.active && <label htmlFor={`${id}-sensor`}>Sensor<select id={`${id}-sensor`} value={filters.sensor} onChange={event => dispatch({ type: 'filters', patch: { sensor: event.target.value as SensorFilter } })}>
       <option value="ALL">All sources · overview</option>{SENSOR_IDS.map(sensor => <option key={sensor} value={sensor}>{sensor}{available.includes(sensor) ? '' : ' · no loaded data'}</option>)}
     </select></label>}
-    <label htmlFor={`${id}-metric`}>Activity metric<select id={`${id}-metric`} value={filters.metric} onChange={event => dispatch({ type: 'filters', patch: { metric: event.target.value as ActivityMetric } })}>{(['detections', 'mean-frp'] as const).map(metric => <option key={metric} value={metric}>{metricLabel(metric)}</option>)}</select></label>
+    <label htmlFor={`${id}-metric`}>Activity metric<select id={`${id}-metric`} value={filters.metric} onChange={event => dispatch({ type: 'filters', patch: { metric: event.target.value as ActivityMetric } })}>{(['detections', 'mean-frp'] as const).map(metric => <option key={metric} value={metric}>{metricLabel(metric, state.collection.metadata.record_unit)}</option>)}</select></label>
     {filters.selectedDay && <button className="day-filter" onClick={() => dispatch({ type: 'filters', patch: { selectedDay: null } })}>Clear selected day · {filters.selectedDay} ×</button>}
     {!filters.startDate && <p className="filter-help">Date filters require dated observations. The current illustrative data is undated.</p>}
     {filters.sensor === 'ALL' && <p className="filter-help">Mixed sensor counts describe records, not equivalent fire activity. Select one sensor for historical comparisons.</p>}

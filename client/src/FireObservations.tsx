@@ -30,7 +30,7 @@ export function FireObservations({ fires, timeBasis, selected, onSelect, onFit }
 
   return <section className="panel-section hotspot-section" aria-labelledby="hotspots-title">
     <div className="section-heading"><h3 id="hotspots-title">Observations</h3><span>{fires.length.toLocaleString()} records</span></div>
-    <p className="hotspot-hint">Select a record to inspect its location and FRP. Each record is a detection, not a separate fire.</p>
+    <p className="hotspot-hint">Select a record to inspect its location and FRP. {fires.some(f => f.properties.record_unit === 'predicted_cell') ? 'Each record is a model-selected cell, not a confirmed satellite detection.' : 'Each record is an observation or model group, not a separate fire.'}</p>
     <div className="observation-tools">
       <label>Sort by<select value={sort} onChange={event => { setSort(event.target.value); setPage(0); }}>
         <option value="frp">Highest FRP</option><option value="time">Latest in selected clock</option>

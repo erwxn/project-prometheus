@@ -39,24 +39,31 @@ function useDashboardValue() {
     window.history.pushState({}, '', '/analytics/');
     window.dispatchEvent(new PopStateEvent('popstate'));
   }, [applyArchive, requests]);
-  const retry = useCallback(async () => {
+  const retry = useCallback(async (quiet = false) => {
     if (Date.now() < observationRetryAt.current) return;
     const request = requests.begin();
-    dispatch({ type: 'upload', status: 'idle', message: '' });
-    dispatch({ type: 'status', status: 'loading' });
+    if (!quiet) {
+      dispatch({ type: 'upload', status: 'idle', message: '' });
+      dispatch({ type: 'status', status: 'loading' });
+    }
     const timeout = window.setTimeout(() => request.controller.abort(), 12000);
     try {
       const collection = await loadObservations(API_BASE, request.controller.signal);
-      if (requests.current(request.revision)) dispatch({ type: 'loaded', collection, remember: true });
+      if (requests.current(request.revision)) dispatch(quiet ? { type: 'refreshed', collection } : { type: 'loaded', collection, remember: true });
     } catch (error) {
       if (requests.current(request.revision)) {
         if (error instanceof ObservationRateLimitError) observationRetryAt.current = error.retryAt;
-        dispatch({ type: 'status', status: 'error', error: error instanceof Error ? error.message : 'The observation API is unavailable.' });
+        if (!quiet) dispatch({ type: 'status', status: 'error', error: error instanceof Error ? error.message : 'The observation API is unavailable.' });
       }
     } finally { window.clearTimeout(timeout); }
   }, [requests]);
 
   useEffect(() => { void retry(); const gate = requests; return () => gate.cancel(); }, [retry, requests]);
+  useEffect(() => {
+    if (state.status !== 'ready' || state.collection.metadata.source !== 'harmonized' || state.collection.metadata.archive || state.uploadStatus === 'uploading') return;
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void retry(true); }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [retry, state.status, state.collection.metadata.source, state.collection.metadata.archive, state.uploadStatus]);
   useEffect(() => {
     if (state.status !== 'error' || state.collection.metadata.uploaded || state.collection.metadata.source === 'simulated' || state.uploadStatus === 'uploading') return;
     const timer = window.setTimeout(() => void retry(), Math.max(30_000, observationRetryAt.current - Date.now()));

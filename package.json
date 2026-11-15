@@ -8,6 +8,8 @@
     "server"
   ],
   "scripts": {
+    "harmonized:preview": "node server/preview-harmonized.js",
+    "harmonized:check": "node server/check-harmonized.js",
     "archive:prepare": "node server/archive-cache.js",
     "archive:clear-cache": "node server/archive-cache.js --clear",
     "test-data:ingest": "python server/import-test-data.py",

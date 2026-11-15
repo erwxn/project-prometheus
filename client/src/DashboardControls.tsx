@@ -37,7 +37,7 @@ export function DatasetControls() {
   </div>;
 }
 
-export function GlobalFilters({ compact = false }: { compact?: boolean }) {
+export function GlobalFilters({ compact = false, showSensor = true }: { compact?: boolean; showSensor?: boolean }) {
   const { state, dispatch, archive } = useDashboard();
   const filters = state.filters;
   const id = useId();
@@ -54,7 +54,7 @@ export function GlobalFilters({ compact = false }: { compact?: boolean }) {
       <label htmlFor={`${id}-end`}>End date (UTC)<input key={`${rangeKey}-end`} id={`${id}-end`} name="endDate" type="date" defaultValue={filters.endDate} disabled={!filters.endDate} required /></label>
       <button disabled={!filters.startDate}>Apply dates</button>
     </form>}
-    {!archive.active && <label htmlFor={`${id}-sensor`}>Sensor<select id={`${id}-sensor`} value={filters.sensor} onChange={event => dispatch({ type: 'filters', patch: { sensor: event.target.value as SensorFilter } })}>
+    {showSensor && !archive.active && <label htmlFor={`${id}-sensor`}>Sensor<select id={`${id}-sensor`} value={filters.sensor} onChange={event => dispatch({ type: 'filters', patch: { sensor: event.target.value as SensorFilter } })}>
       {!state.collection.metadata.gold && <option value="ALL">All sources · overview</option>}{SENSOR_IDS.map(sensor => <option key={sensor} value={sensor} disabled={state.collection.metadata.gold && filters.country === 'DZA' && sensor !== 'Harmonized'}>{sensor}{available.includes(sensor) ? '' : state.collection.metadata.gold ? ' · load from Gold' : ' · no loaded data'}</option>)}
     </select></label>}
     {state.collection.metadata.source === 'simulated' && simulatedPlatforms.length > 0 && <label htmlFor={`${id}-platform`}>Simulated satellite<select id={`${id}-platform`} value={filters.simulatedPlatform ?? ''} onChange={event => dispatch({ type: 'filters', patch: { simulatedPlatform: (event.target.value || null) as SimulatedPlatform | null } })}>
@@ -63,7 +63,7 @@ export function GlobalFilters({ compact = false }: { compact?: boolean }) {
     <label htmlFor={`${id}-metric`}>Activity metric<select id={`${id}-metric`} value={filters.metric} onChange={event => dispatch({ type: 'filters', patch: { metric: event.target.value as ActivityMetric } })}>{(['detections', 'mean-frp'] as const).map(metric => <option key={metric} value={metric}>{metricLabel(metric, state.collection.metadata.record_unit)}</option>)}</select></label>
     {filters.selectedDay && <button className="day-filter" onClick={() => dispatch({ type: 'filters', patch: { selectedDay: null } })}>Clear selected day · {filters.selectedDay} ×</button>}
     {!filters.startDate && <p className="filter-help">{state.collection.metadata.gold ? 'Dates become available when Gold data loads.' : 'Date filters require dated observations. The current illustrative data is undated.'}</p>}
-    {filters.sensor === 'ALL' && <p className="filter-help">Mixed sensor counts describe records, not equivalent fire activity. Select one sensor for historical comparisons.</p>}
+    {filters.sensor === 'ALL' && <p className="filter-help">Mixed sensor counts describe records, not equivalent fire activity. Use a single source for historical comparisons.</p>}
     {error && <p role="alert" className="dashboard-error">{error}</p>}
   </div>;
 }

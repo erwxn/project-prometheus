@@ -27,6 +27,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
   const [sharedTimeline] = useState(() => readSharedExplore(window.location.search));
   const [restoredTimeline,setRestoredTimeline] = useState(false);
   const allFires = state.collection.features;
+  const predictionDataset = allFires.some(f => typeof f.properties.harmonization_score === "number");
   const dataMeta = state.collection.metadata;
   const backendStatus = state.status === 'loading' ? 'checking' : state.status === 'error' ? 'fallback' : 'online';
   const selectedSatellite = state.filters.sensor;
@@ -190,7 +191,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
         scope: dataMeta.source === 'simulated' || dataMeta.source === 'demo' ? 'Illustrative / simulated observations' : 'Loaded map observations',
         period: hasDates ? `${new Date(rangeStart).toISOString()} to ${new Date(rangeEnd).toISOString()} (end exclusive; ${timeBasis} clock)` : `Undated observations; ${timeBasis} clock`,
         sensor: selectedSatellite,
-        region: [state.filters.country ? countryName(state.filters.country) : '', state.filters.area ? JSON.stringify(state.filters.area.geometry) : ''].filter(Boolean).join(' / ') || 'All locations',
+        region: [state.filters.country ? countryName(state.filters.country) : '', state.filters.area ? JSON.stringify(state.filters.area.geometry) : ''].filter(Boolean).join(' / ') || 'Morocco',
       });
       const blob = pdf.output('blob');
       const url = URL.createObjectURL(blob);
@@ -249,8 +250,8 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
             <h3>{dataMeta.uploaded ? 'Uploaded observation snapshot' : 'Imported observation snapshot'}</h3>
             <p className="dataset-filename">{dataMeta.source_name}</p>
             <p>{dataMeta.observed_from?.slice(0, 10)} to {dataMeta.observed_to?.slice(0, 10)} (UTC)</p>
-            <p>{allFires.length.toLocaleString()} detections · Measured FRP only</p>
-            <p>{timeBasis === 'utc' ? 'UTC uses original acquisition timestamps to show simultaneous observations worldwide.' : 'Solar clocks align local times across locations, not simultaneous observations (UTC + longitude ÷ 15).' } This is an imported snapshot, not a live feed.</p>
+            <p>{allFires.length.toLocaleString()} {predictionDataset ? "candidate cells · frozen model probabilities" : "detections · measured FRP only"}</p>
+            <p>{timeBasis === 'utc' ? 'UTC uses original acquisition timestamps to show simultaneous observations across Morocco.' : 'Solar clocks align local times across locations, not simultaneous observations (UTC + longitude ÷ 15).' } This is an imported snapshot, not a live feed.</p>
             {timeScope === 'day' && <><label htmlFor="window-start">24-hour window starts ({timeBasis === 'utc' ? 'UTC' : 'local solar clock'})</label>
             <input id="window-start" type="datetime-local" step="60" required value={new Date(windowStart).toISOString().slice(0, 16)} onChange={e => {
               const start = Date.parse(`${e.target.value}:00Z`);
@@ -264,7 +265,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
           </details>
           <section className="panel-section" aria-labelledby="summary-title">
             <div className="section-heading"><h3 id="summary-title">Observation summary</h3><span>Current selection</span></div>
-            <div className="primary-stat"><strong>{stats.count.toLocaleString()}</strong><span>detections on this map</span></div>
+            <div className="primary-stat"><strong>{stats.count.toLocaleString()}</strong><span>{predictionDataset ? "candidate model cells" : "detections on this map"}</span></div>
             <div className="stat-grid">
               <div><span>Peak FRP</span><strong>{stats.peakFrp}<small> MW</small></strong></div>
               <div><span>Mean FRP</span><strong>{stats.avgNormalizedFrp}<small> MW</small></strong></div>
@@ -299,7 +300,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
           {mapState === 'empty' && drawMode === 'static' && <div className="map-empty" role="status"><strong>{!archive.mapBusy && selectedSatellite !== 'ALL' && !availableSensors(state.collection).includes(selectedSatellite) ? 'Selected sensor is unavailable in this slice' : 'No matching detections in this dataset'}</strong><span>This does not mean there were no fires. Try another dataset, time window, or Next detection.</span><button onClick={() => { showWholeWindow(); }}>{timeScope === 'file' ? 'View entire file' : 'View all selected 24 hours'}</button></div>}
           <FireMap mapRef={mapRef} features={filteredFires} selectedFeature={activeFire} onSelectFeature={feature => { setSelectedFire(feature); setIsPlaying(false); }} theme={mapTheme} projection={mapProjection} mode={drawMode} onModeChange={changeDrawMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
           <div className="map-top-controls">
-            <div className="map-heading"><h2>{state.filters.country ? countryName(state.filters.country) : state.filters.area ? 'Selected area' : activeRegion === 'Global' ? 'Global fire activity' : activeRegion} <span>/ {mapProjection === 'globe' ? 'Globe' : 'Flat map'}</span></h2><span className="mobile-data-status">{dataMeta.source === 'simulated' ? 'SIMULATED HISTORY' : backendStatus === 'online' ? 'BACKEND CONNECTED' : backendStatus === 'checking' ? 'CONNECTING' : 'DEMO DATASET'}</span></div>
+            <div className="map-heading"><h2>{state.filters.country ? countryName(state.filters.country) : state.filters.area ? 'Selected area' : activeRegion === 'Global' ? 'Morocco fire activity' : activeRegion} <span>/ {mapProjection === 'globe' ? 'Globe' : 'Flat map'}</span></h2><span className="mobile-data-status">{dataMeta.source === 'simulated' ? 'SIMULATED HISTORY' : backendStatus === 'online' ? 'BACKEND CONNECTED' : backendStatus === 'checking' ? 'CONNECTING' : 'DEMO DATASET'}</span></div>
             <CountrySearch onSelect={locateCountry} selectionDescription="Country boundary filter applied" />{countryError && <p className="country-search-feedback" role="alert">{countryError}</p>}
             <div className="projection-switch" role="group" aria-label="Map view">
               <button type="button" aria-pressed={mapProjection === 'mercator'} onClick={() => switchProjection('mercator')}>
@@ -318,15 +319,16 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
             <div className="observation-detail-heading"><strong>{activeFire.properties.platform || activeFire.properties.satellite}</strong><button type="button" aria-label="Close observation details" onClick={() => setSelectedFire(null)}>Close</button></div>
             <p>{activeFire.geometry.coordinates[1].toFixed(3)}°, {activeFire.geometry.coordinates[0].toFixed(3)}°</p>
             <dl><div><dt>{activeFire.properties.satellite.toLowerCase().includes('harmonized') ? 'Estimated FRP' : 'Measured FRP'}</dt><dd>{observationFrp(activeFire)?.toFixed(1) ?? 'Unavailable'} MW</dd></div>
+            {typeof activeFire.properties.harmonization_score === 'number' && <div><dt>Model probability</dt><dd>{(100 * activeFire.properties.harmonization_score).toFixed(1)}% · historical estimate</dd></div>}
             <div><dt>Acquired UTC</dt><dd>{activeFire.properties.observed_at_utc ? activeFire.properties.observed_at_utc.replace('T', ' ').slice(0, 16) : `${activeFire.properties.acq_time_utc} · Undated demo`}</dd></div></dl>
-            <p><strong>What this means</strong><br />A satellite detected heat at this location. Nearby points may belong to the same fire.</p>
+            <p><strong>What this means</strong><br />{predictionDataset ? "This candidate cell was scored by the frozen model. It is not a measured VIIRS detection." : "A satellite detected heat at this location. Nearby points may belong to the same fire."}</p>
             <p>FRP is the rate of energy released, measured in megawatts. It does not measure the burned area.</p>
             <p>Confidence: {activeFire.properties.confidence || 'Not supplied'}{activeFire.properties.confidence_percent !== undefined ? ` (${activeFire.properties.confidence_percent}%)` : ''}. This is a detection-quality field, not a forecast.</p>
             <p>Product: {activeFire.properties.product_version || 'Not supplied'} · {dataMeta.source_name || dataMeta.source}</p>
             <p>Observation point, not a fire perimeter. Acquisition time above is UTC.</p>
           </section>}
           <div className="thermal-legend" hidden={!!activeFire} aria-label="Fire radiative power color scale">
-            <p className="marker-key"><span className="fire-dot" aria-hidden="true" /> {dataMeta.source === 'csv' ? `${selectedSatellite === 'ALL' ? 'Satellite' : selectedSatellite} detection` : dataMeta.source === 'simulated' ? 'SIMULATED observation' : 'Sample fire observation'}</p><div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Points are not fire size.</p>
+            <p className="marker-key"><span className="fire-dot" aria-hidden="true" /> {predictionDataset ? 'Model candidate cell' : dataMeta.source === 'csv' ? `${selectedSatellite === 'ALL' ? 'Satellite' : selectedSatellite} detection` : dataMeta.source === 'simulated' ? 'SIMULATED observation' : 'Sample fire observation'}</p><div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Points are not fire size.</p>
           </div>
 
           <div className="map-bottom-controls">
@@ -375,7 +377,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
                   </div>
                   <div className="timeline-readout">
                     <p className="window-readout">{formatInstant(rangeStart)} – {formatInstant(rangeEnd)} {timeBasis === 'utc' ? 'UTC' : '(local solar clock)'}</p>
-                    <span className="hotspot-count" role="status" aria-live={isPlaying ? 'off' : 'polite'}>Matching detections: <strong>{stats.count.toLocaleString()}</strong></span>
+                    <span className="hotspot-count" role="status" aria-live={isPlaying ? 'off' : 'polite'}>{predictionDataset ? "Candidate cells" : "Matching detections"}: <strong>{stats.count.toLocaleString()}</strong></span>
                     {compactTimeline && <select disabled={archive.active} aria-label="Satellite dataset layers" value={selectedSatellite} onChange={e => {
                         const source = timelineSources.find(source => source.id === e.target.value);
                         if (source) setSelectedSatellite(source.id);

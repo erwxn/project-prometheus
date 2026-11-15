@@ -70,7 +70,6 @@ export default function MonitorPage({ theme, setTheme, mapTheme, mapPreference, 
   useEffect(() => {
     if (!showForecast || forecastData) return;
     const controller = new AbortController();
-    setForecastError('');
     async function load() {
       try {
         const response = await fetch(`${import.meta.env.BASE_URL}data/morocco-predictions.json`, { signal: controller.signal });
@@ -126,6 +125,7 @@ export default function MonitorPage({ theme, setTheme, mapTheme, mapPreference, 
       setMode('static');
       setPlaying(false);
       setSelectedKey(null);
+      setForecastError('');
       zoomToArchive();
     }
     setSelectedProbability(null);
@@ -139,7 +139,10 @@ export default function MonitorPage({ theme, setTheme, mapTheme, mapPreference, 
         {!showForecast && <p>Follow satellite detections in your area over the last 24 hours.</p>}
         <MoroccoPredictionPanel active={showForecast} data={forecastData}
           error={forecastError} years={years} dates={yearDates} date={date}
-          selected={selectedProbability} onToggle={toggleForecast} onRetry={() => setForecastAttempt(value => value + 1)}
+          selected={selectedProbability} onToggle={toggleForecast} onRetry={() => {
+            setForecastError('');
+            setForecastAttempt(value => value + 1);
+          }}
           onYear={year => {
             const matchingDate = year + date.slice(4);
             setForecastDate(dates.includes(matchingDate) ? matchingDate : dates.find(value => value.startsWith(year)) ?? '');

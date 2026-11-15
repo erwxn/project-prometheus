@@ -27,12 +27,6 @@ jobs:
       - name: Install Monorepo Dependencies
         run: npm ci
 
-      - name: Install Client Dependencies
-        run: npm --prefix client ci
-
-      - name: Install Server Dependencies
-        run: npm --prefix server ci
-
       - name: Run Secretlint (Security Scan)
         run: npm run lint:secrets
 

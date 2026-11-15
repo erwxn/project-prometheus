@@ -5,7 +5,7 @@ function goldExplorerFeature(row, model) {
   const utc = row.observed_at_utc, solar = solarTime(utc, row.longitude);
   return { type: 'Feature', id: row.observation_id || row.record_id, geometry: { type: 'Point', coordinates: [row.longitude, row.latitude] }, properties: {
     satellite: model ? 'Harmonized' : row.sensor, platform: row.satellite || row.sensor,
-    country_iso3: 'MAR',
+    country_iso3: row.country_iso3, gold_verified: true,
     raw_frp: model ? null : row.frp_mw, normalized_frp: model ? row.frp_cell_mw ?? null : null,
     observed_at_utc: utc, acq_time_utc: utc.slice(11, 16), local_solar_date: solar.date, local_solar_time: solar.time,
     confidence: model ? 'Not supplied' : row.confidence || 'Not supplied',

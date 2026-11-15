@@ -7,11 +7,11 @@ export function emptyGoldCollection(): FireCollection {
 }
 
 /** Rejects wrong-source responses before they can replace the Morocco dataset. */
-export function validateGoldPage(collection: FireCollection, sensor: SensorFilter, snapshot?: string) {
+export function validateGoldPage(collection: FireCollection, sensor: SensorFilter, snapshot?: string, country = 'MAR') {
   const meta = collection.metadata;
-  if (!meta.gold || meta.country_iso3 !== 'MAR' || meta.gold_sensor !== sensor || !meta.gold_snapshot || snapshot && snapshot !== meta.gold_snapshot ||
+  if (!meta.gold || meta.country_iso3 !== country || meta.gold_sensor !== sensor || !meta.gold_snapshot || snapshot && snapshot !== meta.gold_snapshot ||
     !Number.isSafeInteger(meta.gold_pages) || !meta.gold_pages || meta.gold_pages > 100 || !Number.isSafeInteger(meta.total_features) || meta.total_features! > 250000 ||
-    collection.features.some(feature => feature.properties.country_iso3 !== 'MAR' || !feature.properties.observed_at_utc || feature.properties.observed_at_utc.startsWith('2026-'))) {
-    throw Error('The API did not return a verified Morocco Gold dataset.');
+    collection.features.some(feature => feature.properties.country_iso3 !== country || !feature.properties.observed_at_utc || feature.properties.observed_at_utc.startsWith('2026-'))) {
+    throw Error('The API did not return a verified country Gold dataset.');
   }
 }

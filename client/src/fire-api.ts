@@ -34,12 +34,13 @@ export class ObservationRateLimitError extends Error {
   }
 }
 
-export async function loadObservations(base: string, signal: AbortSignal, request: typeof fetch = fetch, sensor: SensorFilter = 'Harmonized', previous?: FireCollection): Promise<FireCollection> {
+export async function loadObservations(base: string, signal: AbortSignal, request: typeof fetch = fetch, sensor: SensorFilter = 'Harmonized', previous?: FireCollection, country: 'MAR' | 'DZA' = 'MAR'): Promise<FireCollection> {
   if (import.meta.env?.VITE_OBSERVATION_SOURCE === 'snapshot') {
     const response = await request(`${base}/api/v1/fires`, { signal });
     if (!response.ok) throw Error('Historical preview unavailable.');
     return parseCollection(await response.json());
   }
+  if (country === 'DZA') return loadAlgeriaPredictions(base, signal, request, previous);
   const features: FireFeature[] = [];
   let first: FireCollection | undefined;
   for (let page = 1; ; page++) {
@@ -98,4 +99,45 @@ export class DatasetRequests {
   }
   current(revision: number) { return revision === this.revision; }
   cancel() { this.revision++; this.controller?.abort(); this.controller = null; }
+}
+
+
+/** Loads every Algeria page atomically from the existing predictions API, never a Morocco fallback. */
+async function loadAlgeriaPredictions(base: string, signal: AbortSignal, request: typeof fetch, previous?: FireCollection): Promise<FireCollection> {
+  const features: FireFeature[] = [];
+  let snapshot = '', total = -1, pollEtag: string | undefined;
+  for (let page = 1; ; page++) {
+    const query = new URLSearchParams({ country: 'DZA', year: '2015', page_size: '1000', page: String(page), ...(snapshot ? { snapshot } : {}) });
+    const headers: Record<string,string> = {};
+    if (page === 1 && previous?.metadata.country_iso3 === 'DZA' && previous.metadata.gold_poll_etag) headers['If-None-Match'] = previous.metadata.gold_poll_etag;
+    const response = await request(`${base}/api/model-predictions?${query}`, { signal, cache: 'no-store', headers });
+    if (response.status === 304 && previous?.metadata.country_iso3 === 'DZA') return previous;
+    if (page === 1) pollEtag = response.headers.get('ETag') || undefined;
+    if (response.status === 429) throw new ObservationRateLimitError(response.headers.get('Retry-After'));
+    if (!response.ok) throw Error(`Algeria Gold data could not be loaded (HTTP ${response.status}).`);
+    const body = await response.json();
+    if (body.metadata?.country_iso3 !== 'DZA' || body.metadata.dataset !== 'algeria_harmonized_predictions' || !/^[a-f0-9]{64}$/.test(body.metadata.snapshot) || !Array.isArray(body.data) || body.page !== page || !Number.isSafeInteger(body.filtered_count) || body.filtered_count < 0 || body.filtered_count > 250000 || !Number.isSafeInteger(body.total_pages) || body.total_pages < 0 || body.total_pages > 250) throw Error('Invalid Algeria prediction response.');
+    snapshot ||= body.metadata.snapshot;
+    if (total === -1) total = body.filtered_count;
+    if (snapshot !== body.metadata.snapshot || total !== body.filtered_count) throw Error('Algeria publication changed during download. Retry.');
+    for (const row of body.data) {
+      if (row.country_iso3 !== 'DZA' || typeof row.observed_at_utc !== 'string' || !row.observed_at_utc.startsWith('2015-') || !Number.isFinite(Date.parse(row.observed_at_utc)) || !Number.isFinite(row.latitude) || Math.abs(row.latitude) > 90 || !Number.isFinite(row.longitude) || Math.abs(row.longitude) > 180 || row.harmonization_score !== null && !Number.isFinite(row.harmonization_score)) throw Error('Invalid Algeria candidate row.');
+      const solar = new Date(Date.parse(row.observed_at_utc) + row.longitude * 240000).toISOString();
+      features.push({ type: 'Feature', id: row.record_id, geometry: { type: 'Point', coordinates: [row.longitude, row.latitude] }, properties: {
+        satellite: 'Harmonized', platform: row.satellite || row.sensor, country_iso3: 'DZA', gold_verified: true,
+        observed_at_utc: row.observed_at_utc, acq_time_utc: row.observed_at_utc.slice(11,16), local_solar_date: solar.slice(0,10), local_solar_time: solar.slice(11,16),
+        raw_frp: null, normalized_frp: row.frp_cell_mw ?? null, confidence: 'Not supplied', record_unit: 'model_candidate',
+        harmonization_score: row.harmonization_score, model_version: row.model_version, model_verification_status: row.model_verification_status,
+      } });
+    }
+    if (page >= body.total_pages) break;
+  }
+  if (features.length !== total) throw Error('Algeria download is incomplete. Retry.');
+  const dates = features.map(feature => feature.properties.observed_at_utc!).sort();
+  const collection: FireCollection = { type: 'FeatureCollection', features, metadata: { source: 'harmonized', source_name: 'Azure Gold · Algeria · Model B candidate scores',
+    gold: true, country_iso3: 'DZA', gold_sensor: 'Harmonized', gold_snapshot: snapshot, gold_poll_etag: pollEtag, version: `${snapshot}:Harmonized`, gold_page: 1, gold_pages: 1,
+    total_features: total, candidate_cells: total, record_unit: 'model_candidate', has_harmonized: true, delivery_format: 'azure-gold', feed_status: 'current',
+    observed_from: dates[0], observed_to: dates.at(-1), limitations: ['Uncalibrated Model B candidate scores, not confirmed fires or probabilities.', 'Unknown coverage; no national fire-rate or independent-accuracy inference.'] } };
+  validateGoldPage(collection, 'Harmonized', undefined, 'DZA');
+  return parseCollection(collection);
 }

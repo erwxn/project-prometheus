@@ -13,6 +13,7 @@ import { mapFeedback } from './map-feedback';
 import { BasemapAppearance, MapAppearance } from './MapAppearance';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl/maplibre';
+import { countryCode } from './country-filter';
 import { SiteBrand, SiteNavigation } from './SiteHeader';
 import { summarizeObservations } from './fire-analytics';
 import type { TimeBasis } from './timeline';
@@ -128,7 +129,7 @@ function Breakdown({ rows, total }: { rows: { label: string; count: number }[]; 
 }
 
 export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference, setMapPreference }: ThemeProps) {
-  const { camera, state, prepared, selected, summary, archive } = useDashboard();
+  const { camera, state, prepared, selected, summary, archive, dispatch } = useDashboard();
   const [basis, setBasis] = useState<TimeBasis>('utc');
   const [projection, setProjection] = useState<'mercator' | 'globe'>('mercator');
   const [mode, setMode] = useState<DrawMode>('static');
@@ -150,7 +151,7 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 60000);
     setLayersLoading(true); setLayerError(''); setGoldRows([]);
-    Promise.all(SENSOR_IDS.map(sensor => loadObservations(API_BASE, controller.signal, fetch, sensor)))
+    Promise.all((state.filters.country === 'DZA' ? ['Harmonized'] as const : SENSOR_IDS).map(sensor => loadObservations(API_BASE, controller.signal, fetch, sensor, undefined, state.filters.country === 'DZA' ? 'DZA' : 'MAR')))
       .then(collections => {
         if (controller.signal.aborted) return;
         if (new Set(collections.map(c => c.metadata.gold_snapshot)).size !== 1) throw Error('The publication changed while loading layers. Retry map layers.');
@@ -158,7 +159,7 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
       }).catch(error => { if (active) setLayerError(error instanceof Error ? error.message : 'Map layers could not be loaded.'); })
       .finally(() => { window.clearTimeout(timeout); if (active) setLayersLoading(false); });
     return () => { active = false; controller.abort(); window.clearTimeout(timeout); };
-  }, [isGold, layerRevision]);
+  }, [isGold, layerRevision, state.filters.country]);
   const mapRows = useMemo(() => selectMapLayers(isGold ? goldRows : prepared, state.filters, SENSOR_IDS), [isGold, goldRows, prepared, state.filters]);
   const visibleMapRows = useMemo(() => {
     if (!isCellDelivery || !showStrictCells) return mapRows;
@@ -231,10 +232,10 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
         <section className="map-stage analytics-map" data-map-theme={mapTheme} data-projection={projection} aria-label="Analytics fire observation map">
           {projection === 'globe' && <img className="orbital-stars" src={orbitalStars} alt="" aria-hidden="true" draggable={false} />}
           <FireMap mapRef={mapRef} features={features} simulated={state.collection.metadata.source === 'simulated'} theme={mapTheme} projection={projection} mode={mode} onModeChange={changeMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
-          <div className="map-top-controls"><div className="map-heading"><h2>{state.filters.area ? 'Selected area' : 'All locations'} <span>/ {whole.format(features.length)} map records</span></h2></div><CountrySearch onSelect={([, , bounds]) => { if (!mapRef.current) return false; mapRef.current.fitBounds(bounds, { padding: 75, pitch: 0, maxZoom: 9 }); return true; }} /><div className="projection-switch" role="group" aria-label="Map projection"><button aria-pressed={projection === 'mercator'} onClick={() => { setMode('static'); setProjection('mercator'); }}>Flat map</button><button aria-pressed={projection === 'globe'} onClick={() => { setMode('static'); setProjection('globe'); }}>3D globe</button></div><BasemapAppearance value={mapPreference} onChange={setMapPreference} /></div>
+          <div className="map-top-controls"><div className="map-heading"><h2>{state.filters.area ? 'Selected area' : 'All locations'} <span>/ {whole.format(features.length)} map records</span></h2></div><CountrySearch onSelect={([name, aliases, bounds]) => { if (!mapRef.current) return false; const country = countryCode([name, ...aliases]); if (country) dispatch({type:'filters',patch:{country,area:null}}); mapRef.current.fitBounds(bounds, { padding: 75, pitch: 0, maxZoom: 9 }); return true; }} /><div className="projection-switch" role="group" aria-label="Map projection"><button aria-pressed={projection === 'mercator'} onClick={() => { setMode('static'); setProjection('mercator'); }}>Flat map</button><button aria-pressed={projection === 'globe'} onClick={() => { setMode('static'); setProjection('globe'); }}>3D globe</button></div><BasemapAppearance value={mapPreference} onChange={setMapPreference} /></div>
           {mode !== 'static' && <p className="map-drawing-status" role="status">{mode === 'select' ? 'Editing selected area' : `Drawing ${mode}`} · Finish or cancel in the area controls</p>}
           {mapState === 'loading' && <MapLoading />}
-          {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Refresh Morocco data in the filters to try again.</p>}
+          {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Refresh Gold data in the filters to try again.</p>}
           {mapState === 'empty' && mode === 'static' && <p className="analytics-map-empty" role="status">No records in the enabled map layers for this selection. Enable a layer or change the dates or area. This does not establish an absence of fires.</p>}
           {!!features.length && <div className="platform-legend"><SatelliteMarkerKey features={features} /></div>}
           <div className="map-activity-caption">{state.collection.metadata.gold ? 'MOROCCO · AZURE GOLD' : archive.active ? 'RAW TEST ARCHIVE' : state.collection.metadata.source === 'harmonized' ? 'HARMONIZED RESULTS' : state.collection.metadata.source === 'simulated' ? 'SIMULATED' : state.collection.metadata.source === 'csv' ? 'IMPORTED SNAPSHOT' : 'ILLUSTRATIVE DEMO'} · {mapLayers.join(" + ") || "No layers selected"} · Points show records, not fire perimeters</div>

@@ -3,16 +3,19 @@ import goldExplorer from './gold-explorer.js';
 import { createGoldReader, GOLD_KINDS, GoldError } from '../deploy/backend/gold_reader.mjs';
 const { validDate } = archiveValidation;
 const { goldExplorerFeature } = goldExplorer;
-const ALLOWED = new Set(['start_date', 'end_date', 'year', 'sensor', 'source_acquisition', 'min_score', 'max_score', 'evaluation_status', 'label', 'bbox', 'page', 'page_size', 'snapshot']);
+const ALLOWED = new Set(['country', 'start_date', 'end_date', 'year', 'sensor', 'source_acquisition', 'min_score', 'max_score', 'evaluation_status', 'label', 'bbox', 'page', 'page_size', 'snapshot']);
 function badQuery() { throw new GoldError(400); }
 
 /** Validates inclusive UTC filters and bounded pagination before any cloud request. */
 export function parseGoldQuery(input = {}, datasetId) {
+  datasetId = datasetId.replace(/^algeria_/, 'morocco_');
+  if (input.country !== undefined && !['MAR', 'DZA'].includes(input.country)) badQuery();
   for (const [key, value] of Object.entries(input)) if (!ALLOWED.has(key) || typeof value !== 'string') badQuery();
-  if (datasetId === 'morocco_harmonization_daily_summary' && ['bbox', 'sensor', 'min_score', 'max_score'].some(key => input[key] !== undefined)) badQuery();
+  if (datasetId.endsWith('harmonization_daily_summary') && ['bbox', 'sensor', 'min_score', 'max_score'].some(key => input[key] !== undefined)) badQuery();
   if (datasetId === 'morocco_harmonized_fire_groups' && ['sensor', 'min_score', 'max_score'].some(key => input[key] !== undefined)) badQuery();
   if (input.evaluation_status !== undefined && !['morocco_model_evaluation', 'morocco_producer_reported_evaluation'].includes(datasetId)) badQuery();
   const q = {};
+  if (input.country) q.country = input.country;
   for (const key of ['start_date', 'end_date']) if (input[key] !== undefined) { if (!validDate(input[key])) badQuery(); q[key] = input[key]; }
   if (q.start_date && q.end_date && q.start_date > q.end_date) badQuery();
   if (input.year !== undefined) { if (!/^\d{4}$/.test(input.year)) badQuery(); q.year = input.year; }
@@ -41,14 +44,15 @@ export function parseGoldQuery(input = {}, datasetId) {
 }
 
 function eligible(row, snapshot, datasetId) {
-  if (row.country_iso3 !== 'MAR' || row.boundary_sha256 !== snapshot.catalog.boundary_sha256 || !row.observed_at_utc || row.observed_at_utc.startsWith('2026-')) return false;
-  if (datasetId === 'morocco_harmonization_daily_summary') return true;
+  if (row.country_iso3 !== snapshot.catalog.country_iso3 || row.boundary_sha256 !== snapshot.catalog.boundary_sha256 || !row.observed_at_utc || row.observed_at_utc.startsWith('2026-')) return false;
+  if (datasetId.endsWith('harmonization_daily_summary')) return true;
   return typeof row.latitude === 'number' && typeof row.longitude === 'number';
 }
 function filterRows(rows, q, datasetId) {
-  const labelField = datasetId === 'morocco_producer_reported_evaluation' ? 'reported_viirs_observed_label' : 'viirs_observed_label';
+  const labelField = datasetId.endsWith('producer_reported_evaluation') ? 'reported_viirs_observed_label' : 'viirs_observed_label';
   return rows.filter(row => {
     const day = row.observed_at_utc.slice(0, 10);
+    if (q.country && row.country_iso3 !== q.country) return false;
     if (q.start_date && day < q.start_date || q.end_date && day > q.end_date || q.year && !day.startsWith(q.year)) return false;
     for (const key of ['sensor', 'source_acquisition', 'evaluation_status']) if (q[key] !== undefined && row[key] !== q[key] && (key !== 'source_acquisition' || row.gold_provenance?.source_acquisition !== q[key])) return false;
     if (q.min_score !== undefined && (row.harmonization_score == null || row.harmonization_score < q.min_score)) return false;
@@ -92,7 +96,11 @@ export function goldEvaluationMetrics(rows, dataset) {
 }
 
 /** Keeps all six Gold populations separate and invalidates query caches with catalog/access changes. */
-export function createGoldService({ reader = createGoldReader() } = {}) {
+export function createGoldService({ country = 'MAR', reader = createGoldReader({ publication: country === 'DZA' ? 'algeria' : 'morocco' }) } = {}) {
+  if (!['MAR', 'DZA'].includes(country)) badQuery();
+  const prefix = country === 'DZA' ? 'algeria' : 'morocco';
+  const name = country === 'DZA' ? 'Algeria' : 'Morocco';
+  const kinds = Object.fromEntries(Object.entries(GOLD_KINDS).map(([id, kind]) => [id.replace('morocco_', prefix + '_'), kind]));
   let identity;
   const cache = new Map();
   const scopedCache = new Map(), filteredCache = new Map();
@@ -105,17 +113,18 @@ export function createGoldService({ reader = createGoldReader() } = {}) {
   }
   function metadata(snapshot, id) {
     const dataset = snapshot.catalog.datasets[id];
-    return { source: 'Azure Gold', snapshot: snapshot.snapshot, country_iso3: 'MAR', boundary_sha256: snapshot.catalog.boundary_sha256,
+    return { source: 'Azure Gold', snapshot: snapshot.snapshot, country_iso3: country, boundary_sha256: snapshot.catalog.boundary_sha256,
       study_area: snapshot.catalog.study_area, excluded_years: [2026], dataset: id, kind: dataset.kind,
-      geographic_scope: 'Committed Gold MAR country and boundary assignment; no basemap reclassification.',
+      geographic_scope: `Committed Gold ${country} country and boundary assignment; no basemap reclassification.`,
       probability_calibration_established: false, score_interpretation: dataset.score_interpretation,
       ...(dataset.evidence_status ? { evidence_status: dataset.evidence_status } : {}),
       ...(dataset.provenance_note ? { provenance_note: dataset.provenance_note } : {}),
       ...(id === 'morocco_producer_reported_evaluation' ? { independently_verified: false } : {}),
+      availability: dataset.status, ...(dataset.reason ? { availability_reason: dataset.reason } : {}),
       coverage_status: 'Unknown; missing records are not zero activity.' };
   }
   async function catalog(input = {}) {
-    if (Object.keys(input).some(key => key !== 'snapshot') || input.snapshot !== undefined && (typeof input.snapshot !== 'string' || !/^[a-f0-9]{64}$/.test(input.snapshot))) badQuery();
+    if (Object.keys(input).some(key => !['snapshot', 'country'].includes(key)) || input.country !== undefined && input.country !== country || input.snapshot !== undefined && (typeof input.snapshot !== 'string' || !/^[a-f0-9]{64}$/.test(input.snapshot))) badQuery();
     const snapshot = await current(input.snapshot);
     return { status: 'COMMITTED', schema_version: 1, snapshot: snapshot.snapshot, datasets: Object.fromEntries(Object.entries(snapshot.catalog.datasets).map(([id, dataset]) => [id, {
       ...metadata(snapshot, id), catalog_row_count: dataset.row_count, file_count: dataset.files.length,
@@ -124,9 +133,11 @@ export function createGoldService({ reader = createGoldReader() } = {}) {
     }])) };
   }
   async function query(id, input = {}, metrics = false) {
-    if (!Object.hasOwn(GOLD_KINDS, id)) badQuery();
+    id = id.replace(/^morocco_/, prefix + '_');
+    if (!Object.hasOwn(kinds, id) || input.country !== undefined && input.country !== country) badQuery();
     const q = parseGoldQuery(input, id);
     const snapshot = await current(q.snapshot);
+    if (snapshot.catalog.datasets[id].status !== 'available') badQuery();
     const epoch = `${snapshot.generation}:${snapshot.snapshot}`;
     const key = `${epoch}:${id}:${metrics}:${JSON.stringify(q)}`;
     if (cache.has(key)) return cache.get(key);
@@ -154,22 +165,24 @@ export function createGoldService({ reader = createGoldReader() } = {}) {
     cache.set(key, response); return response;
   }
   async function producerMetrics(input = {}) {
-    if (Object.keys(input).some(key => !['year', 'snapshot'].includes(key)) || input.year !== undefined && (typeof input.year !== 'string' || !/^\d{4}$/.test(input.year))) badQuery();
+    if (Object.keys(input).some(key => !['year', 'snapshot', 'country'].includes(key)) || input.year !== undefined && (typeof input.year !== 'string' || !/^\d{4}$/.test(input.year))) badQuery();
     const q = parseGoldQuery(input, 'morocco_producer_reported_evaluation');
     const snapshot = await current(q.snapshot);
-    const dataset = snapshot.catalog.datasets.morocco_producer_reported_evaluation;
+    const dataset = snapshot.catalog.datasets[`${prefix}_producer_reported_evaluation`];
     return { metadata: metadata(snapshot, 'morocco_producer_reported_evaluation'), independently_verified: false,
       population: 'Original delivery population; these are not metrics recomputed for the API region or a filtered subset.',
       metrics_by_year: (dataset.producer_reported_metrics_by_year || []).filter(item => item.year !== 2026 && (!q.year || String(item.year) === q.year)) };
   }
   async function explorer(input = {}) {
-    if (Object.keys(input).some(key => !['sensor', 'page', 'snapshot'].includes(key)) || input.sensor !== undefined && !['Harmonized', 'MODIS', 'VIIRS'].includes(input.sensor)) badQuery();
+    if (Object.keys(input).some(key => !['sensor', 'page', 'snapshot', 'country'].includes(key)) || input.sensor !== undefined && !['Harmonized', 'MODIS', 'VIIRS'].includes(input.sensor)) badQuery();
     if (input.page !== undefined && (typeof input.page !== 'string' || !/^[1-9]\d{0,5}$/.test(input.page))) badQuery();
     if (input.snapshot !== undefined && (typeof input.snapshot !== 'string' || !/^[a-f0-9]{64}$/.test(input.snapshot))) badQuery();
+    if (input.country !== undefined && input.country !== country) badQuery();
     const page = Number(input.page || 1);
     const paged = result => ({ ...result, features: result.features.slice((page - 1) * 10000, page * 10000), metadata: { ...result.metadata, gold_page: page, gold_pages: Math.max(1, Math.ceil(result.features.length / 10000)) } });
     const sensor = input.sensor || 'Harmonized', model = sensor === 'Harmonized';
-    const id = model ? 'morocco_harmonized_predictions' : 'morocco_fire_observations';
+    const id = model ? `${prefix}_harmonized_predictions` : `${prefix}_fire_observations`;
+    if (country === 'DZA' && !model) badQuery();
     const snapshot = await current(input.snapshot), key = `${snapshot.generation}:${snapshot.snapshot}:explorer:${sensor}`;
     if (cache.has(key)) return paged(cache.get(key));
     const table = await reader.readDataset(snapshot, id);
@@ -179,16 +192,39 @@ export function createGoldService({ reader = createGoldReader() } = {}) {
     const latest = await current(snapshot.snapshot);
     if (latest.generation !== snapshot.generation) throw new GoldError(409);
     const result = { type: 'FeatureCollection', features, metadata: {
-      source: model ? 'harmonized' : 'gold', source_name: `Azure Gold · Morocco · ${model ? 'model candidates' : sensor + ' observations'}`,
+      source: model ? 'harmonized' : 'gold', source_name: `Azure Gold · ${name} · ${model ? 'model candidates' : sensor + ' observations'}`,
       gold: true, gold_sensor: sensor, gold_snapshot: snapshot.snapshot, version: `${snapshot.snapshot}:${sensor}`,
       delivery_format: 'azure-gold', record_unit: model ? 'model_candidate' : undefined,
       has_harmonized: model, total_features: features.length, candidate_cells: model ? features.length : undefined,
       observed_from: times[0] || null, observed_to: times.at(-1) || null, feed_status: 'current',
-      country_iso3: 'MAR', excluded_years: [2026], coverage_status: 'unknown',
-      limitations: ['Morocco only; records dated in 2026 are excluded.', 'Model scores are uncalibrated outputs, not probabilities.', 'Missing records do not establish zero fire activity.'],
+      country_iso3: country, excluded_years: [2026], coverage_status: 'unknown',
+      limitations: [`${name} only; records dated in 2026 are excluded.`, 'Model scores are uncalibrated outputs, not probabilities.', 'Missing records do not establish zero fire activity.'],
     } };
     if (cache.size >= 100) cache.delete(cache.keys().next().value);
     cache.set(key, result); return paged(result);
   }
   return { catalog, query, producerMetrics, explorer };
+}
+
+/** Serves the committed comparison without substituting either country's latest source version. */
+export function createGoldComparisonService({ reader = createGoldReader({ publication: 'morocco-algeria' }) } = {}) {
+  return async function comparison(input = {}) {
+    if (Object.keys(input).some(key => !['year', 'country', 'start_date', 'end_date', 'page', 'page_size', 'snapshot'].includes(key))) badQuery();
+    const q = parseGoldQuery(input, 'morocco_algeria_candidate_comparison');
+    const snapshot = await reader.getSnapshot();
+    if (q.snapshot && q.snapshot !== snapshot.snapshot) throw new GoldError(409);
+    const table = await reader.readDataset(snapshot, 'morocco_algeria_candidate_comparison');
+    if (table.snapshot !== snapshot.snapshot || table.generation !== snapshot.generation) throw new GoldError(409);
+    if (table.rows.some(row => !['MAR', 'DZA'].includes(row.country_iso3) || row.comparison_status !== snapshot.catalog.comparison_status)) throw new GoldError();
+    const rows = filterRows(table.rows.filter(row => row.observed_at_utc && !row.observed_at_utc.startsWith('2026-')), q, 'morocco_algeria_candidate_comparison');
+    const latest = await reader.getSnapshot();
+    if (latest.snapshot !== snapshot.snapshot || latest.generation !== snapshot.generation) throw new GoldError(409);
+    return { metadata: { source: 'Azure Gold', snapshot: snapshot.snapshot, dataset: 'morocco_algeria_candidate_comparison',
+      comparison_status: snapshot.catalog.comparison_status, coverage_status: 'unknown', probability_calibration_established: false,
+      score_interpretation: 'aggregate_of_uncalibrated_model_scores', source_catalogs: snapshot.catalog.source_catalogs,
+      common_source_acquisitions: snapshot.catalog.common_source_acquisitions, shared_acquisitions: snapshot.catalog.common_source_acquisitions.length,
+      limitations: ['Descriptive candidate counts only; not confirmed fires, national fire rates, or independent model accuracy.', 'Zero rows mean no exported candidates, not no fires.'] },
+      filters: q, catalog_count: table.rows.length, filtered_count: rows.length, page: q.page, page_size: q.page_size,
+      total_pages: Math.ceil(rows.length / q.page_size), data: rows.slice((q.page - 1) * q.page_size, q.page * q.page_size) };
+  };
 }

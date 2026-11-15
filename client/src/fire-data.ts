@@ -24,6 +24,7 @@ export interface FireFeature {
     method_id?: string;
     record_unit?: 'predicted_cell' | 'fire_group' | 'model_candidate';
     country_iso3?: string;
+    gold_verified?: boolean;
     harmonization_score?: number | null;
     model_verification_status?: string | null;
     fire_id?: string;

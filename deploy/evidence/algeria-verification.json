@@ -1,0 +1,51 @@
+{
+  "mode": "live-azure-local-api",
+  "azure_writes_performed": false,
+  "checked_at_utc": "2026-11-15T13:17:26.689Z",
+  "status": "passed",
+  "authentication": {
+    "source": "backend environment/private access file only",
+    "method": "read-only container SAS",
+    "expires_at_utc": "2026-11-22T07:59:00.000Z"
+  },
+  "algeria": {
+    "snapshot": "94526b239758bb3aed2eb75ae9730ecdadd6da3edef010c6d2fa4c67700723ee",
+    "committed_sha256_verified": true,
+    "files_verified": 150,
+    "rows": 7031,
+    "pages_verified": 8
+  },
+  "filtered_day": {
+    "day": "2015-09-22",
+    "count": 53
+  },
+  "morocco_2015": {
+    "count": 622,
+    "snapshot": "27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d"
+  },
+  "default_morocco_map_records": 2448,
+  "algeria_map_records": 7031,
+  "comparison": {
+    "snapshot": "397ee9a82cde086fd21ceb12b7093d9f22445acbf58d88aaed6bdf18413c81df",
+    "rows": 24,
+    "totals": {
+      "MAR": 622,
+      "DZA": 7031
+    },
+    "shared_acquisitions": 20,
+    "status": "DESCRIPTIVE_ONLY_COVERAGE_UNVERIFIED",
+    "pinned_source_catalogs": [
+      {
+        "catalog_path": "catalog/morocco/snapshots/27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d/catalog.json",
+        "catalog_sha256": "27161f76e70eca2c21f8ac281ff5cd6567719e49dc9a865bc757b8a98993bf8d",
+        "country_iso3": "MAR"
+      },
+      {
+        "catalog_path": "catalog/algeria/snapshots/94526b239758bb3aed2eb75ae9730ecdadd6da3edef010c6d2fa4c67700723ee/catalog.json",
+        "catalog_sha256": "94526b239758bb3aed2eb75ae9730ecdadd6da3edef010c6d2fa4c67700723ee",
+        "country_iso3": "DZA"
+      }
+    ]
+  },
+  "pagination_filters_empty_errors_and_pinned_comparison": "passed"
+}

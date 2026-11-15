@@ -249,8 +249,11 @@ test('map feed serves only the selected Morocco Gold population, not legacy demo
     const first=await fetch(base+'/api/gold/explorer');assert.equal(first.status,200);assert.equal(first.headers.get('content-encoding'),'gzip');
     const data=await first.json();assert.equal(data.features.length,133);
     const unchanged=await fetch(base+'/api/gold/explorer',{headers:{'If-None-Match':first.headers.get('etag')}});assert.equal(unchanged.status,304);
+    const records=await fetch(base+'/api/model-predictions');assert.equal(records.status,200);
+    assert.equal((await fetch(base+'/api/model-predictions',{headers:{'If-None-Match':records.headers.get('etag')}})).status,304);
     f.setTime(Date.parse('2026-11-15T08:00:00Z'));
     assert.equal((await fetch(base+'/api/gold/explorer',{headers:{'If-None-Match':first.headers.get('etag')}})).status,503);
+    assert.equal((await fetch(base+'/api/model-predictions',{headers:{'If-None-Match':records.headers.get('etag')}})).status,503);
   });
 });
 
@@ -274,4 +277,54 @@ test('actual expanded Gold catalog accepts unavailable producer metrics without 
   const changed=structuredClone(catalog);changed.datasets.morocco_producer_reported_evaluation.producer_reported_metrics_by_year[0].metrics=invalid;
   assert.throws(()=>validateGoldCatalog(changed),GoldError);
  }
+});
+
+// These fixtures are exact committed Azure metadata, not substitute runtime publications.
+test('separate Algeria and comparison publications validate their actual committed schemas and hashes',async()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const {validateGoldCatalog,sha256,GoldError}=await import('../deploy/backend/gold_reader.mjs');
+ for(const publication of ['algeria','morocco-algeria']){
+  const dir=path.join(__dirname,'fixtures/gold-catalog',publication);
+  const pointer=JSON.parse(fs.readFileSync(path.join(dir,'latest.json'))),bytes=fs.readFileSync(path.join(dir,'catalog.json'));
+  assert.equal(sha256(bytes),pointer.catalog_sha256);
+  const catalog=JSON.parse(bytes);assert.equal(validateGoldCatalog(catalog,{publication}),catalog);
+  assert.throws(()=>validateGoldCatalog(catalog),GoldError);
+  if(publication==='algeria'){
+   assert.equal(catalog.datasets.algeria_harmonized_predictions.row_count,7031);
+   assert.equal(catalog.datasets.algeria_fire_observations.status,'unavailable');
+   const bad=structuredClone(catalog);bad.datasets.algeria_harmonized_predictions.files[0].blob_path='earthdata/morocco/runs/wrong/predictions.parquet';
+   assert.throws(()=>validateGoldCatalog(bad,{publication}),GoldError);
+  }else{
+   assert.equal(catalog.datasets.morocco_algeria_candidate_comparison.row_count,24);
+   assert.equal(catalog.common_source_acquisitions.length,20);
+   assert.equal(catalog.comparison_status,'DESCRIPTIVE_ONLY_COVERAGE_UNVERIFIED');
+   const bad=structuredClone(catalog);bad.source_catalogs[0].catalog_path=bad.source_catalogs[1].catalog_path;
+   assert.throws(()=>validateGoldCatalog(bad,{publication}),GoldError);
+  }
+ }
+});
+
+test('Algeria country, UTC and spatial filters precede pagination without Morocco clipping',async()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const {createGoldService}=await import('./gold-service.mjs');
+ const catalog=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/gold-catalog/algeria/catalog.json')));
+ const pointer=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/gold-catalog/algeria/latest.json')));
+ const snapshot={snapshot:pointer.catalog_sha256,generation:1,catalog};
+ const rows=catalog.datasets.algeria_harmonized_predictions.files.flatMap(file=>file.example_rows||[]);
+ assert.ok(rows.length>0);
+ const service=createGoldService({country:'DZA',reader:{getSnapshot:async()=>snapshot,readDataset:async()=>({...snapshot,rows})}});
+ const result=await service.query('morocco_harmonized_predictions',{country:'DZA',year:'2015',page_size:'2'});
+ assert.equal(result.filtered_count,rows.length);assert.equal(result.data.length,2);
+ assert.ok(result.data.every(row=>row.country_iso3==='DZA'));
+ assert.equal((await service.query('morocco_harmonized_predictions',{country:'DZA',year:'2014'})).filtered_count,0);
+ const day=rows[0].observed_at_utc.slice(0,10);
+ const filtered=await service.query('morocco_harmonized_predictions',{country:'DZA',start_date:day,end_date:day,page_size:'1'});
+ assert.equal(filtered.filtered_count,rows.filter(row=>row.observed_at_utc.startsWith(day)).length);
+ assert.equal((await service.query('morocco_harmonized_predictions',{country:'DZA',bbox:'-10,20,-9,21'})).filtered_count,0);
+ await assert.rejects(()=>service.query('morocco_harmonized_predictions',{country:'MAR'}));
+ const map=await service.explorer({country:'DZA'});assert.equal(map.features.length,rows.length);assert.ok(map.features.every(f=>f.properties.country_iso3==='DZA'&&f.properties.gold_verified));
+ await http(service,async base=>{
+  const response=await fetch(base+'/api/model-predictions?country=DZA&year=2015&page_size=2');assert.equal(response.status,200);assert.equal((await response.json()).filtered_count,rows.length);
+  assert.equal((await fetch(base+'/api/model-predictions?country=USA')).status,400);
+ });
 });

@@ -54,6 +54,8 @@ export function dashboardReducer(state: DashboardState, action: DashboardAction)
     case 'upload': return { ...state, uploadStatus: action.status, uploadMessage: action.message };
     case 'filters': {
       const filters = { ...state.filters, ...action.patch };
+      if (state.collection.metadata.gold && filters.country === 'DZA') filters.sensor = 'Harmonized';
+      if (action.patch.country !== undefined && action.patch.country !== state.filters.country) filters.selectedDay = null;
       if (filters.country && !/^[A-Z]{3}$/.test(filters.country)) return state;
       if (dateRangeError(filters.startDate, filters.endDate) || (filters.area && validateArea(filters.area))) return state;
       if (!['ALL', ...SENSOR_IDS].includes(filters.sensor) || !['detections', 'mean-frp'].includes(filters.metric)) return state;

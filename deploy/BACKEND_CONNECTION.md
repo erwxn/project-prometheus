@@ -50,3 +50,7 @@ Gold service helpers use static imports so Vercel includes them in the function 
 ## Production promotion requirement
 
 As verified on 2026-11-15, the existing Vercel project has `autoAssignCustomDomains: false`. A READY build does not establish that `www.prometheusnasa.earth` serves it. Confirm the domain alias deployment ID, explicitly promote the verified production deployment, then verify the public map and request logs. The Gold catalog-null-metrics fix at `eac0e70` was promoted as `dpl_6niqmeyDMTRfSDeBihN8evLqaAQN`; the live domain returned HTTP 200 for `/api/gold/explorer` and displayed 2,448 real model candidates. Automatic assignment was not changed.
+
+## Algeria and pinned 2015 comparison
+
+See [Algeria integration and verification](../docs/algeria-gold.md). The existing reader now accepts an allowlisted publication profile; Morocco remains the default. Algeria selection loads the separate DZA prediction API, and the Gold Places view reads the committed Morocco-Algeria comparison with pinned source versions. This extension is locally verified and has not been publicly deployed.

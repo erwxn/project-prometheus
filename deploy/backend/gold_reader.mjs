@@ -13,6 +13,17 @@ export const GOLD_KINDS = Object.freeze({
 });
 export const GOLD_ENDPOINT = 'https://stprometheusnasa.blob.core.windows.net/gold/';
 export const GOLD_POINTER = 'catalog/morocco/latest.json';
+
+/** Restricts each reader to its own committed publication and dataset namespace. */
+function profileFor(publication) {
+  check(['morocco', 'algeria', 'morocco-algeria'].includes(publication));
+  const comparison = publication === 'morocco-algeria';
+  const country = publication === 'morocco' ? 'MAR' : publication === 'algeria' ? 'DZA' : null;
+  const kinds = comparison ? { morocco_algeria_candidate_comparison: 'candidate_comparison' }
+    : Object.fromEntries(Object.entries(GOLD_KINDS).map(([id, kind]) => [id.replace('morocco_', publication + '_'), kind]));
+  return { publication, country, kinds, comparison, pointer: `catalog/${publication}/latest.json` };
+}
+
 export const sha256 = buffer => createHash('sha256').update(buffer).digest('hex');
 
 /** Exposes only a safe classification, never a provider error or credential. */
@@ -29,26 +40,31 @@ function safePath(value) {
 function integer(value, minimum = 0) { return Number.isSafeInteger(value) && value >= minimum; }
 
 /** Validates the actual schema-v1 dictionary catalog and every complete file definition. */
-export function validateGoldCatalog(catalog, { maxRows = 250000, maxBytes = 128 * 1024 * 1024 } = {}) {
-  check(catalog?.schema_version === 1 && catalog.status === 'COMMITTED' && catalog.country_iso3 === 'MAR' && isHash(catalog.boundary_sha256));
-  check(catalog.datasets && !Array.isArray(catalog.datasets) && Object.keys(catalog.datasets).length === Object.keys(GOLD_KINDS).length);
+export function validateGoldCatalog(catalog, { maxRows = 250000, maxBytes = 128 * 1024 * 1024, publication = 'morocco' } = {}) {
+  const profile = profileFor(publication);
+  check(catalog?.schema_version === 1 && catalog.status === 'COMMITTED' && catalog.country_iso3 === profile.country && (profile.comparison || isHash(catalog.boundary_sha256)));
+  check(catalog.datasets && !Array.isArray(catalog.datasets) && Object.keys(catalog.datasets).length === Object.keys(profile.kinds).length);
   const paths = new Set(); let rows = 0, bytes = 0, fileCount = 0;
-  for (const [id, kind] of Object.entries(GOLD_KINDS)) {
+  for (const [id, kind] of Object.entries(profile.kinds)) {
     const dataset = catalog.datasets[id];
+    if (profile.country === 'DZA' && ['algeria_fire_observations', 'algeria_model_evaluation'].includes(id) && dataset?.status === 'unavailable') {
+      check(dataset.row_count === 0 && Array.isArray(dataset.files) && dataset.files.length === 0 && typeof dataset.reason === 'string');
+      continue;
+    }
     check(dataset?.kind === kind && dataset.status === 'available' && dataset.probability_calibration_established === false && typeof dataset.score_interpretation === 'string');
     check(integer(dataset.row_count) && Array.isArray(dataset.files) && dataset.files.length <= 512);
     let datasetRows = 0;
     for (const file of dataset.files) {
       safePath(file.blob_path);
-      check(file.blob_path.startsWith(id === 'morocco_fire_observations' ? 'firms/morocco/runs/' : 'earthdata/morocco/runs/'));
+      check(file.blob_path.startsWith(profile.comparison ? 'comparisons/morocco-algeria/runs/' : `${kind === 'source_observation' ? 'firms' : 'earthdata'}/${publication}/runs/`));
       check(file.blob_path.endsWith('.parquet') && file.container === 'gold' && !paths.has(file.blob_path));
       paths.add(file.blob_path);
-      check(isHash(file.sha256) && file.boundary_sha256 === catalog.boundary_sha256 && integer(file.bytes, 1) && file.bytes <= 32 * 1024 * 1024 && integer(file.rows));
+      check(isHash(file.sha256) && (profile.comparison || file.boundary_sha256 === catalog.boundary_sha256) && integer(file.bytes, 1) && file.bytes <= 32 * 1024 * 1024 && integer(file.rows));
       check(Array.isArray(file.schema) && file.schema.length > 0 && file.schema.length <= 256);
       const names = file.schema.map(field => field.name);
       check(names.every(name => typeof name === 'string' && /^[a-zA-Z_][a-zA-Z0-9_]{0,127}$/.test(name)) && new Set(names).size === names.length);
-      check(['observed_at_utc', 'country_iso3', 'boundary_sha256'].every(name => names.includes(name)));
-      if (kind !== 'harmonization_daily_summary') check(['latitude', 'longitude'].every(name => names.includes(name)));
+      check((profile.comparison ? ['observed_at_utc', 'country_iso3', 'year', 'month', 'candidate_cells', 'comparison_status'] : ['observed_at_utc', 'country_iso3', 'boundary_sha256']).every(name => names.includes(name)));
+      if (kind !== 'harmonization_daily_summary' && !profile.comparison) check(['latitude', 'longitude'].every(name => names.includes(name)));
       if (kind === 'model_evaluation') check(['viirs_observed_label', 'harmonization_score', 'evaluation_status', 'source_acquisition'].every(name => names.includes(name)));
       if (kind === 'producer_reported_evaluation') check(['reported_viirs_observed_label', 'evaluation_status', 'label_support_verified'].every(name => names.includes(name)));
       check(file.schema.every(field => typeof field.type === 'string' && typeof field.nullable === 'boolean'));
@@ -60,11 +76,20 @@ export function validateGoldCatalog(catalog, { maxRows = 250000, maxBytes = 128 
       check(integer(dataset.evaluated_cells) && dataset.evaluated_cells <= dataset.row_count && Array.isArray(dataset.metrics_by_acquisition));
       check(dataset.metrics_by_acquisition.length <= 512);
     }
-    if (kind === 'producer_reported_evaluation') {
+    if (kind === 'producer_reported_evaluation' && (profile.country === 'MAR' || dataset.producer_reported_metrics_by_year !== undefined)) {
       check(Array.isArray(dataset.producer_reported_metrics_by_year) && dataset.producer_reported_metrics_by_year.length <= 200);
       // Null means producer metrics were unavailable; it must not invalidate other datasets or become zero.
       for (const item of dataset.producer_reported_metrics_by_year) check(integer(item.year, 1900) && item.year <= 2200 && item.independently_verified === false && typeof item.population === 'string' && (item.metrics === null || item.metrics && typeof item.metrics === 'object' && !Array.isArray(item.metrics)));
     }
+  }
+  if (profile.comparison) {
+    check(catalog.comparison_status === 'DESCRIPTIVE_ONLY_COVERAGE_UNVERIFIED' && Array.isArray(catalog.countries) && catalog.countries.length === 2 && catalog.countries.includes('MAR') && catalog.countries.includes('DZA'));
+    check(Array.isArray(catalog.source_catalogs) && catalog.source_catalogs.length === 2 && new Set(catalog.source_catalogs.map(ref => ref.country_iso3)).size === 2);
+    for (const ref of catalog.source_catalogs) {
+      check(['MAR', 'DZA'].includes(ref.country_iso3) && isHash(ref.catalog_sha256));
+      check(safePath(ref.catalog_path) === `catalog/${ref.country_iso3 === 'MAR' ? 'morocco' : 'algeria'}/snapshots/${ref.catalog_sha256}/catalog.json`);
+    }
+    check(Array.isArray(catalog.common_source_acquisitions) && new Set(catalog.common_source_acquisitions).size === catalog.common_source_acquisitions.length && catalog.common_source_acquisitions.every(value => typeof value === 'string' && /^A\d{7}\.\d{4}$/.test(value)));
   }
   check(fileCount <= 512 && rows <= maxRows && bytes <= maxBytes);
   return catalog;
@@ -105,7 +130,8 @@ function normalizeRow(row, file, kind) {
 }
 
 /** Reads committed, checksummed Gold publications using explicit backend-only read-only SAS access. */
-export function createGoldReader({ env = process.env, fetchImpl = fetch, now = Date.now, readAccessFile } = {}) {
+export function createGoldReader({ env = process.env, fetchImpl = fetch, now = Date.now, readAccessFile, publication = 'morocco' } = {}) {
+  const profile = profileFor(publication);
   let credential, generation = 0, cached, nextCheck = 0, refreshing;
   const tables = new Map();
   const ttl = Number(env.PROMETHEUS_GOLD_REFRESH_SECONDS || 30) * 1000;
@@ -168,17 +194,22 @@ export function createGoldReader({ env = process.env, fetchImpl = fetch, now = D
   async function refresh(auth) {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const pointer = await download(GOLD_POINTER, auth, { limit: 1024 * 1024, headers: attempt === 0 && cached ? { 'If-None-Match': cached.pointerEtag } : {} });
+        const pointer = await download(profile.pointer, auth, { limit: 1024 * 1024, headers: attempt === 0 && cached ? { 'If-None-Match': cached.pointerEtag } : {} });
         if (pointer.status === 304) { check(cached); await assertAccess(auth); nextCheck = now() + ttl; return cached; }
         check(typeof pointer.etag === 'string' && pointer.etag.length > 0);
         const publication = JSON.parse(pointer.bytes.toString('utf8'));
         check(publication.schema_version === 1 && publication.status === 'COMMITTED' && isHash(publication.catalog_sha256));
         const catalogPath = safePath(publication.catalog_path);
-        check(catalogPath === `catalog/morocco/snapshots/${publication.catalog_sha256}/catalog.json`);
+        check(catalogPath === `catalog/${profile.publication}/snapshots/${publication.catalog_sha256}/catalog.json`);
         const content = await download(catalogPath, auth, { limit: 4 * 1024 * 1024 });
         check(sha256(content.bytes) === publication.catalog_sha256);
-        const catalog = validateGoldCatalog(JSON.parse(content.bytes.toString('utf8')));
-        const verified = await download(GOLD_POINTER, auth, { method: 'HEAD', headers: { 'If-Match': pointer.etag } });
+        const catalog = validateGoldCatalog(JSON.parse(content.bytes.toString('utf8')), { publication: profile.publication });
+        if (profile.comparison) for (const ref of catalog.source_catalogs) {
+          const pinned = await download(ref.catalog_path, auth, { limit: 4 * 1024 * 1024 });
+          check(sha256(pinned.bytes) === ref.catalog_sha256);
+          validateGoldCatalog(JSON.parse(pinned.bytes.toString('utf8')), { publication: ref.country_iso3 === 'MAR' ? 'morocco' : 'algeria' });
+        }
+        const verified = await download(profile.pointer, auth, { method: 'HEAD', headers: { 'If-Match': pointer.etag } });
         if (verified.etag !== pointer.etag) throw new GoldError(409);
         await assertAccess(auth);
         if (cached?.snapshot !== publication.catalog_sha256) tables.clear();
@@ -206,7 +237,7 @@ export function createGoldReader({ env = process.env, fetchImpl = fetch, now = D
   }
   async function readDataset(snapshot, datasetId) {
     const auth = await access(); check(auth.generation === snapshot.generation);
-    const dataset = snapshot.catalog.datasets[datasetId]; check(dataset && Object.hasOwn(GOLD_KINDS, datasetId));
+    const dataset = snapshot.catalog.datasets[datasetId]; check(dataset && Object.hasOwn(profile.kinds, datasetId));
     const key = `${snapshot.snapshot}:${datasetId}`;
     if (!tables.has(key)) {
       const pending = (async () => {

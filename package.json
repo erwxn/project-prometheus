@@ -29,7 +29,8 @@
     "server:start": "npm --prefix server start",
     "server:dev": "npm --prefix server run dev",
     "client:dev": "npm --prefix client run dev",
-    "client:build": "npm --prefix client run build"
+    "client:build": "npm --prefix client run build",
+    "gold:check:algeria": "node server/check-algeria.mjs"
   },
   "devDependencies": {
     "@secretlint/secretlint-rule-preset-recommend": "^13.1.0",

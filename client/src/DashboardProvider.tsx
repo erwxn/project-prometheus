@@ -10,8 +10,9 @@ import { dailyBuckets, prepareObservations, selectRange, selectScope, summarizeR
 
 function useDashboardValue() {
   const [state, dispatch] = useReducer(dashboardReducer, undefined, () => initialDashboardState(emptyGoldCollection()));
+  const countryRef = useRef<'MAR' | 'DZA'>('MAR');
   const sourceRef = useRef(state.filters.sensor), collectionRef = useRef(state.collection);
-  useEffect(() => { sourceRef.current = state.filters.sensor; collectionRef.current = state.collection; }, [state.filters.sensor, state.collection]);
+  useEffect(() => { sourceRef.current = state.filters.sensor; collectionRef.current = state.collection; countryRef.current = state.filters.country === 'DZA' ? 'DZA' : 'MAR'; }, [state.filters.sensor, state.filters.country, state.collection]);
   const [sharedView] = useState(() => readSharedExplore(window.location.search));
   const shareNotice = sharedView ? 'Shared selection requested. Available observations may have changed; this link does not store the dataset.' : '';
   const shareRestored = useRef(false);
@@ -51,7 +52,7 @@ function useDashboardValue() {
     }
     const timeout = window.setTimeout(() => request.controller.abort(), 60000);
     try {
-      const collection = await loadObservations(API_BASE, request.controller.signal, fetch, sourceRef.current, quiet ? collectionRef.current : undefined);
+      const collection = await loadObservations(API_BASE, request.controller.signal, fetch, sourceRef.current, quiet ? collectionRef.current : undefined, countryRef.current);
       if (requests.current(request.revision)) dispatch(quiet ? { type: 'refreshed', collection } : { type: 'loaded', collection, remember: true });
     } catch (error) {
       if (requests.current(request.revision)) {
@@ -63,12 +64,13 @@ function useDashboardValue() {
   }, [requests]);
 
   useEffect(() => { void retry(); const gate = requests; return () => gate.cancel(); }, [retry, requests]);
-  const previousSensor = useRef(state.filters.sensor);
+  const sourceKey = `${state.filters.country === 'DZA' ? 'DZA' : 'MAR'}:${state.filters.sensor}`;
+  const previousSensor = useRef(sourceKey);
   useEffect(() => {
-    if (previousSensor.current === state.filters.sensor) return;
-    previousSensor.current = state.filters.sensor;
-    if (state.collection.metadata.gold && state.filters.sensor !== state.collection.metadata.gold_sensor) void retry();
-  }, [state.filters.sensor, state.collection.metadata.gold, state.collection.metadata.gold_sensor, retry]);
+    if (previousSensor.current === sourceKey) return;
+    previousSensor.current = sourceKey;
+    if (state.collection.metadata.gold && (state.filters.sensor !== state.collection.metadata.gold_sensor || countryRef.current !== state.collection.metadata.country_iso3)) void retry();
+  }, [sourceKey, state.filters.sensor, state.collection.metadata.gold, state.collection.metadata.gold_sensor, state.collection.metadata.country_iso3, retry]);
   useEffect(() => {
     if (state.status !== 'ready' || !state.collection.metadata.gold && state.collection.metadata.source !== 'harmonized' || state.collection.metadata.archive || state.collection.metadata.uploaded || state.uploadStatus === 'uploading') return;
     const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void retry(true); }, 60_000);

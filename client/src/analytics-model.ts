@@ -24,6 +24,7 @@ export interface FireMetadata {
   gold?: boolean;
   gold_sensor?: SensorFilter;
   gold_snapshot?: string;
+  gold_poll_etag?: string;
   gold_page?: number;
   gold_pages?: number;
   country_iso3?: string;

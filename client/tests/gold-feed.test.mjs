@@ -39,3 +39,40 @@ test('unchanged Gold polling keeps the loaded objects and failures never load sa
  assert.equal(same,previous);assert.equal(headers['If-None-Match'],`"${hash}:Harmonized:1"`);
  let calls=0;await assert.rejects(loadObservations('',new AbortController().signal,async()=>{calls++;return new Response(null,{status:503});}),/Morocco Gold/);assert.equal(calls,1);
 });
+import {readFileSync} from 'node:fs';
+import {prepareObservations,selectScope} from '../src/analytics-engine.ts';
+
+const algeriaCatalog=JSON.parse(readFileSync(new URL('../../server/fixtures/gold-catalog/algeria/catalog.json',import.meta.url)));
+const actualRows=algeriaCatalog.datasets.algeria_harmonized_predictions.files.flatMap(file=>file.example_rows||[]);
+const dzaHash='94526b239758bb3aed2eb75ae9730ecdadd6da3edef010c6d2fa4c67700723ee';
+function algeriaResponse(page=1){return {metadata:{country_iso3:'DZA',dataset:'algeria_harmonized_predictions',snapshot:dzaHash},page,filtered_count:2,total_pages:2,data:[actualRows[page-1]]};}
+
+test('Algeria selection uses the predictions API and loads all pinned pages before publishing',async()=>{
+ const calls=[];
+ const collection=await loadObservations('',new AbortController().signal,async url=>{
+  calls.push(url);const query=new URL(url,'http://localhost').searchParams;
+  assert.equal(query.get('country'),'DZA');assert.equal(query.get('year'),'2015');
+  if(calls.length===2)assert.equal(query.get('snapshot'),dzaHash);
+  return new Response(JSON.stringify(algeriaResponse(Number(query.get('page')))));
+ },'Harmonized',undefined,'DZA');
+ assert.equal(calls.length,2);assert.match(calls[0],/^\/api\/model-predictions/);assert.equal(collection.metadata.country_iso3,'DZA');
+ assert.equal(collection.features.length,2);assert.ok(collection.features.every(f=>f.properties.gold_verified&&f.properties.raw_frp===null&&f.properties.record_unit==='model_candidate'));
+ const filters={sensor:'Harmonized',country:'DZA',area:null};
+ assert.equal(selectScope(prepareObservations(collection.features),filters).length,2);
+ assert.equal(selectScope(prepareObservations(collection.features),{...filters,country:'MAR'}).length,0);
+});
+
+test('Algeria fails atomically for wrong-country, mixed-snapshot, missing-page and server errors',async()=>{
+ for(const change of [body=>{body.data[0].country_iso3='MAR';},body=>{body.metadata.country_iso3='MAR';},body=>{body.data=[];}]){
+  await assert.rejects(loadObservations('',new AbortController().signal,async()=>{const body=structuredClone(algeriaResponse());change(body);return new Response(JSON.stringify(body));},'Harmonized',undefined,'DZA'));
+ }
+ let page=0;await assert.rejects(loadObservations('',new AbortController().signal,async()=>{const body=algeriaResponse(++page);if(page===2)body.metadata.snapshot='a'.repeat(64);return new Response(JSON.stringify(body));},'Harmonized',undefined,'DZA'));
+ let calls=0;await assert.rejects(loadObservations('',new AbortController().signal,async()=>{calls++;return new Response('{}',{status:503});},'Harmonized',undefined,'DZA'));assert.equal(calls,1);
+});
+
+test('unchanged Algeria refresh is one authenticated conditional request, not eight downloaded pages',async()=>{
+ const previous=await loadObservations('',new AbortController().signal,async url=>new Response(JSON.stringify(algeriaResponse(Number(new URL(url,'http://localhost').searchParams.get('page')))),{headers:{ETag:'"verified-algeria-page"'}}),'Harmonized',undefined,'DZA');
+ let calls=0;
+ const refreshed=await loadObservations('',new AbortController().signal,async(url,options)=>{calls++;assert.equal(options.headers['If-None-Match'],'"verified-algeria-page"');return new Response(null,{status:304});},'Harmonized',previous,'DZA');
+ assert.equal(calls,1);assert.equal(refreshed,previous);
+});

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { GoldCountryComparison } from './GoldCountryComparison';
 import { ActivityLineChart } from './ActivityLineChart';
 import { dateRangeError, enumerateDates } from './analytics-engine';
 import { metricLabel, metricUnit, type SensorFilter } from './analytics-model';
@@ -20,6 +21,7 @@ export function PlaceComparison() {
   const { country, startDate, endDate, sensor } = state.filters;
   const source = archive.active ? `Raw FIRMS archive · ${archive.platform}` : `${state.collection.metadata.source_name || state.collection.metadata.source} · ${sensor}${state.filters.simulatedPlatform ? ` · ${state.filters.simulatedPlatform}` : ''}`;
   const selectionKey = archive.active ? `archive:${archive.platform}` : source;
+  if (state.collection.metadata.gold) return <GoldCountryComparison />;
   return <ComparisonPanel key={selectionKey} {...{ archive, state, prepared, country, startDate, endDate, sensor, source }} />;
 }
 

@@ -2,7 +2,7 @@ import archiveValidation from './archive-validation.js';
 import goldExplorer from './gold-explorer.js';
 import { createGoldReader, GOLD_KINDS, GoldError } from '../deploy/backend/gold_reader.mjs';
 const { validDate } = archiveValidation;
-const { goldExplorerFeature } = goldExplorer;
+const { goldExplorerFeature, frozenModelDecision } = goldExplorer;
 const ALLOWED = new Set(['country', 'start_date', 'end_date', 'year', 'sensor', 'source_acquisition', 'min_score', 'max_score', 'evaluation_status', 'label', 'bbox', 'page', 'page_size', 'snapshot']);
 function badQuery() { throw new GoldError(400); }
 
@@ -158,7 +158,8 @@ export function createGoldService({ country = 'MAR', reader = createGoldReader({
     const selected = filteredCache.get(selectionKey);
     const response = metrics ? { metadata: metadata(snapshot, id), filters, metrics: goldEvaluationMetrics(selected, snapshot.catalog.datasets[id]) }
       : { metadata: metadata(snapshot, id), filters, catalog_count: table.rows.length, scoped_count: scoped.length, filtered_count: selected.length,
-        page, page_size: pageSize, total_pages: Math.ceil(selected.length / pageSize), data: selected.slice((page - 1) * pageSize, page * pageSize) };
+        page, page_size: pageSize, total_pages: Math.ceil(selected.length / pageSize), data: selected.slice((page - 1) * pageSize, page * pageSize).map(row =>
+          id.endsWith('harmonized_predictions') ? { ...row, ...frozenModelDecision(row) } : row) };
     const latest = await current(snapshot.snapshot);
     if (latest.generation !== snapshot.generation) throw new GoldError(409);
     if (cache.size >= 100) cache.delete(cache.keys().next().value);

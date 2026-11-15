@@ -127,7 +127,7 @@ async function loadAlgeriaPredictions(base: string, signal: AbortSignal, request
       features.push({ type: 'Feature', id: row.record_id, geometry: { type: 'Point', coordinates: [row.longitude, row.latitude] }, properties: {
         satellite: 'Harmonized', platform: row.satellite || row.sensor, country_iso3: 'DZA', gold_verified: true,
         observed_at_utc: row.observed_at_utc, acq_time_utc: row.observed_at_utc.slice(11,16), local_solar_date: solar.slice(0,10), local_solar_time: solar.slice(11,16),
-        raw_frp: null, normalized_frp: row.frp_cell_mw ?? null, confidence: 'Not supplied', record_unit: 'model_candidate',
+        raw_frp: null, normalized_frp: row.frp_cell_mw ?? null, confidence: 'Not supplied', record_unit: 'model_candidate', detect_f1: row.detect_f1 === true,
         harmonization_score: row.harmonization_score, model_version: row.model_version, model_verification_status: row.model_verification_status,
       } });
     }

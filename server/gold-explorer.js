@@ -4,12 +4,16 @@ const { solarTime } = require('./modis-csv');
 const MODEL_B_SHA256 = '206bd8ff48c7d5efcd798917351a4b3843affe90e92b9d11a755e5d6ee852d40';
 const MODEL_B_F1 = 0.16686241493815074;
 
+function frozenModelDecision(row) {
+  return row.model_sha256 === MODEL_B_SHA256 && Number.isFinite(row.harmonization_score)
+    ? { detect_f1: row.harmonization_score >= MODEL_B_F1 }
+    : {};
+}
+
 /** Projects verified Gold records without treating model scores as satellite confidence. */
 function goldExplorerFeature(row, model) {
   const utc = row.observed_at_utc, solar = solarTime(utc, row.longitude);
-  const decision = model && row.model_sha256 === MODEL_B_SHA256 && Number.isFinite(row.harmonization_score)
-    ? { detect_f1: row.harmonization_score >= MODEL_B_F1 }
-    : {};
+  const decision = model ? frozenModelDecision(row) : {};
   return { type: 'Feature', id: row.observation_id || row.record_id, geometry: { type: 'Point', coordinates: [row.longitude, row.latitude] }, properties: {
     satellite: model ? 'Harmonized' : row.sensor, platform: row.satellite || row.sensor,
     country_iso3: row.country_iso3, gold_verified: true,
@@ -21,4 +25,4 @@ function goldExplorerFeature(row, model) {
       model_verification_status: row.gold_provenance?.model_verification_status || null } : { product_version: row.version, scan_km: row.scan, track_km: row.track }),
   } };
 }
-module.exports = { goldExplorerFeature };
+module.exports = { goldExplorerFeature, frozenModelDecision };

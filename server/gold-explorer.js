@@ -18,7 +18,7 @@ function goldExplorerFeature(row, model) {
     confidence: model ? 'Not supplied' : row.confidence || 'Not supplied',
     ...(row.confidence_percent != null && !model ? { confidence_percent: row.confidence_percent } : {}),
     ...(model ? { record_unit: 'model_candidate', ...decision, harmonization_score: row.harmonization_score, model_version: row.model_version,
-      model_verification_status: row.gold_provenance?.model_verification_status || null } : { product_version: row.version }),
+      model_verification_status: row.gold_provenance?.model_verification_status || null } : { product_version: row.version, scan_km: row.scan, track_km: row.track }),
   } };
 }
 module.exports = { goldExplorerFeature };

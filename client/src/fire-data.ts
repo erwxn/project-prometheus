@@ -38,6 +38,8 @@ export interface FireFeature {
     cell_row?: number;
     cell_area_km2?: number;
     cell_wkt?: string;
+    scan_km?: number;
+    track_km?: number;
     frp_group_viirs_eq_mw?: number;
   };
 }

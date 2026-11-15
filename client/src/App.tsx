@@ -19,7 +19,6 @@ import { areaBounds, radiusArea } from './area-selection';
 import { useDashboard } from './dashboard-context';
 import { AreaControls, GlobalFilters } from './DashboardControls';
 import { FireMap } from './FireMap';
-import { SatelliteMarkerKey } from './SatelliteMarkerKey';
 import { FireObservations } from './FireObservations';
 import { SiteBrand, SiteNavigation } from './SiteHeader';
 import { CountrySearch } from './CountrySearch';
@@ -353,7 +352,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
           {mapState === 'loading' && <MapLoading />}
           {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry Gold data to try again.</p>}
           {mapState === 'empty' && drawMode === 'static' && <div className="map-empty" role="status"><strong>{!archive.mapBusy && selectedSatellite !== 'ALL' && !availableSensors(state.collection).includes(selectedSatellite) ? 'Selected sensor is unavailable in this slice' : 'No matching detections in this dataset'}</strong><span>This does not mean there were no fires. Try another dataset, time window, or Next detection.</span><button onClick={() => { showWholeWindow(); }}>{timeScope === 'file' ? 'View entire file' : 'View all selected 24 hours'}</button></div>}
-          <FireMap mapRef={mapRef} features={filteredFires} simulated={dataMeta.source === 'simulated'} selectedFeature={activeFire} onSelectFeature={feature => { setSelectedFire(feature); setIsPlaying(false); }} theme={mapTheme} projection={mapProjection} mode={drawMode} onModeChange={changeDrawMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
+          <FireMap showFootprints mapRef={mapRef} features={filteredFires} simulated={dataMeta.source === 'simulated'} selectedFeature={activeFire} onSelectFeature={feature => { setSelectedFire(feature); setIsPlaying(false); }} theme={mapTheme} projection={mapProjection} mode={drawMode} onModeChange={changeDrawMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
           <div className="map-top-controls">
             <div className="map-heading"><h2>{state.filters.country ? countryName(state.filters.country) : state.filters.area ? 'Selected area' : dataMeta.gold ? `${dataMeta.country_iso3 === 'DZA' ? 'Algeria' : 'Morocco'} fire activity` : activeRegion === 'Global' ? 'Global fire activity' : activeRegion} <span>/ {mapProjection === 'globe' ? 'Globe' : 'Flat map'}</span></h2><span className="mobile-data-status">{dataMeta.source === 'simulated' ? 'SIMULATED HISTORY' : backendStatus === 'online' ? 'BACKEND CONNECTED' : backendStatus === 'checking' ? 'CONNECTING' : dataMeta.gold ? 'GOLD UNAVAILABLE' : 'DEMO DATASET'}</span></div>
             <CountrySearch onSelect={locateCountry} selectionDescription="Country boundary filter applied" />{countryError && <p className="country-search-feedback" role="alert">{countryError}</p>}
@@ -388,8 +387,8 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
             <p>Observation point, not a fire perimeter. Acquisition time above is UTC.</p>
           </section>}
           <div className="thermal-legend" hidden={!!activeFire} aria-label="Satellite markers and fire radiative power">
-            <SatelliteMarkerKey features={filteredFires} />
-            <div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Points are not fire size.</p>
+            <p className="marker-note"><strong>Pixel area + centre</strong></p>
+            <div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Outlines show native cell geometry when supplied, or an approximate pixel area. They do not trace the fire perimeter.</p>
           </div>
 
           <div className="map-bottom-controls">

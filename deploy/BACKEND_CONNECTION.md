@@ -42,3 +42,7 @@ Use the already existing project and repository root. Configure the two Gold var
 The function duration remains 60 seconds. Downloads are bounded to four concurrent files, 15 seconds per request, 32 MiB per Parquet file, 128 MiB of catalog-declared Parquet bytes, 250,000 declared rows and 512 files. Public responses are capped at 4 MiB; lower `page_size` if a response is too large. The Gold cache is per-process and cold starts require reachable authenticated Azure. Actual latency and memory usage must be measured with the real files before relying on hosted performance.
 
 For production identity, identify the actual backend workload and obtain a dedicated principal/object ID. Give that ID to the storage operator for `Storage Blob Data Reader` at the `stprometheusnasa` Gold container scope only. Do not reuse the ingestion principal or create a permanent password. Managed/federated identity acquisition is not implemented by this SAS reader; that authentication change requires a separately verified workload identity configuration. Subscription/resource-group details and the backend principal were not supplied and are not invented here.
+
+## Serverless dependency tracing
+
+Gold service helpers use static imports so Vercel includes them in the function bundle. `node --test server/deployment.test.js` verifies the dependency trace from the real `api/index.js` entrypoint, including the Gold map helper and Parquet reader. Local API tests alone do not detect omitted deployment dependencies.

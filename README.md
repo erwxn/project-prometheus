@@ -1,8 +1,5 @@
 # 🔥 Project Prometheus: MODIS & VIIRS Hot Spot Harmonization
 
-The current dashboard and API use the Morocco-only study area. See [Morocco data setup](docs/morocco-data.md) for verified FIRMS exports, the frozen-model pilot and source-boundary provenance. Generated datasets and the separate Python ingestion pipeline are not part of this dashboard update.
-
-
 ![NASA Space Apps Challenge Tangier 2026](https://img.shields.io/badge/NASA_Space_Apps-Tangier_2026-0B3D91?style=for-the-badge&logo=nasa)
 ![React](https://img.shields.io/badge/Frontend-React_&_deck.gl-61DAFB?style=flat-square&logo=react)
 ![Node.js](https://img.shields.io/badge/Backend-Express.js-339933?style=flat-square&logo=node.js)

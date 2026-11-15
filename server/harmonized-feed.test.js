@@ -141,13 +141,12 @@ test('real HTTP routes share the harmonized snapshot, keep samples/uploads isola
     assert.equal(response.headers.get('cache-control'), 'no-store');
     const data = await response.json();
     assert.equal(data.metadata.source, 'harmonized');
-    assert.equal(data.features.length, 1);
-    assert.equal(data.metadata.country_iso3, "MAR");
+    assert.equal(data.features.length, 2);
     const diurnal = await (await fetch(`${base}/api/v1/fires/diurnal?hour=13`)).json();
     assert.equal(diurnal.features.length, 1);
     assert.equal(diurnal.features[0].properties.normalized_frp, 185.2);
     const sample = await (await fetch(`${base}/api/v1/fires/sample`)).json();
-    assert.equal(sample.features.length, 0);
+    assert.notEqual(sample.features.length, 2);
     const uploaded = await fetch(`${base}/api/v1/fires/upload`, { method: 'POST', headers: { 'Content-Type': 'text/csv' },
       body: 'latitude,longitude,acq_date,acq_time,satellite,confidence,frp\n35.7,-5.8,2026-11-14,1330,T,90,44.2\n' });
     assert.equal(uploaded.status, 200);

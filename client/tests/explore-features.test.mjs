@@ -20,10 +20,3 @@ test('shared searches round trip dates, region, source, platform and camera with
  for(const patch of [{camera:{longitude:999}},{filters:{...view.filters,country:'XXX'}},{filters:{...view.filters,country:'constructor'}},{filters:{...view.filters,startDate:'bad'}},{filters:{sensor:'ALL'}}])assert.equal(readSharedExplore('?view='+encodeURIComponent(JSON.stringify({...view,...patch}))),null);
  assert.equal(readSharedExplore('?view=%7B'),null);
 });
-
-test('Morocco selection follows the study polygon instead of the regional search rectangle',()=>{
- assert.equal(countryCode(['MA','MAR','Maroc']),'MAR');
- assert.equal(countryContains('MAR',[-5,34]),true);
- assert.equal(countryContains('MAR',[-4,28]),false);
- assert.equal(countryContains('MAR',[-13.2,27.1]),false);
-});

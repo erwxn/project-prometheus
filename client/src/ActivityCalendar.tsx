@@ -63,7 +63,7 @@ export function ActivityCalendar() {
       </div>
     </div>
     {archive.busy && <p role="status">Loading daily aggregates for the applied archive selection…</p>}
-    {!years.length ? <p className="dashboard-unavailable">Dated observations are needed for a calendar. Load verified Morocco observations to view the calendar.</p> : <>
+    {!years.length ? <p className="dashboard-unavailable">Dated observations are needed for a calendar. Load a MODIS CSV or explicitly choose simulated history.</p> : <>
       <div className="calendar-scroll" role="region" aria-label={`${view === 'year' ? visibleYear : `${months[Number(month) - 1]} ${visibleYear}`} activity calendar`} tabIndex={0}>
         {view === 'year' && <div className="calendar-month-labels">{months.map((label, i) => <span key={label} style={{ gridColumn: `${Math.floor(((dateTime(`${visibleYear}-${String(i + 1).padStart(2, '0')}-01`) - dateTime(start)) / UTC_DAY + offset) / 7) + 1} / span 1` }}>{label}</span>)}</div>}
         {view === 'month' && <div className="calendar-weekday-labels">{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => <span key={day}>{day}</span>)}</div>}

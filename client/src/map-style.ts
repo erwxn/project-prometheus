@@ -7,9 +7,9 @@ export interface ViewState {
 }
 
 export const INITIAL_VIEW_STATE: ViewState = {
-  longitude: -6.4,
-  latitude: 31.8,
-  zoom: 5.2,
+  longitude: 8,
+  latitude: 18,
+  zoom: 1.8,
   pitch: 20,
   bearing: 0
 };

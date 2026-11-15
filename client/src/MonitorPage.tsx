@@ -3,6 +3,7 @@ import type { MapRef } from 'react-map-gl/maplibre';
 import { SiteBrand, SiteNavigation } from './SiteHeader';
 import { BasemapAppearance, MapAppearance } from './MapAppearance';
 import { FireMap } from './FireMap';
+import { SatelliteMarkerKey } from './SatelliteMarkerKey';
 import { CountrySearch } from './CountrySearch';
 import { AreaControls } from './DashboardControls';
 import { useDashboard } from './dashboard-context';
@@ -117,6 +118,7 @@ export default function MonitorPage({ theme, setTheme, mapTheme, mapPreference, 
         <FireMap trackArchive={false} mapRef={mapRef} features={visible} selectedFeature={selected} onSelectFeature={selectDetection} theme={mapTheme} projection="mercator" mode={mode} onModeChange={setMode} onDrawingError={setDrawingError} />
         <div className="map-top-controls"><div className="map-heading"><h2>{visible.length.toLocaleString()} recent detections</h2></div><CountrySearch onSelect={([,,bounds]) => { mapRef.current?.fitBounds(bounds, { padding: 90 }); return true; }} /><BasemapAppearance value={mapPreference} onChange={setMapPreference} /></div>
         {feed.loading && <MapLoading />}
+        {!!visible.length && <div className="platform-legend"><SatelliteMarkerKey features={visible} /></div>}
         {!feed.loading && !visible.length && <p className="analytics-map-empty">{feed.error ? 'Monitoring data is unavailable.' : live ? 'No loaded observations in the last 24 hours. This does not establish an absence of fires.' : 'No loaded detections in this playback hour.'}</p>}
         <div className="monitor-playback">
           <div><strong>{live ? 'Following now' : `Playback · ${instant(end - DAY + minute * 60000)}`}</strong><span>{live ? 'Rolling 24-hour window' : 'Showing the previous hour within a frozen 24-hour window'}</span></div>

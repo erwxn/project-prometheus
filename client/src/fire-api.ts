@@ -13,10 +13,10 @@ export function parseCollection(data: unknown): FireCollection {
   return { type: 'FeatureCollection', features: collection.features, metadata };
 }
 
-export function validateUpload(file: Pick<File, 'name' | 'size'>): string | null {
-  if (!file.name.toLowerCase().endsWith('.csv')) return 'Choose a NASA FIRMS MODIS .csv file.';
-  if (file.size === 0) return 'This file is empty. Choose a CSV containing observations.';
-  if (file.size > 3 * 1024 * 1024) return 'Choose a CSV smaller than 3 MB for this testing tool.';
+export function validateUpload(file: Pick<File, 'name' | 'size'>, harmonized = false): string | null {
+  if (harmonized ? !/\.(csv|json|parquet|zip)$/i.test(file.name) : !file.name.toLowerCase().endsWith('.csv')) return harmonized ? 'Choose a team delivery ZIP or a harmonized CSV, JSON, or Parquet file.' : 'Choose a NASA FIRMS MODIS .csv file.';
+  if (file.size === 0) return 'This file is empty.';
+  if (file.size > 3 * 1024 * 1024) return 'Choose a file no larger than 3 MB for this testing tool.';
   return null;
 }
 
@@ -47,6 +47,19 @@ export async function uploadObservations(base: string, file: File, signal: Abort
   if (!response.ok) throw new Error(typeof data?.error === 'string' ? data.error : `Upload failed (HTTP ${response.status}).`);
   const collection = parseCollection(data);
   if (!collection.features.length || collection.metadata.source !== 'csv') throw new Error('No valid MODIS observations were returned.');
+  return collection;
+}
+
+export async function uploadHarmonized(base: string, file: File, signal: AbortSignal): Promise<FireCollection> {
+  const error = validateUpload(file, true);
+  if (error) throw new Error(error);
+  const format = file.name.split('.').at(-1)!.toLowerCase();
+  const response = await fetch(`${base}/api/v1/fires/upload-harmonized?format=${format}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: file, signal });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(typeof data?.error === 'string' ? data.error : `Harmonized upload failed (HTTP ${response.status}).`);
+  const collection = parseCollection(data);
+  if (collection.metadata.source !== 'harmonized') throw new Error('No valid harmonized results were returned.');
+  collection.metadata.source_name = file.name;
   return collection;
 }
 

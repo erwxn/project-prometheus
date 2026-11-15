@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import Map, { NavigationControl, useControl, type MapRef } from 'react-map-gl/maplibre';
 import { MapLibreOverlay, type MapLibreOverlayProps } from '@deck.gl/maplibre';
-import { ScatterplotLayer } from '@deck.gl/layers';
+import { IconLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { TerraDraw, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode, type GeoJSONStoreFeatures } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import mapLib from './maplibre';
@@ -11,6 +11,7 @@ import { observationFrp, type AreaFeature, type DrawMode } from './analytics-mod
 import { validateArea, validateDrawingArea } from './area-selection';
 import { useDashboard } from './dashboard-context';
 import type { FireFeature } from './fire-data';
+import { satelliteIconAtlas, satelliteIconMapping, satelliteMarker, satelliteName } from './satellite-markers';
 
 function DeckGLOverlay(props: MapLibreOverlayProps) {
   const overlay = useControl<MapLibreOverlay>(() => new MapLibreOverlay(props));
@@ -20,6 +21,7 @@ function DeckGLOverlay(props: MapLibreOverlayProps) {
 
 interface FireMapProps {
   trackArchive?: boolean;
+  simulated?: boolean;
   mapRef: RefObject<MapRef | null>;
   features: FireFeature[];
   theme: 'light' | 'dark';
@@ -32,7 +34,7 @@ interface FireMapProps {
   onLoad?(): void;
 }
 
-export function FireMap({ trackArchive = true, mapRef, features, theme, projection, selectedFeature, onSelectFeature, mode, onModeChange, onDrawingError, onLoad }: FireMapProps) {
+export function FireMap({ trackArchive = true, simulated = false, mapRef, features, theme, projection, selectedFeature, onSelectFeature, mode, onModeChange, onDrawingError, onLoad }: FireMapProps) {
   const { state, dispatch, archive, camera, saveCamera } = useDashboard();
   const [ready, setReady] = useState(false);
   const area = state.filters.area;
@@ -141,11 +143,16 @@ export function FireMap({ trackArchive = true, mapRef, features, theme, projecti
 
   const layers = useMemo(() => {
     const layers = [];
-    layers.push(new ScatterplotLayer<FireFeature>({
-      id: 'fire-observations', data: features, getPosition: d => d.geometry.coordinates,
-      radiusUnits: 'pixels', getRadius: 4,
-      getFillColor: d => getFRPColor(observationFrp(d)), getLineColor: [23, 47, 64, 220],
-      stroked: true, lineWidthMinPixels: 1, radiusMinPixels: 3, radiusMaxPixels: 5, pickable: mode === 'static',
+    const symbols = {
+      data: features, iconAtlas: satelliteIconAtlas, iconMapping: satelliteIconMapping,
+      getPosition: (feature: FireFeature) => feature.geometry.coordinates,
+      getIcon: (feature: FireFeature) => satelliteMarker(feature.properties),
+    };
+    layers.push(new IconLayer<FireFeature>({
+      ...symbols, id: 'fire-observation-outlines', getSize: simulated ? 9 : 14, opacity: simulated ? .5 : 1, getColor: [16, 34, 45, 255],
+    }), new IconLayer<FireFeature>({
+      ...symbols, id: 'fire-observations', getSize: simulated ? 7 : 11, opacity: simulated ? .72 : 1,
+      getColor: feature => getFRPColor(observationFrp(feature)), pickable: mode === 'static',
     }));
     if (selectedFeature) layers.push(new ScatterplotLayer<FireFeature>({
       id: 'selected-observation', data: [selectedFeature], getPosition: d => d.geometry.coordinates,
@@ -153,14 +160,14 @@ export function FireMap({ trackArchive = true, mapRef, features, theme, projecti
       getLineColor: theme === 'light' ? [38, 52, 60, 255] : [255, 255, 255, 255], lineWidthMinPixels: 2, pickable: false,
     }));
     return layers;
-  }, [features, selectedFeature, theme, mode]);
+  }, [features, selectedFeature, theme, mode, simulated]);
 
   const tooltip = useCallback((info: { object?: unknown }) => {
     if (!info.object) return null;
     const feature = info.object as FireFeature, p = feature.properties;
     const power = (value: number | null) => value === null || !Number.isFinite(value) ? 'Not available' : `${value.toFixed(1)} MW`;
-    return { text: `${p.satellite}${p.record_unit === 'predicted_cell' ? ' · Predicted 500 m cell' : p.record_unit === 'fire_group' ? ' · Fire group' : ''}${p.p_viirs !== undefined ? `\nVIIRS detection probability: ${(p.p_viirs * 100).toFixed(1)}%` : ''}${state.collection.metadata.source === 'simulated' ? ' · SIMULATED' : ''}\nRaw FRP: ${power(p.raw_frp)}\nNormalized FRP: ${power(p.normalized_frp)}\nAcquired (UTC): ${p.observed_at_utc || `${p.acq_time_utc} · undated`}\nLocal mean solar time: ${p.local_solar_time || 'Unavailable'}\nPlatform: ${p.platform || p.satellite}\nConfidence: ${p.confidence || 'Unavailable'}\nLatitude, longitude: ${feature.geometry.coordinates[1].toFixed(4)}, ${feature.geometry.coordinates[0].toFixed(4)}`, style: { backgroundColor: '#172f40', color: '#f4f7fa', font: '12px/1.6 "DM Sans", sans-serif', borderRadius: '4px', maxWidth: '300px' } };
-  }, [state.collection.metadata.source]);
+    return { text: `Satellite: ${satelliteName(p)}\nSource: ${p.satellite}${p.source_sensor ? ` (${p.source_sensor})` : ''}${p.record_unit === 'predicted_cell' ? ' · Predicted 500 m cell' : p.record_unit === 'fire_group' ? ' · Fire group' : ''}${p.p_viirs !== undefined ? `\nVIIRS detection probability: ${(p.p_viirs * 100).toFixed(1)}%` : ''}${simulated ? ' · SIMULATED' : ''}\nRaw FRP: ${power(p.raw_frp)}\nNormalized FRP: ${power(p.normalized_frp)}\nAcquired (UTC): ${p.observed_at_utc || `${p.acq_time_utc} · undated`}\nLocal mean solar time: ${p.local_solar_time || 'Unavailable'}\nConfidence: ${p.confidence || 'Unavailable'}\nLatitude, longitude: ${feature.geometry.coordinates[1].toFixed(4)}, ${feature.geometry.coordinates[0].toFixed(4)}`, style: { backgroundColor: '#172f40', color: '#f4f7fa', font: '12px/1.6 "DM Sans", sans-serif', borderRadius: '4px', maxWidth: '300px' } };
+  }, [simulated]);
 
   return <Map mapLib={mapLib} ref={mapRef} initialViewState={camera.current ?? INITIAL_VIEW_STATE} onMoveEnd={event => { const v = event.viewState; saveCamera({ longitude: v.longitude, latitude: v.latitude, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing }); }} onLoad={() => { setReady(true); onLoad?.(); }}
     mapStyle={BASEMAP_STYLES.dark} projection={{ type: projection }} transformStyle={INITIAL_BASEMAP_TRANSFORM} transformRequest={basemapRequest} pixelRatio={RENDER_PIXEL_RATIO}

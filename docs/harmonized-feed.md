@@ -65,6 +65,8 @@ After a valid snapshot has loaded, upstream errors or invalid updates keep the p
 
 ## Try it before the team's source exists
 
+For a temporary browser preview, choose **Load harmonized results** in Analyze or in Explore’s **Dataset and custom dates**. Upload a [team delivery ZIP](harmonized-delivery.md), or a single CSV, JSON, or Parquet table. The same parser as the configured feed selects predicted cells in a team ZIP. Upload the fire-group table on its own for group counts. Uploads are limited to 3 MB and 50,000 input records, with the same ZIP expansion limit as the feed. Reload or choose **Restore server dataset** to return to the configured feed. Set `ENABLE_CSV_UPLOAD=false` to disable uploads on the server, or `VITE_ENABLE_CSV_UPLOAD=false` to hide the controls.
+
 Terminal 1, repository root:
 
 ```powershell

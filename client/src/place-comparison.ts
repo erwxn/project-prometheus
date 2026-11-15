@@ -1,6 +1,6 @@
 import type { Polygon, MultiPolygon, Position } from 'geojson';
 import { activityDay, dailyBuckets, selectScope } from './analytics-engine.ts';
-import type { FireMetadata, PreparedObservation, SensorFilter } from './analytics-model.ts';
+import type { FireMetadata, PreparedObservation, SensorFilter, SimulatedPlatform } from './analytics-model.ts';
 
 // Spherical polygon area from the boundary rings, including islands and holes.
 const radians = Math.PI / 180;
@@ -35,8 +35,8 @@ export function compareMonths(dates: string[], observedDays: Map<string, number>
   return { months, covered: dates.filter(date => completeDays.has(date)).length };
 }
 
-export function snapshotComparison(dates: string[], rows: PreparedObservation[], metadata: FireMetadata, sensor: SensorFilter, country: string) {
-  const index = dailyBuckets(selectScope(rows, { sensor, country, area: null }));
+export function snapshotComparison(dates: string[], rows: PreparedObservation[], metadata: FireMetadata, sensor: SensorFilter, country: string, simulatedPlatform?: SimulatedPlatform | null) {
+  const index = dailyBuckets(selectScope(rows, { sensor, country, area: null, simulatedPlatform }));
   const counts = new Map<string, number>();
   const covered = new Set<string>();
   for (const date of dates) {

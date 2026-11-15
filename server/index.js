@@ -6,6 +6,7 @@ const { loadModisCsv, parseModisCsv } = require('./modis-csv');
 const testData = require('./test-data').openTestData();
 
 const { feedConfig, createHarmonizedFeed } = require('./harmonized-feed');
+const { adaptHarmonized } = require('./harmonized-data');
 
 const cors = require('cors');
 const helmet = require('helmet');
@@ -785,6 +786,24 @@ app.post('/api/v1/fires/upload', (req, res, next) => {
   }
 });
 
+app.post('/api/v1/fires/upload-harmonized', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  if (process.env.ENABLE_CSV_UPLOAD === 'false') return res.status(404).json({ error: 'Temporary dataset uploads are disabled.' });
+  if (!['csv', 'json', 'parquet', 'zip'].includes(req.query.format)) return res.status(415).json({ error: 'Choose a team delivery ZIP or a harmonized CSV, JSON, or Parquet file.' });
+  if (!req.is('application/octet-stream')) return res.status(415).json({ error: 'Submit the harmonized file as application/octet-stream.' });
+  next();
+}, express.raw({ type: 'application/octet-stream', limit: '3mb', inflate: false }), async (req, res) => {
+  if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ error: 'The harmonized file is empty.' });
+  try {
+    const collection = await adaptHarmonized(req.body, { format: req.query.format, maxRows: 50000 });
+    if (collection.metadata.input_rows === 0) return res.status(422).json({ error: 'The file contains no harmonized records.' });
+    res.json({ ...collection, metadata: { ...collection.metadata, uploaded: true } });
+  } catch (error) {
+    const detail = /^(Missing harmonized field|Missing or duplicate identifier|Invalid coordinates, FRP, or UTC timestamp|Snapshot exceeds|Duplicate column names|Delivery exceeds|Delivery has no cell Parquet tables|Invalid delivery field|Missing delivery field)/.test(error.message) ? error.message : 'Could not read the harmonized file. Check its format and columns.';
+    res.status(400).json({ error: detail });
+  }
+});
+
 // Endpoint: Health Check
 app.get('/health', (req, res) => {
   res.json({
@@ -841,6 +860,7 @@ app.get('/api/v1/fires/diurnal', (req, res) => {
 // Return actionable JSON for body-parser upload errors instead of an HTML page.
 app.use((error, req, res, next) => {
   if (req.path.startsWith('/api/v1/fires/archive/') || req.path.startsWith('/api/v1/history/')) return res.status(error.type === 'entity.too.large' ? 413 : 400).json({error:'Supply a valid JSON archive query within the request size limit.'});
+  if (req.path === '/api/v1/fires/upload-harmonized') return res.status(error.status === 415 ? 415 : error.type === 'entity.too.large' ? 413 : 400).json({ error: 'Submit the file within the 3 MB testing limit without HTTP content encoding.' });
   if (req.path !== '/api/v1/fires/upload') return next(error);
   const oversized = error.type === 'entity.too.large';
   res.status(oversized ? 413 : 400).json({ error: oversized ? 'CSV exceeds the 3 MB testing limit. Choose a smaller file.' : 'Could not read this CSV. Save it as UTF-8 and try again.' });

@@ -13,9 +13,9 @@ export function SiteBrand({ heading = false }: { heading?: boolean }) {
   return (
     <div className="brand">
       <svg className="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-        <circle cx="20" cy="20" r="15" stroke="currentColor" strokeWidth="1.2" />
-        <ellipse cx="20" cy="20" rx="7" ry="19" stroke="currentColor" transform="rotate(40 20 20)" />
-        <path d="M14 28 20 11l6 17-6-4-6 4Z" fill="currentColor" />
+        <circle cx="20" cy="20" r="11.5" stroke="currentColor" strokeWidth="1.7" />
+        <ellipse cx="20" cy="20" rx="18" ry="6.5" transform="rotate(-35 20 20)" stroke="currentColor" strokeWidth="1.7" opacity="0.75" />
+        <circle cx="34.7" cy="9.7" r="2.8" fill="#e7b25e" />
       </svg>
       <div><BrandName className="brand-name">Prometheus</BrandName><p>Earth observation platform</p></div>
     </div>

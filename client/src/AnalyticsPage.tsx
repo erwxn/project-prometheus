@@ -1,3 +1,5 @@
+import { selectMapLayers } from './map-layers';
+import { SENSOR_IDS, type Sensor } from './analytics-model';
 import { SeasonComparison } from './SeasonComparison';
 import { SearchExport } from './SearchExport';
 import { HarmonizedNotice } from './HarmonizedNotice';
@@ -124,7 +126,7 @@ function Breakdown({ rows, total }: { rows: { label: string; count: number }[]; 
 }
 
 export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference, setMapPreference }: ThemeProps) {
-  const { camera, state, selected, summary, archive } = useDashboard();
+  const { camera, state, prepared, selected, summary, archive } = useDashboard();
   const [basis, setBasis] = useState<TimeBasis>('utc');
   const [projection, setProjection] = useState<'mercator' | 'globe'>('mercator');
   const [mode, setMode] = useState<DrawMode>('static');
@@ -132,8 +134,11 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
   const [mapReady, setMapReady] = useState(false);
   const mapRef = useRef<MapRef>(null);
   const restoreCamera = useRef(camera.current !== null);
-  const features = useMemo(() => selected.map(row => row.feature), [selected]);
-  const localStats = useMemo(() => summarizeObservations(features, 'ALL', '', basis), [features, basis]);
+  const [mapLayers, setMapLayers] = useState<Sensor[]>([...SENSOR_IDS]);
+  const mapRows = useMemo(() => selectMapLayers(prepared, state.filters, SENSOR_IDS), [prepared, state.filters]);
+  const features = useMemo(() => mapRows.filter(row => row.sensor && mapLayers.includes(row.sensor)).map(row => row.feature), [mapRows, mapLayers]);
+  const summaryFeatures = useMemo(() => selected.map(row => row.feature), [selected]);
+  const localStats = useMemo(() => summarizeObservations(summaryFeatures, 'ALL', '', basis), [summaryFeatures, basis]);
   const stats = useMemo(()=>{
     if(!archive.active)return localStats;
     if(!archive.data)return summarizeObservations([], 'ALL', '', basis);
@@ -180,17 +185,25 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
         <h2 id="analysis-filters">Region and filters</h2>
         <DatasetControls />
         <GlobalFilters />
+        <fieldset className="analytics-layer-controls">
+          <legend>Map layers · combine sources</legend>
+          <div>{SENSOR_IDS.map(sensor => {
+            const count = mapRows.filter(row => row.sensor === sensor).length;
+            return <label key={sensor}><input type="checkbox" checked={mapLayers.includes(sensor)} onChange={event => setMapLayers(current => event.target.checked ? [...current, sensor] : current.filter(value => value !== sensor))} />{sensor} <small>{count.toLocaleString()} loaded</small></label>;
+          })}<button type="button" onClick={() => setMapLayers([...SENSOR_IDS])}>Show all layers</button></div>
+          <p>Combine loaded observations on the map. Dates, area and selected day still apply. Charts and exports use the Sensor filter above. A layer with no loaded records cannot be displayed; overlapping sources are not separate physical fires.</p>
+        </fieldset>
         <div className="analytics-map-layout">
         <section className="map-stage analytics-map" data-map-theme={mapTheme} data-projection={projection} aria-label="Analytics fire observation map">
           {projection === 'globe' && <img className="orbital-stars" src={orbitalStars} alt="" aria-hidden="true" draggable={false} />}
           <FireMap mapRef={mapRef} features={features} simulated={state.collection.metadata.source === 'simulated'} theme={mapTheme} projection={projection} mode={mode} onModeChange={changeMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
-          <div className="map-top-controls"><div className="map-heading"><h2>{state.filters.area ? 'Selected area' : 'All locations'} <span>/ {whole.format(features.length)} {metricUnit('detections', state.collection.metadata.record_unit)}</span></h2></div><CountrySearch onSelect={([, , bounds]) => { if (!mapRef.current) return false; mapRef.current.fitBounds(bounds, { padding: 75, pitch: 0, maxZoom: 9 }); return true; }} /><div className="projection-switch" role="group" aria-label="Map projection"><button aria-pressed={projection === 'mercator'} onClick={() => { setMode('static'); setProjection('mercator'); }}>Flat map</button><button aria-pressed={projection === 'globe'} onClick={() => { setMode('static'); setProjection('globe'); }}>3D globe</button></div><BasemapAppearance value={mapPreference} onChange={setMapPreference} /></div>
+          <div className="map-top-controls"><div className="map-heading"><h2>{state.filters.area ? 'Selected area' : 'All locations'} <span>/ {whole.format(features.length)} map records</span></h2></div><CountrySearch onSelect={([, , bounds]) => { if (!mapRef.current) return false; mapRef.current.fitBounds(bounds, { padding: 75, pitch: 0, maxZoom: 9 }); return true; }} /><div className="projection-switch" role="group" aria-label="Map projection"><button aria-pressed={projection === 'mercator'} onClick={() => { setMode('static'); setProjection('mercator'); }}>Flat map</button><button aria-pressed={projection === 'globe'} onClick={() => { setMode('static'); setProjection('globe'); }}>3D globe</button></div><BasemapAppearance value={mapPreference} onChange={setMapPreference} /></div>
           {mode !== 'static' && <p className="map-drawing-status" role="status">{mode === 'select' ? 'Editing selected area' : `Drawing ${mode}`} · Finish or cancel in the area controls</p>}
           {mapState === 'loading' && <MapLoading />}
           {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry archive in the filters to try again.</p>}
-          {mapState === 'empty' && mode === 'static' && <p className="analytics-map-empty" role="status">No matching detections in the loaded snapshot. This does not establish an absence of fires.</p>}
+          {mapState === 'empty' && mode === 'static' && <p className="analytics-map-empty" role="status">No records in the enabled map layers for this selection. Enable a layer or change the dates or area. This does not establish an absence of fires.</p>}
           {!!features.length && <div className="platform-legend"><SatelliteMarkerKey features={features} /></div>}
-          <div className="map-activity-caption">{archive.active ? 'RAW TEST ARCHIVE' : state.collection.metadata.source === 'harmonized' ? 'HARMONIZED RESULTS' : state.collection.metadata.source === 'simulated' ? 'SIMULATED' : state.collection.metadata.source === 'csv' ? 'IMPORTED SNAPSHOT' : 'ILLUSTRATIVE DEMO'} · {state.filters.sensor} · Points show records, not fire perimeters</div>
+          <div className="map-activity-caption">{archive.active ? 'RAW TEST ARCHIVE' : state.collection.metadata.source === 'harmonized' ? 'HARMONIZED RESULTS' : state.collection.metadata.source === 'simulated' ? 'SIMULATED' : state.collection.metadata.source === 'csv' ? 'IMPORTED SNAPSHOT' : 'ILLUSTRATIVE DEMO'} · {mapLayers.join(" + ") || "No layers selected"} · Points show records, not fire perimeters</div>
         </section>
         <aside className="analytics-area-panel" aria-label="Geographic area selection"><AreaControls mapRef={mapRef} mode={mode} onModeChange={changeMode} error={drawingError} onError={setDrawingError} /></aside>
         </div>

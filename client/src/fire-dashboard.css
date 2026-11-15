@@ -464,3 +464,10 @@
   from { transform: perspective(700px) rotateZ(-16deg) rotateX(73deg); opacity: .45; }
   to { transform: perspective(700px) rotateZ(-24deg) rotateX(68deg); opacity: 1; }
 }
+.analytics-layer-controls { border: 1px solid var(--border-color, #8297a455); border-radius: 8px; padding: 16px; margin: 16px 0; }
+.analytics-layer-controls legend { font-weight: 700; padding: 0 6px; }
+.analytics-layer-controls > div { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
+.analytics-layer-controls label { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
+.analytics-layer-controls input { width: 18px; height: 18px; accent-color: #df6e37; }
+.analytics-layer-controls small { opacity: .75; }
+.analytics-layer-controls p { font-size: .85rem; line-height: 1.6; margin: 10px 0 0; }

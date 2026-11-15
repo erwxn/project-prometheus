@@ -22,7 +22,10 @@ export interface FireFeature {
     model_version?: string | null;
     product_version?: string | null;
     method_id?: string;
-    record_unit?: 'predicted_cell' | 'fire_group';
+    record_unit?: 'predicted_cell' | 'fire_group' | 'model_candidate';
+    country_iso3?: string;
+    harmonization_score?: number | null;
+    model_verification_status?: string | null;
     fire_id?: string;
     region?: string;
     source_sensor?: string;

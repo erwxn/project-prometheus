@@ -82,7 +82,7 @@ test('a late server response cannot replace a newer upload; cancellation aborts 
   const second = requests.begin();
   assert.equal(first.controller.signal.aborted, true);
   let active = collection([feature('2025-04-01')], { source: 'csv', uploaded: true });
-  resolveServer(new Response(JSON.stringify(collection([feature('2021-01-01')]))));
+  resolveServer(new Response(JSON.stringify(collection([], { source: 'harmonized', gold: true, gold_sensor: 'Harmonized', country_iso3: 'MAR', gold_snapshot: 'a'.repeat(64), gold_pages: 1, gold_page: 1, total_features: 0 }))));
   const response = await server;
   if (requests.current(first.revision)) active = response;
   assert.equal(active.metadata.uploaded, true); assert.equal(requests.current(second.revision), true);

@@ -35,7 +35,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
   const dataMeta = state.collection.metadata;
   const backendStatus = state.status === 'loading' ? 'checking' : state.status === 'error' ? 'fallback' : 'online';
   const selectedSatellite = state.filters.sensor;
-  const setSelectedSatellite = (sensor: SensorFilter) => !archive.active && dispatch({ type: 'filters', patch: { sensor } });
+  const setSelectedSatellite = (sensor: SensorFilter) => !(dataMeta.gold && sensor === 'ALL') && !archive.active && dispatch({ type: 'filters', patch: { sensor } });
   const mapRef = useRef<MapRef>(null);
   const restoreCamera = useRef(camera.current !== null);
   const [mapReady, setMapReady] = useState(false);
@@ -283,10 +283,10 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
             <p>Find satellite detections, choose a period, and inspect what was observed.</p>
             <div className={`data-status ${backendStatus}`} role="status">
               <span className="status-dot" />
-              {backendStatus === 'online' ? dataMeta.source === 'harmonized' ? dataMeta.uploaded ? 'Uploaded harmonized results' : dataMeta.preview ? 'Historical model preview' : dataMeta.feed_status === 'stale' ? 'Last valid harmonized publication' : 'Harmonized feed connected' : dataMeta.source === 'csv' ? 'Imported observations' : dataMeta.source === 'simulated' ? 'Simulated history' : 'Demo API connected' : backendStatus === 'checking' ? 'Connecting to data source' : ['csv','harmonized'].includes(dataMeta.source) ? 'API unavailable · loaded snapshot kept' : 'API unavailable · illustrative demo shown'}
-              <span className="status-label">{backendStatus === 'online' ? dataMeta.source === 'harmonized' ? 'MODEL' : dataMeta.source === 'csv' ? 'CSV' : 'DEMO' : backendStatus === 'checking' ? 'WAIT' : 'SAMPLE'}</span>
+              {backendStatus === 'online' ? dataMeta.gold ? dataMeta.feed_status === 'stale' ? 'Morocco Gold · last valid data' : 'Morocco Gold connected' : dataMeta.source === 'harmonized' ? dataMeta.uploaded ? 'Uploaded harmonized results' : dataMeta.preview ? 'Historical model preview' : dataMeta.feed_status === 'stale' ? 'Last valid harmonized publication' : 'Harmonized feed connected' : dataMeta.source === 'csv' ? 'Imported observations' : dataMeta.source === 'simulated' ? 'Simulated history' : 'Demo API connected' : backendStatus === 'checking' ? 'Connecting to Morocco data' : dataMeta.gold ? 'Morocco data unavailable' : ['csv','harmonized'].includes(dataMeta.source) ? 'API unavailable · loaded snapshot kept' : 'API unavailable · illustrative demo shown'}
+              <span className="status-label">{backendStatus === 'online' ? dataMeta.gold ? 'GOLD' : dataMeta.source === 'harmonized' ? 'MODEL' : dataMeta.source === 'csv' ? 'CSV' : 'DEMO' : backendStatus === 'checking' ? 'WAIT' : dataMeta.gold ? 'ERROR' : 'SAMPLE'}</span>
             </div>
-            {backendStatus === 'fallback' && <button className="retry-data" onClick={() => void retry()}>Retry real data</button>}
+            {backendStatus === 'fallback' && <button className="retry-data" onClick={() => void retry()}>Retry Morocco data</button>}
           </div>
 
           <section className="panel-section explore-share"><button className="fit-hotspots" onClick={() => void copyView()}>Share this view</button>{shareStatus && <p role="status">{shareStatus}</p>}{shareLink && <input aria-label="Shareable Explore link" readOnly value={shareLink} onFocus={e=>e.currentTarget.select()} />}{shareNotice && <p role="status">{shareNotice}</p>}</section>
@@ -320,7 +320,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
           </details>
           <section className="panel-section" aria-labelledby="summary-title">
             <div className="section-heading"><h3 id="summary-title">Observation summary</h3><span>Current selection</span></div>
-            <div className="primary-stat"><strong>{stats.count.toLocaleString()}</strong><span>{dataMeta.record_unit === 'predicted_cell' ? 'predicted cells' : dataMeta.record_unit === 'fire_group' ? 'fire groups' : 'detections'} on this map</span></div>
+            <div className="primary-stat"><strong>{stats.count.toLocaleString()}</strong><span>{dataMeta.record_unit === 'model_candidate' ? 'model candidate cells' : dataMeta.record_unit === 'predicted_cell' ? 'predicted cells' : dataMeta.record_unit === 'fire_group' ? 'fire groups' : 'detections'} on this map</span></div>
             <div className="stat-grid">
               <div><span>Peak FRP</span><strong>{stats.peakFrp}<small> MW</small></strong></div>
               <div><span>Mean FRP</span><strong>{stats.avgNormalizedFrp}<small> MW</small></strong></div>
@@ -337,7 +337,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
                 { id: 'VIIRS', label: 'Raw VIIRS (375 m)', detail: 'High resolution · 375 m', badge: 'V' },
                 { id: 'Harmonized', label: 'AI harmonized', detail: 'Normalized estimates', badge: 'AI' }
               ] as const).map(source => (
-                <button key={source.id} disabled={archive.active} className={`source-option ${selectedSatellite === source.id ? 'selected' : ''}`} aria-pressed={selectedSatellite === source.id} onClick={() => setSelectedSatellite(source.id)}>
+                <button key={source.id} disabled={archive.active || !!dataMeta.gold && source.id === 'ALL'} className={`source-option ${selectedSatellite === source.id ? 'selected' : ''}`} aria-pressed={selectedSatellite === source.id} onClick={() => setSelectedSatellite(source.id)}>
                   <span className="source-badge">{source.badge}</span><span className="source-text"><strong>{source.label}</strong><small>{source.detail}</small></span><span className="selection-dot" />
                 </button>
               ))}
@@ -351,11 +351,11 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
         <section className="map-stage" data-map-theme={mapTheme} data-projection={mapProjection} aria-label="Interactive fire observation map">
           {mapProjection === 'globe' && <img className="orbital-stars" src={orbitalStars} alt="" aria-hidden="true" draggable={false} />}
           {mapState === 'loading' && <MapLoading />}
-          {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry archive in the filters to try again.</p>}
+          {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry Morocco data to try again.</p>}
           {mapState === 'empty' && drawMode === 'static' && <div className="map-empty" role="status"><strong>{!archive.mapBusy && selectedSatellite !== 'ALL' && !availableSensors(state.collection).includes(selectedSatellite) ? 'Selected sensor is unavailable in this slice' : 'No matching detections in this dataset'}</strong><span>This does not mean there were no fires. Try another dataset, time window, or Next detection.</span><button onClick={() => { showWholeWindow(); }}>{timeScope === 'file' ? 'View entire file' : 'View all selected 24 hours'}</button></div>}
           <FireMap mapRef={mapRef} features={filteredFires} simulated={dataMeta.source === 'simulated'} selectedFeature={activeFire} onSelectFeature={feature => { setSelectedFire(feature); setIsPlaying(false); }} theme={mapTheme} projection={mapProjection} mode={drawMode} onModeChange={changeDrawMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
           <div className="map-top-controls">
-            <div className="map-heading"><h2>{state.filters.country ? countryName(state.filters.country) : state.filters.area ? 'Selected area' : activeRegion === 'Global' ? 'Global fire activity' : activeRegion} <span>/ {mapProjection === 'globe' ? 'Globe' : 'Flat map'}</span></h2><span className="mobile-data-status">{dataMeta.source === 'simulated' ? 'SIMULATED HISTORY' : backendStatus === 'online' ? 'BACKEND CONNECTED' : backendStatus === 'checking' ? 'CONNECTING' : 'DEMO DATASET'}</span></div>
+            <div className="map-heading"><h2>{state.filters.country ? countryName(state.filters.country) : state.filters.area ? 'Selected area' : dataMeta.gold ? 'Morocco fire activity' : activeRegion === 'Global' ? 'Global fire activity' : activeRegion} <span>/ {mapProjection === 'globe' ? 'Globe' : 'Flat map'}</span></h2><span className="mobile-data-status">{dataMeta.source === 'simulated' ? 'SIMULATED HISTORY' : backendStatus === 'online' ? 'BACKEND CONNECTED' : backendStatus === 'checking' ? 'CONNECTING' : dataMeta.gold ? 'GOLD UNAVAILABLE' : 'DEMO DATASET'}</span></div>
             <CountrySearch onSelect={locateCountry} selectionDescription="Country boundary filter applied" />{countryError && <p className="country-search-feedback" role="alert">{countryError}</p>}
             <div className="projection-switch" role="group" aria-label="Map view">
               <button type="button" aria-pressed={mapProjection === 'mercator'} onClick={() => switchProjection('mercator')}>
@@ -375,10 +375,11 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
             <p>{activeFire.geometry.coordinates[1].toFixed(3)}°, {activeFire.geometry.coordinates[0].toFixed(3)}°</p>
             <dl><div><dt>{activeFire.properties.satellite.toLowerCase().includes('harmonized') ? 'Estimated FRP' : 'Measured FRP'}</dt><dd>{observationFrp(activeFire)?.toFixed(1) ?? 'Unavailable'} MW</dd></div>
             <div><dt>Acquired UTC</dt><dd>{activeFire.properties.observed_at_utc ? activeFire.properties.observed_at_utc.replace('T', ' ').slice(0, 16) : `${activeFire.properties.acq_time_utc} · Undated demo`}</dd></div></dl>
-            <p><strong>What this means</strong><br />{activeFire.properties.record_unit === 'predicted_cell' ? 'The model selected this 500 m cell as a predicted detection. Its centre is shown; this is not a measured fire perimeter.' : activeFire.properties.record_unit === 'fire_group' ? 'A group of connected MODIS pixels from one pass, harmonized to VIIRS-equivalent FRP.' : 'A satellite detected heat at this location. Nearby points may belong to the same fire.'}</p>
+            <p><strong>What this means</strong><br />{activeFire.properties.record_unit === 'model_candidate' ? 'This is a model candidate cell from Morocco Gold, not a confirmed satellite fire detection.' : activeFire.properties.record_unit === 'predicted_cell' ? 'The model selected this 500 m cell as a predicted detection. Its centre is shown; this is not a measured fire perimeter.' : activeFire.properties.record_unit === 'fire_group' ? 'A group of connected MODIS pixels from one pass, harmonized to VIIRS-equivalent FRP.' : 'A satellite detected heat at this location. Nearby points may belong to the same fire.'}</p>
             {activeFire.properties.p_viirs !== undefined && <p>VIIRS detection probability: {(activeFire.properties.p_viirs * 100).toFixed(1)}%. Model uncertainty: {activeFire.properties.p_uncertainty?.toFixed(3) ?? 'Not supplied'}.</p>}
             {activeFire.properties.fire_id && <p>Group: {activeFire.properties.fire_id}{activeFire.properties.frp_group_viirs_eq_mw !== undefined && <> · Group FRP: {activeFire.properties.frp_group_viirs_eq_mw.toFixed(1)} MW (shared across cells; do not sum per row)</>}</p>}
             <p>FRP is the rate of energy released, measured in megawatts. It does not measure the burned area.</p>
+            {activeFire.properties.harmonization_score != null && <p>Uncalibrated model score: {activeFire.properties.harmonization_score.toFixed(4)}. This is not a probability.</p>}
             <p>Confidence: {activeFire.properties.confidence || 'Not supplied'}{activeFire.properties.confidence_percent !== undefined ? ` (${activeFire.properties.confidence_percent}%)` : ''}. {activeFire.properties.record_unit ? 'Producer model-confidence label.' : 'This is a detection-quality field, not a forecast.'}</p>
             <button className="fit-hotspots" type="button" disabled={!activeFire.properties.observed_at_utc} onClick={() => compareHistory(activeFire)}>Compare with history</button>
             <p className="scientific-note">{activeFire.properties.observed_at_utc ? 'Uses the selected area or a 25 km radius around this point.' : 'A dated observation is required.'}</p>

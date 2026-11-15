@@ -31,7 +31,7 @@ Restart a locally running server after changing `.env.gold.local`; process envir
 
 ## Scope and readiness
 
-See [the API and scientific contract](../docs/gold-backend.md) and [executed verification results](evidence/TEST_RESULTS.md). All Gold record responses are restricted to Morocco and exclude 2026. Existing `/api/v1/*` feeds, the frontend, ingestion and frozen model remain unchanged. The frontend is not automatically switched to Gold by adding these endpoints.
+See [the API and scientific contract](../docs/gold-backend.md) and [executed verification results](evidence/TEST_RESULTS.md). All Gold record responses are restricted to Morocco and exclude 2026. Explore and Analyze now use `/api/gold/explorer` with a Morocco-centered map and no global demo fallback. Harmonized model candidates are the default; MODIS and VIIRS observations load separately. Existing `/api/v1/*` feeds, ingestion and the frozen model retain their behavior.
 
 No cloud data is written, no ingestion is rebuilt, no operator identity is reused, and no Vercel project is created. Live validation has now passed with the renewed credential: all 146 files and 81,452 rows were verified, and all six record endpoints passed complete pagination checks. The 6,880 observations dated in 2026 are excluded, leaving 70,913 served observations. Independent evaluation retains 79 known labels and 38 unknown labels. See the executed evidence for the full per-dataset results. The ZIP alone did not establish these results; the live check downloaded and parsed actual Azure Parquet data.
 

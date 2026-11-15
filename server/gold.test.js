@@ -236,3 +236,20 @@ test('HTTP endpoints keep all populations distinct and sanitize 400, 409, 503 an
     assert.equal(response.status, 503); assert.equal((await response.text()).includes('DO-NOT-DISCLOSE'), false);
   });
 });
+
+test('map feed serves only the selected Morocco Gold population, not legacy demo points',async()=>{
+  const f=await fixture();
+  const models=await f.service.explorer();
+  assert.equal(models.metadata.gold,true);assert.equal(models.metadata.gold_sensor,'Harmonized');assert.equal(models.metadata.total_features,133);
+  assert.ok(models.features.every(feature=>feature.properties.country_iso3==='MAR'&&feature.properties.record_unit==='model_candidate'&&feature.properties.raw_frp===null));
+  assert.equal(models.features[0].properties.p_viirs,undefined);
+  const raw=await f.service.explorer({sensor:'VIIRS'});assert.equal(raw.metadata.total_features,53);
+  assert.ok(raw.features.every(feature=>feature.properties.satellite==='VIIRS'&&!feature.properties.observed_at_utc.startsWith('2026-')));
+  await http(f.service,async base=>{
+    const first=await fetch(base+'/api/gold/explorer');assert.equal(first.status,200);assert.equal(first.headers.get('content-encoding'),'gzip');
+    const data=await first.json();assert.equal(data.features.length,133);
+    const unchanged=await fetch(base+'/api/gold/explorer',{headers:{'If-None-Match':first.headers.get('etag')}});assert.equal(unchanged.status,304);
+    f.setTime(Date.parse('2026-11-15T08:00:00Z'));
+    assert.equal((await fetch(base+'/api/gold/explorer',{headers:{'If-None-Match':first.headers.get('etag')}})).status,503);
+  });
+});

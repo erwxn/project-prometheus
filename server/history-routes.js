@@ -1,7 +1,7 @@
 const { createHash } = require('node:crypto');
 const { validateQuery, countryContains, contains } = require('./archive-validation');
 
-const COLUMNS = ['id','observed_at_utc','latitude','longitude','sensor','platform','raw_frp_mw','harmonized_frp_mw','confidence','model_version','product_version','dataset_version','source','record_unit','fire_id','region','source_sensor','harmonized_to','p_viirs','p_uncertainty','detect_f1','cell_column','cell_row','cell_area_km2','cell_wkt','frp_group_viirs_eq_mw'];
+const COLUMNS = ['id','observed_at_utc','latitude','longitude','sensor','platform','raw_frp_mw','harmonized_frp_mw','confidence','model_version','product_version','dataset_version','source','record_unit','fire_id','region','source_sensor','harmonized_to','p_viirs','p_uncertainty','detect_f1','cell_column','cell_row','cell_area_km2','cell_wkt','frp_group_viirs_eq_mw','harmonization_score'];
 /** Quotes CSV cells and neutralizes spreadsheet formulas in text fields. */
 function csvCell(value) {
   if (value === null || value === undefined) return '';
@@ -11,7 +11,7 @@ function csvCell(value) {
 }
 function csvRow(feature, metadata) {
   const p=feature.properties;
-  return [feature.id,p.observed_at_utc,...[feature.geometry.coordinates[1],feature.geometry.coordinates[0]],p.satellite,p.platform,p.raw_frp,p.normalized_frp,p.confidence,p.model_version,p.product_version,metadata.version,metadata.source,p.record_unit,p.fire_id,p.region,p.source_sensor,p.harmonized_to,p.p_viirs,p.p_uncertainty,p.detect_f1,p.cell_column,p.cell_row,p.cell_area_km2,p.cell_wkt,p.frp_group_viirs_eq_mw].map(csvCell).join(',')+'\r\n';
+  return [feature.id,p.observed_at_utc,...[feature.geometry.coordinates[1],feature.geometry.coordinates[0]],p.satellite,p.platform,p.raw_frp,p.normalized_frp,p.confidence,p.model_version,p.product_version,metadata.version,metadata.source,p.record_unit,p.fire_id,p.region,p.source_sensor,p.harmonized_to,p.p_viirs,p.p_uncertainty,p.detect_f1,p.cell_column,p.cell_row,p.cell_area_km2,p.cell_wkt,p.frp_group_viirs_eq_mw,p.harmonization_score].map(csvCell).join(',')+'\r\n';
 }
 function fail(message,status=400) { throw Object.assign(Error(message),{status}); }
 /** Validates a common historical request without assuming a harmonization counting method. */

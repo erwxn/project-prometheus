@@ -39,6 +39,7 @@ export function observationPdf(features: FireFeature[], options: ReportOptions) 
   line(`Records in this export: ${features.length.toLocaleString('en-US')}`);
   y += 5;
   line('Counts describe hotspot detections, not unique fires or burned area. FRP is in megawatts. Missing values are shown as N/A.');
+  if (features.some(f => f.properties.record_unit === 'model_candidate')) line('Morocco Gold model candidates: these are not confirmed satellite detections. Model scores are uncalibrated, not probabilities. Missing cell FRP is not estimated by this interface.');
   if (features.some(f => f.properties.record_unit === 'predicted_cell')) line('Harmonized model output: each record is a predicted 500 m cell selected by detect_f1, not a confirmed VIIRS detection. Cell FRP is indicative. Cells can share a fire group.');
   if (features.some(f => f.properties.record_unit === 'fire_group')) line('Harmonized model output: each record is a connected MODIS fire group from one pass, not a unique real-world fire. FRP is the group total.');
   line('This report covers the loaded map selection only, including its time filter. It does not export the entire historical archive or establish complete satellite coverage.');

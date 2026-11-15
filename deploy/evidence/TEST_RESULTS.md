@@ -49,3 +49,12 @@ The full application smoke test verifies that health and existing legacy samples
 - [Offline transport verification](offline-gold-verification.json) and [offline responses](offline-api-response-examples.json): clearly labelled synthetic fixtures, not live measurements.
 
 The renewed credential is stored only in ignored local backend settings. It expires **2026-11-22 at 07:59 UTC**; rotation requires a newly issued credential, not editing expiry fields. Deployment still needs backend-only Gold environment variables in the actual existing Vercel project, a redeploy, and hosted endpoint/latency checks. No Vercel project or principal/object ID was invented. The dedicated production backend identity and Gold-container-only `Storage Blob Data Reader` handoff remain pending; no ingestion identity or permanent password was reused.
+
+## Morocco frontend connection fix — 2026-11-15
+
+- Full local regression suite: 146 passed, 0 failed.
+- Frontend lint, secret scan and production build passed. Existing bundle-size warnings remain.
+- Actual Gold map data verified locally: 1,826 model candidates, 8,194 MODIS observations and 62,719 VIIRS observations, all Morocco-scoped and excluding 2026.
+- Browser verification confirmed the default model map and complete paginated VIIRS source load. Initial and failed loads cannot show worldwide demo points.
+- Map pages are gzip-compressed, snapshot-pinned, and assembled before replacing the displayed dataset. Unchanged refreshes support conditional 304 responses after access checks.
+- Public production API verification was blocked by Vercel HTTP 429; local verification does not establish production deployment readiness.

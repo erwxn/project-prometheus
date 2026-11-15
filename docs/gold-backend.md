@@ -46,7 +46,7 @@ Record routes accept `start_date` and `end_date` as inclusive UTC `YYYY-MM-DD`, 
 /api/model-evaluations/metrics?year=2013
 ```
 
-Scope requires `country_iso3=MAR` and the committed catalog's `boundary_sha256`, with usable coordinates for point records. The Gold country/boundary assignment is authoritative for this data: the separate app basemap geometry is not used to reclassify verified Gold rows. That extra geometry would incorrectly drop 322 additional observations from the supplied publication. Daily aggregates retain the producer's verified country/boundary assignment and are not spatially redistributed. Western Sahara is not merged into Morocco. Rows without a usable UTC timestamp or dated in 2026 are excluded from record and computed metric responses. This policy applies only to the new Gold APIs, not existing legacy feeds or frontend state. No map outline is added. The API verifies country/boundary provenance, not a separate boundary geometry file that was not supplied.
+Scope requires `country_iso3=MAR` and the committed catalog's `boundary_sha256`, with usable coordinates for point records. The Gold country/boundary assignment is authoritative for this data: the separate app basemap geometry is not used to reclassify verified Gold rows. That extra geometry would incorrectly drop 322 additional observations from the supplied publication. Daily aggregates retain the producer's verified country/boundary assignment and are not spatially redistributed. Western Sahara is not merged into Morocco. Rows without a usable UTC timestamp or dated in 2026 are excluded from record and computed metric responses. This policy applies to the Gold APIs and the Gold-backed Explore/Analyze views; existing legacy feeds retain their behavior. No map outline is added. The API verifies country/boundary provenance, not a separate boundary geometry file that was not supplied.
 
 ## Integrity and concurrency
 
@@ -66,3 +66,9 @@ Concurrent requests share catalog and table loads. Snapshot/access generations a
 - Daily score sums are not observed fire counts. Fire groups are not distinct real-world incidents. Nullable boundary-clipped group FRP is not replaced with the source's un-clipped total. The API preserves the original fields and caveats without inventing coverage or fire-free days.
 
 See [backend connection and deployment](../deploy/BACKEND_CONNECTION.md), [test results](../deploy/evidence/TEST_RESULTS.md), and the separately labelled evidence files there. Live verification has passed locally. Hosting still requires the sensitive Gold environment settings in the actual existing Vercel project and post-deployment endpoint checks; no deployment has been performed by this task.
+
+## Frontend map feed
+
+`GET /api/gold/explorer?sensor=Harmonized|MODIS|VIIRS&page=1` serves verified Morocco GeoJSON in gzip-compressed pages of 10,000 records. Subsequent pages require the returned `gold_snapshot` as `snapshot`. The frontend validates and assembles every page before displaying a source, and rejects partial or mixed publications. This map endpoint is separate from the record APIs and their 1,000-row maximum. Conditional refreshes use ETags after credential and snapshot checks.
+
+Explore and Analyze start with an empty Morocco map while Gold loads, default to model candidates, and show an explicit error on failure. They never replace unavailable Gold data with global demo fires. Raw MODIS and VIIRS observations remain separate from model candidates; model scores are not probabilities.

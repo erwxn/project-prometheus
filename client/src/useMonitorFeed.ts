@@ -16,7 +16,7 @@ export function useMonitorFeed() {
     async function refresh() {
       let delay = 60_000;
       controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 20000);
+      const timeout = setTimeout(() => controller.abort(), 60000);
       try {
         const next = await loadObservations(API_BASE, controller.signal);
         if (!stopped) {

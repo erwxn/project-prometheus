@@ -16,7 +16,7 @@ export interface DashboardState {
 function filtersFor(collection: FireCollection, previous?: DashboardFilters): DashboardFilters {
   const available = availableSensors(collection);
   const [startDate, endDate] = collection.metadata.archive ? [collection.metadata.archive_startDate || '',collection.metadata.archive_endDate || ''] : datasetDateBounds(collection);
-  return { country: previous?.country ?? null, area: previous?.area ?? null, startDate, endDate, sensor: collection.metadata.archive_sensor ?? available[0] ?? 'MODIS', metric: previous?.metric ?? 'detections', selectedDay: null };
+  return { country: previous?.country ?? null, area: previous?.area ?? null, startDate, endDate, sensor: collection.metadata.gold_sensor ?? collection.metadata.archive_sensor ?? available[0] ?? 'MODIS', metric: previous?.metric ?? 'detections', selectedDay: null };
 }
 
 export function initialDashboardState(collection: FireCollection): DashboardState {
@@ -36,7 +36,7 @@ export type DashboardAction =
 export function dashboardReducer(state: DashboardState, action: DashboardAction): DashboardState {
   switch (action.type) {
     case 'refreshed': {
-      if (state.collection.metadata.source !== 'harmonized' || state.collection.metadata.archive || state.collection.metadata.uploaded) return state;
+      if (state.collection.metadata.source !== 'harmonized' && !state.collection.metadata.gold || state.collection.metadata.archive || state.collection.metadata.uploaded) return state;
       // An unchanged publication must not reset playback or refit the map camera.
       const collection = action.collection.metadata.version && action.collection.metadata.version === state.collection.metadata.version
         ? { ...action.collection, features: state.collection.features } : action.collection;

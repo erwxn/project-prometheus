@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
 import { createGoldReader, GOLD_KINDS, GoldError } from '../deploy/backend/gold_reader.mjs';
 const { validDate } = createRequire(import.meta.url)('./archive-validation.js');
+const { goldExplorerFeature } = createRequire(import.meta.url)('./gold-explorer.js');
 const ALLOWED = new Set(['start_date', 'end_date', 'year', 'sensor', 'source_acquisition', 'min_score', 'max_score', 'evaluation_status', 'label', 'bbox', 'page', 'page_size', 'snapshot']);
 function badQuery() { throw new GoldError(400); }
 
@@ -160,5 +161,33 @@ export function createGoldService({ reader = createGoldReader() } = {}) {
       population: 'Original delivery population; these are not metrics recomputed for the API region or a filtered subset.',
       metrics_by_year: (dataset.producer_reported_metrics_by_year || []).filter(item => item.year !== 2026 && (!q.year || String(item.year) === q.year)) };
   }
-  return { catalog, query, producerMetrics };
+  async function explorer(input = {}) {
+    if (Object.keys(input).some(key => !['sensor', 'page', 'snapshot'].includes(key)) || input.sensor !== undefined && !['Harmonized', 'MODIS', 'VIIRS'].includes(input.sensor)) badQuery();
+    if (input.page !== undefined && (typeof input.page !== 'string' || !/^[1-9]\d{0,5}$/.test(input.page))) badQuery();
+    if (input.snapshot !== undefined && (typeof input.snapshot !== 'string' || !/^[a-f0-9]{64}$/.test(input.snapshot))) badQuery();
+    const page = Number(input.page || 1);
+    const paged = result => ({ ...result, features: result.features.slice((page - 1) * 10000, page * 10000), metadata: { ...result.metadata, gold_page: page, gold_pages: Math.max(1, Math.ceil(result.features.length / 10000)) } });
+    const sensor = input.sensor || 'Harmonized', model = sensor === 'Harmonized';
+    const id = model ? 'morocco_harmonized_predictions' : 'morocco_fire_observations';
+    const snapshot = await current(input.snapshot), key = `${snapshot.generation}:${snapshot.snapshot}:explorer:${sensor}`;
+    if (cache.has(key)) return paged(cache.get(key));
+    const table = await reader.readDataset(snapshot, id);
+    if (table.snapshot !== snapshot.snapshot || table.generation !== snapshot.generation) throw new GoldError(409);
+    const features = table.rows.filter(row => eligible(row, snapshot, id) && (model || row.sensor === sensor)).map(row => goldExplorerFeature(row, model));
+    const times = features.map(feature => feature.properties.observed_at_utc).sort();
+    const latest = await current(snapshot.snapshot);
+    if (latest.generation !== snapshot.generation) throw new GoldError(409);
+    const result = { type: 'FeatureCollection', features, metadata: {
+      source: model ? 'harmonized' : 'gold', source_name: `Azure Gold · Morocco · ${model ? 'model candidates' : sensor + ' observations'}`,
+      gold: true, gold_sensor: sensor, gold_snapshot: snapshot.snapshot, version: `${snapshot.snapshot}:${sensor}`,
+      delivery_format: 'azure-gold', record_unit: model ? 'model_candidate' : undefined,
+      has_harmonized: model, total_features: features.length, candidate_cells: model ? features.length : undefined,
+      observed_from: times[0] || null, observed_to: times.at(-1) || null, feed_status: 'current',
+      country_iso3: 'MAR', excluded_years: [2026], coverage_status: 'unknown',
+      limitations: ['Morocco only; records dated in 2026 are excluded.', 'Model scores are uncalibrated outputs, not probabilities.', 'Missing records do not establish zero fire activity.'],
+    } };
+    if (cache.size >= 100) cache.delete(cache.keys().next().value);
+    cache.set(key, result); return paged(result);
+  }
+  return { catalog, query, producerMetrics, explorer };
 }

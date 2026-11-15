@@ -14,6 +14,7 @@ import { AreaControls, DatasetControls, GlobalFilters } from './DashboardControl
 import { FireMap } from './FireMap';
 import { ActivityCalendar } from './ActivityCalendar';
 import { HistoricalActivity } from './HistoricalActivity';
+import { PlaceComparison } from './PlaceComparison';
 import { CountrySearch } from './CountrySearch';
 import { areaBounds } from './area-selection';
 import { metricUnit, type DrawMode } from './analytics-model';
@@ -30,7 +31,8 @@ const analysisSections = [
   ['analysis-filters', 'Filters'],
   ['calendar-title', 'Calendar'],
   ['seasonal-title', 'Seasonality'],
-  ['history-title', 'Comparison'],
+  ['history-title', 'History'],
+  ['places-title', 'Places'],
   ['analysis-export', 'Export'],
   ['details-title', 'Details'],
 ] as const;
@@ -196,6 +198,7 @@ export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference
       <ActivityCalendar />
       <SeasonalHeatmap />
       <HistoricalActivity />
+      <PlaceComparison />
       <div id="analysis-export"><SearchExport /></div>
       <section className="dashboard-section observation-analytics" aria-labelledby="details-title"><div className="section-toolbar"><div><h2 id="details-title">Observation details</h2><p>Hourly timing, source breakdown, FRP distribution, and strongest readings for the focused selection.</p></div><label>Hourly chart clock<select value={basis} onChange={e => setBasis(e.target.value as TimeBasis)}><option value="utc">UTC</option><option value="solar">Local mean solar time</option></select></label></div>
           <div className="analytics-grid">

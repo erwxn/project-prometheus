@@ -36,9 +36,11 @@ export function observationPdf(features: FireFeature[], options: ReportOptions) 
   line(`Period: ${options.period}`);
   line(`Sensor: ${options.sensor}`);
   line(`Region: ${options.region}`);
-  line(`Detections in this export: ${features.length.toLocaleString('en-US')}`);
+  line(`Records in this export: ${features.length.toLocaleString('en-US')}`);
   y += 5;
   line('Counts describe hotspot detections, not unique fires or burned area. FRP is in megawatts. Missing values are shown as N/A.');
+  if (features.some(f => f.properties.record_unit === 'predicted_cell')) line('Harmonized model output: each record is a predicted 500 m cell selected by detect_f1, not a confirmed VIIRS detection. Cell FRP is indicative. Cells can share a fire group.');
+  if (features.some(f => f.properties.record_unit === 'fire_group')) line('Harmonized model output: each record is a connected MODIS fire group from one pass, not a unique real-world fire. FRP is the group total.');
   line('This report covers the loaded map selection only, including its time filter. It does not export the entire historical archive or establish complete satellite coverage.');
   y += 8;
   if (!features.length) line('No observations match the current selection.');

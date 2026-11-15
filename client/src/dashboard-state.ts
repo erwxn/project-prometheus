@@ -27,6 +27,7 @@ export type DashboardAction =
   | {type:'archive-apply';selection:ArchiveSelection;sensor:DashboardFilters['sensor'];reset:boolean}
   | {type:'archive-map';collection:FireCollection}
   | { type: 'loaded'; collection: FireCollection; remember: boolean }
+  | { type: 'refreshed'; collection: FireCollection }
   | { type: 'filters'; patch: Partial<DashboardFilters> }
   | { type: 'status'; status: DashboardState['status']; error?: string }
   | { type: 'upload'; status: DashboardState['uploadStatus']; message: string }
@@ -34,6 +35,13 @@ export type DashboardAction =
 
 export function dashboardReducer(state: DashboardState, action: DashboardAction): DashboardState {
   switch (action.type) {
+    case 'refreshed': {
+      if (state.collection.metadata.source !== 'harmonized' || state.collection.metadata.archive || state.collection.metadata.uploaded) return state;
+      // An unchanged publication must not reset playback or refit the map camera.
+      const collection = action.collection.metadata.version && action.collection.metadata.version === state.collection.metadata.version
+        ? { ...action.collection, features: state.collection.features } : action.collection;
+      return { ...state, collection, loadedCollection: collection };
+    }
     case 'archive-apply': return {...state,collection:{type:'FeatureCollection',features:[],metadata:{source:'csv',temporary:true,archive:true,archive_platform:action.selection.platform,archive_year:action.selection.year,archive_month:action.selection.month,archive_startDate:action.selection.startDate,archive_endDate:action.selection.endDate,archive_sensor:action.sensor,source_name:`Temporary archive · ${action.selection.platform}`}},filters:{...state.filters,country:action.reset?null:state.filters.country,startDate:action.selection.startDate,endDate:action.selection.endDate,sensor:action.sensor,area:action.reset?null:state.filters.area,selectedDay:null},status:'ready',error:''};
     case 'archive-map': {
       if(!state.collection.metadata.archive)return state;

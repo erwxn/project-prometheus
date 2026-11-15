@@ -20,7 +20,7 @@ if (process.env.VERCEL) app.set('trust proxy', 1);
 
 // Security & utility middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({ exposedHeaders: ['Retry-After'] }));
 app.use(express.json());
 
 // Express rate limiter: 100 requests per 15 minutes window
@@ -742,12 +742,13 @@ app.get('/api/v1/fires', (req, res) => {
 });
 
 const archiveService = require('./archive-service').createArchiveService();
+require('./history-routes').registerHistoryRoutes(app,{archiveService,loadSnapshot:async()=>remoteFeed?remoteFeed.get():activeData});
 for (const kind of ['summary', 'comparison', 'observations']) app.post(`/api/v1/fires/archive/${kind}`, async (req, res) => {
   if (!archiveService) return res.status(404).json({error:'Local archive index unavailable. Run npm run test-data:ingest first.'});
   const controller = new AbortController();
   const closed = () => { if (!res.writableEnded) controller.abort(); };
   res.on('close', closed);
-  try { const result = await archiveService.query(kind, req.body, controller.signal); if (!controller.signal.aborted) res.set('Cache-Control','no-store').json(result); }
+  try { const result = await archiveService.query(kind, req.body, controller.signal); if (!controller.signal.aborted) res.set('Cache-Control','no-store').json({...result,metadata:{source:'Raw NASA FIRMS test archive',version:archiveService.version,coverage_status:'unknown',scope:'entire applied selection'}}); }
   catch (error) { if (!controller.signal.aborted) res.status(error.status || 500).json({error:error.message}); }
   finally { res.off('close', closed); }
 });
@@ -839,7 +840,7 @@ app.get('/api/v1/fires/diurnal', (req, res) => {
 
 // Return actionable JSON for body-parser upload errors instead of an HTML page.
 app.use((error, req, res, next) => {
-  if (req.path.startsWith('/api/v1/fires/archive/')) return res.status(error.type === 'entity.too.large' ? 413 : 400).json({error:'Supply a valid JSON archive query within the request size limit.'});
+  if (req.path.startsWith('/api/v1/fires/archive/') || req.path.startsWith('/api/v1/history/')) return res.status(error.type === 'entity.too.large' ? 413 : 400).json({error:'Supply a valid JSON archive query within the request size limit.'});
   if (req.path !== '/api/v1/fires/upload') return next(error);
   const oversized = error.type === 'entity.too.large';
   res.status(oversized ? 413 : 400).json({ error: oversized ? 'CSV exceeds the 3 MB testing limit. Choose a smaller file.' : 'Could not read this CSV. Save it as UTF-8 and try again.' });

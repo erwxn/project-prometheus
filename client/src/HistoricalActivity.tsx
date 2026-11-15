@@ -8,7 +8,7 @@ import { alignedKeys, chartTitle, historicalLabel, periodKeys, type TrendGroupin
 
 const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
 const signed = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1, signDisplay: 'exceptZero' });
-const colors = ['#365f76', '#8b4f76', '#277569', '#9a641d', '#5151a3'];
+const colors = ['#365f76', '#8b4f76', '#277569', '#9a641d', '#5151a3'].map((color, index) => `var(--chart-${index + 1}, ${color})`);
 const dashes = ['', '7 4', '2 4', '10 3 2 3', '4 2'];
 
 export function HistoricalActivity() {
@@ -60,7 +60,7 @@ function LocalHistoricalActivity() {
     series = selectedYears.map((year, i) => ({ id: year, label: year, values: keys.map(key => byYear[i].find(point => point.date === `${year}-${key}`)?.value ?? null), complete: keys.map(key => byYear[i].find(point => point.date === `${year}-${key}`)?.complete ?? false), color: colors[i % colors.length], dash: dashes[i % dashes.length] }));
     if (showBaseline && selectedYears.length) {
       const latest = byYear.at(-1)!;
-      series.push({ id: 'baseline', label: `${selectedYears.at(-1)} · preceding 3-year comparable mean`, values: keys.map(key => latest.find(point => point.date === `${selectedYears.at(-1)}-${key}`)?.baseline ?? null), color: '#796b55', dash: '6 5' });
+      series.push({ id: 'baseline', label: `${selectedYears.at(-1)} · preceding 3-year comparable mean`, values: keys.map(key => latest.find(point => point.date === `${selectedYears.at(-1)}-${key}`)?.baseline ?? null), color: 'var(--chart-baseline, #796b55)', dash: '6 5' });
     }
     selectedIndex = filters.selectedDay ? keys.indexOf(filters.selectedDay.slice(5, 7)) : -1;
     xAxisLabel = 'UTC month';
@@ -69,22 +69,22 @@ function LocalHistoricalActivity() {
     labels = keys;
     const lookup = new Map(yearly.map(point => [point.date, point]));
     series = selectedYears.map((year, i) => ({ id: year, label: `${year} · recorded observations`, values: keys.map(key => key === year ? lookup.get(year)?.value ?? null : null), complete: keys.map(key => key === year && (lookup.get(year)?.complete ?? false)), color: colors[i % colors.length], dash: dashes[i % dashes.length] }));
-    if (showBaseline) series.push({ id: 'baseline', label: 'Preceding 3-year comparable mean', values: keys.map(key => lookup.get(key)?.baseline ?? null), color: '#796b55', dash: '6 5' });
+    if (showBaseline) series.push({ id: 'baseline', label: 'Preceding 3-year comparable mean', values: keys.map(key => lookup.get(key)?.baseline ?? null), color: 'var(--chart-baseline, #796b55)', dash: '6 5' });
     selectedIndex = filters.selectedDay ? keys.indexOf(filters.selectedDay.slice(0, 4)) : -1;
     xAxisLabel = 'UTC year';
   } else {
     keys = periodKeys(startDate, endDate, grouping);
     labels = keys.map(key => historicalLabel(key, grouping));
     const lookup = new Map(points.map(point => [point.date, point]));
-    series = [{ id: 'observed', label: `${sensor} · recorded ${metricLabel(metric).toLowerCase()}`, values: keys.map(key => lookup.get(key)?.value ?? null), complete: keys.map(key => lookup.get(key)?.complete ?? false), color: colors[0] }];
-    if (showBaseline && grouping !== 'daily') series.push({ id: 'baseline', label: 'Previous 3 years · comparable mean', values: keys.map(key => lookup.get(key)?.baseline ?? null), color: '#796b55', dash: '6 5' });
+    series = [{ id: 'observed', label: `${sensor} · recorded ${metricLabel(metric, collection.metadata.record_unit).toLowerCase()}`, values: keys.map(key => lookup.get(key)?.value ?? null), complete: keys.map(key => lookup.get(key)?.complete ?? false), color: colors[0] }];
+    if (showBaseline && grouping !== 'daily') series.push({ id: 'baseline', label: 'Previous 3 years · comparable mean', values: keys.map(key => lookup.get(key)?.baseline ?? null), color: 'var(--chart-baseline, #796b55)', dash: '6 5' });
     const focus = filters.selectedDay?.slice(0, grouping === 'daily' ? 10 : grouping === 'monthly' ? 7 : 4);
     selectedIndex = focus ? keys.indexOf(focus) : -1;
     xAxisLabel = grouping === 'daily' ? 'UTC date' : grouping === 'monthly' ? 'UTC month' : 'UTC year';
   }
 
   const anomalyPoints = grouping === 'yearly' ? yearly : grouping === 'monthly' ? monthly.filter(point => point.date.startsWith(anomalyYear)) : daily.filter(point => point.date.startsWith(anomalyYear));
-  const unit = metricUnit(metric);
+  const unit = metricUnit(metric, collection.metadata.record_unit);
   return <section className="dashboard-section historical-activity" aria-labelledby="history-title">
     <div className="section-toolbar"><div><span className="section-number">02 / HISTORICAL CONTEXT</span><h2 id="history-title">Historical fire comparison</h2><p>Compare recorded activity within the selected sensor, region, and UTC date range.</p></div>
       <div className="inline-controls"><label>Trend grouping<select value={grouping} onChange={event => setGrouping(event.target.value as TrendGrouping)}><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label><label className="checkbox-control"><input type="checkbox" checked={showBaseline} onChange={event => setShowBaseline(event.target.checked)} />Show historical baseline</label></div>
@@ -95,7 +95,7 @@ function LocalHistoricalActivity() {
       <p className="scientific-note">Missing dates remain gaps. Hollow points and * indicate partial periods or unknown coverage. Values are recorded observations, not coverage-corrected activity.</p>
       <div className="section-toolbar anomaly-heading"><div><h3>Historical anomalies</h3><p>Observed − historical mean. Percentage change uses the historical mean as denominator.</p></div>{grouping !== 'yearly' && <label>Anomaly year<select value={anomalyYear} onChange={event => setAnomalyChoice({ key: yearsKey, value: event.target.value })}>{years.map(year => <option key={year}>{year}</option>)}</select></label>}</div>
       {grouping === 'daily' ? <p className="dashboard-unavailable">Validated daily anomalies are not calculated. Choose Monthly or Yearly for the preceding-three-complete-years baseline rule.</p> : !points.some(point => point.baseline !== null) && <p className="dashboard-unavailable">Historical baseline unavailable. Three preceding complete years with the same sensor and product/method are required. A hotspot CSV alone does not establish coverage or comparability.</p>}
-      <div className="analytics-table-scroll anomaly-table" tabIndex={0} role="region" aria-label="Historical anomalies"><table className="analytics-table"><caption>{sensor} · {metricLabel(metric)} · {collection.metadata.source === 'simulated' ? 'Simulated examples' : 'Loaded observations'}</caption><thead><tr><th scope="col">Period</th><th scope="col">Observed ({unit})</th><th scope="col">Baseline ({unit})</th><th scope="col">Absolute anomaly</th><th scope="col">Percentage</th><th scope="col">Reference / availability</th></tr></thead><tbody>{anomalyPoints.map(point => <tr key={point.date}><th scope="row">{point.date}</th><td>{point.value === null ? '—' : `${number.format(point.value)}${!point.complete ? ' *' : ''}`}</td><td>{point.baseline === null ? '—' : number.format(point.baseline)}</td><td>{point.absoluteAnomaly === null ? 'Unavailable' : `${signed.format(point.absoluteAnomaly)} ${unit}`}</td><td>{point.percentageAnomaly === null ? point.baseline === 0 ? 'Undefined · zero baseline' : 'Unavailable' : `${signed.format(point.percentageAnomaly)}%`}</td><td>{point.baselineReason}</td></tr>)}</tbody></table></div>
+      <div className="analytics-table-scroll anomaly-table" tabIndex={0} role="region" aria-label="Historical anomalies"><table className="analytics-table"><caption>{sensor} · {metricLabel(metric, collection.metadata.record_unit)} · {collection.metadata.source === 'simulated' ? 'Simulated examples' : 'Loaded observations'}</caption><thead><tr><th scope="col">Period</th><th scope="col">Observed ({unit})</th><th scope="col">Baseline ({unit})</th><th scope="col">Absolute anomaly</th><th scope="col">Percentage</th><th scope="col">Reference / availability</th></tr></thead><tbody>{anomalyPoints.map(point => <tr key={point.date}><th scope="row">{point.date}</th><td>{point.value === null ? '—' : `${number.format(point.value)}${!point.complete ? ' *' : ''}`}</td><td>{point.baseline === null ? '—' : number.format(point.baseline)}</td><td>{point.absoluteAnomaly === null ? 'Unavailable' : `${signed.format(point.absoluteAnomaly)} ${unit}`}</td><td>{point.percentageAnomaly === null ? point.baseline === 0 ? 'Undefined · zero baseline' : 'Unavailable' : `${signed.format(point.percentageAnomaly)}%`}</td><td>{point.baselineReason}</td></tr>)}</tbody></table></div>
       <p className="scientific-note">Monthly and yearly baselines use the matching period in the immediately preceding three complete comparable years. Missing coverage, changed methods, and missing metrics suppress anomalies; zero baselines never produce an infinite percentage.</p>
     </>}
   </section>;

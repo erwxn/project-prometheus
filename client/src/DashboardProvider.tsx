@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState, useRef, type Rea
 import { DashboardContext } from './dashboard-context';
 import { API_BASE, FALLBACK_FIRES } from './fire-data';
 import { dashboardReducer, initialDashboardState, type DashboardAction, type DashboardState } from './dashboard-state';
-import { DatasetRequests, loadObservations, uploadObservations, validateUpload, parseCollection } from './fire-api';
+import { DatasetRequests, loadObservations, ObservationRateLimitError, uploadObservations, validateUpload, parseCollection } from './fire-api';
 import { dailyBuckets, prepareObservations, selectRange, selectScope, summarizeRange } from './analytics-engine';
 
 function useDashboardValue() {
@@ -15,6 +15,7 @@ function useDashboardValue() {
   const camera = useRef<{ longitude: number; latitude: number; zoom: number; pitch: number; bearing: number } | null>(sharedView?.camera ?? null);
   const saveCamera = useCallback((value: NonNullable<typeof camera.current>) => { camera.current = value; }, []);
   const [requests] = useState(() => new DatasetRequests());
+  const observationRetryAt = useRef(0);
   const archive = useArchive(state, dispatch, requests, !sharedView || !!sharedView.platform);
   useEffect(() => {
     if (!sharedView || shareRestored.current || state.status !== 'ready') return;
@@ -25,35 +26,47 @@ function useDashboardValue() {
     }
     dispatch({type:'filters',patch:sharedView.filters});
   }, [sharedView,state.status,state.collection.metadata.temporary,archive]);
+  const applyArchive = archive.apply;
   const [calendarFocus, setCalendarFocus] = useState(false);
   const openCalendar = useCallback((range: { startDate: string; endDate: string }, platform: string | null,
     collection: ReturnType<typeof parseCollection> | null, sensor: DashboardState['filters']['sensor']) => {
     requests.cancel();
-    if (platform) archive.apply({ ...range, platform, year: range.endDate.slice(0, 4), month: 'ALL' });
+    if (platform) applyArchive({ ...range, platform, year: range.endDate.slice(0, 4), month: 'ALL' });
     else if (collection) dispatch({ type: 'loaded', collection, remember: false });
     else return;
     dispatch({ type: 'filters', patch: { ...range, metric: 'detections', selectedDay: null, ...(platform ? {} : { sensor }) } });
     setCalendarFocus(true);
     window.history.pushState({}, '', '/analytics/');
     window.dispatchEvent(new PopStateEvent('popstate'));
-  }, [archive.apply, requests]);
-  const retry = useCallback(async () => {
+  }, [applyArchive, requests]);
+  const retry = useCallback(async (quiet = false) => {
+    if (Date.now() < observationRetryAt.current) return;
     const request = requests.begin();
-    dispatch({ type: 'upload', status: 'idle', message: '' });
-    dispatch({ type: 'status', status: 'loading' });
+    if (!quiet) {
+      dispatch({ type: 'upload', status: 'idle', message: '' });
+      dispatch({ type: 'status', status: 'loading' });
+    }
     const timeout = window.setTimeout(() => request.controller.abort(), 12000);
     try {
       const collection = await loadObservations(API_BASE, request.controller.signal);
-      if (requests.current(request.revision)) dispatch({ type: 'loaded', collection, remember: true });
+      if (requests.current(request.revision)) dispatch(quiet ? { type: 'refreshed', collection } : { type: 'loaded', collection, remember: true });
     } catch (error) {
-      if (requests.current(request.revision)) dispatch({ type: 'status', status: 'error', error: error instanceof Error ? error.message : 'The observation API is unavailable.' });
+      if (requests.current(request.revision)) {
+        if (error instanceof ObservationRateLimitError) observationRetryAt.current = error.retryAt;
+        if (!quiet) dispatch({ type: 'status', status: 'error', error: error instanceof Error ? error.message : 'The observation API is unavailable.' });
+      }
     } finally { window.clearTimeout(timeout); }
   }, [requests]);
 
   useEffect(() => { void retry(); const gate = requests; return () => gate.cancel(); }, [retry, requests]);
   useEffect(() => {
+    if (state.status !== 'ready' || state.collection.metadata.source !== 'harmonized' || state.collection.metadata.archive || state.uploadStatus === 'uploading') return;
+    const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void retry(true); }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [retry, state.status, state.collection.metadata.source, state.collection.metadata.archive, state.uploadStatus]);
+  useEffect(() => {
     if (state.status !== 'error' || state.collection.metadata.uploaded || state.collection.metadata.source === 'simulated' || state.uploadStatus === 'uploading') return;
-    const timer = window.setTimeout(() => void retry(), 5000);
+    const timer = window.setTimeout(() => void retry(), Math.max(30_000, observationRetryAt.current - Date.now()));
     return () => window.clearTimeout(timer);
   }, [retry, state.status, state.collection, state.uploadStatus]);
 

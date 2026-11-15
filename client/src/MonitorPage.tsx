@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { MapRef } from 'react-map-gl/maplibre';
 import { SiteBrand, SiteNavigation } from './SiteHeader';
-import { MapAppearance } from './MapAppearance';
+import { BasemapAppearance, MapAppearance } from './MapAppearance';
 import { FireMap } from './FireMap';
 import { CountrySearch } from './CountrySearch';
 import { AreaControls } from './DashboardControls';
@@ -14,6 +14,7 @@ import { prepareObservations, selectScope } from './analytics-engine';
 import type { DrawMode } from './analytics-model';
 import { MapLoading } from './MapLoading';
 import { DAY } from './timeline';
+import type { ThemeProps } from './theme';
 
 const instant = (time: number | null) => time === null ? 'Not available' : new Date(time).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 const countFormat = new Intl.NumberFormat();
@@ -37,11 +38,10 @@ function DetectionPanel({ title, children }: { title: string; children: ReactNod
   </details>;
 }
 
-export default function MonitorPage() {
+export default function MonitorPage({ theme, setTheme, mapTheme, mapPreference, setMapPreference }: ThemeProps) {
   const { state, archive, openCalendar } = useDashboard();
   const feed = useMonitorFeed();
   const mapRef = useRef<MapRef>(null);
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [mode, setMode] = useState<DrawMode>('static');
   const [drawingError, setDrawingError] = useState('');
   const [now, setNow] = useState(() => Date.now());
@@ -113,9 +113,9 @@ export default function MonitorPage() {
           {currentWeek && (history.platform || history.calendarCollection) && <button type="button" onClick={() => openCalendar(currentWeek, history.platform, history.calendarCollection, history.calendarSensor)}>Open burning calendar</button>}
         </section>
       </aside>
-      <section className="map-stage monitor-map" aria-label="Recent fire monitoring map">
-        <FireMap trackArchive={false} mapRef={mapRef} features={visible} selectedFeature={selected} onSelectFeature={selectDetection} theme={theme} projection="mercator" mode={mode} onModeChange={setMode} onDrawingError={setDrawingError} />
-        <div className="map-top-controls"><div className="map-heading"><h2>{visible.length.toLocaleString()} recent detections</h2></div><CountrySearch onSelect={([,,bounds]) => { mapRef.current?.fitBounds(bounds, { padding: 90 }); return true; }} /></div>
+      <section className="map-stage monitor-map" data-map-theme={mapTheme} aria-label="Recent fire monitoring map">
+        <FireMap trackArchive={false} mapRef={mapRef} features={visible} selectedFeature={selected} onSelectFeature={selectDetection} theme={mapTheme} projection="mercator" mode={mode} onModeChange={setMode} onDrawingError={setDrawingError} />
+        <div className="map-top-controls"><div className="map-heading"><h2>{visible.length.toLocaleString()} recent detections</h2></div><CountrySearch onSelect={([,,bounds]) => { mapRef.current?.fitBounds(bounds, { padding: 90 }); return true; }} /><BasemapAppearance value={mapPreference} onChange={setMapPreference} /></div>
         {feed.loading && <MapLoading />}
         {!feed.loading && !visible.length && <p className="analytics-map-empty">{feed.error ? 'Monitoring data is unavailable.' : live ? 'No loaded observations in the last 24 hours. This does not establish an absence of fires.' : 'No loaded detections in this playback hour.'}</p>}
         <div className="monitor-playback">

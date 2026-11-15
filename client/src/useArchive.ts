@@ -3,7 +3,7 @@ import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import type {Dispatch} from 'react';
 import {API_BASE} from './fire-data';
 import type {DashboardState,DashboardAction} from './dashboard-state';
-import type {DatasetRequests} from './fire-api';
+import {ObservationRateLimitError,type DatasetRequests} from './fire-api';
 import {archiveDefaults,archiveSensor,type ArchiveCatalog,type ArchiveMap,type ArchiveSelection,type ArchiveSummary} from './archive-model';
 import type {TrendGrouping} from './historical-chart';
 export function useArchive(state:DashboardState,dispatch:Dispatch<DashboardAction>,requests:DatasetRequests,autoArchive=true){
@@ -20,7 +20,25 @@ export function useArchive(state:DashboardState,dispatch:Dispatch<DashboardActio
  const [mapLoading,setMapLoading]=useState(false);
  const mapScope=useRef('');
  const revision=useRef(0),mapRevision=useRef(0);
- useEffect(()=>{const c=new AbortController();fetch(`${API_BASE}/api/v1/fires/test/catalog`,{signal:c.signal}).then(r=>r.ok?r.json():null).then(c=>{if(c?.temporary)setCatalog(c);}).catch(()=>{});return()=>c.abort();},[]);
+ useEffect(()=>{
+  const controller=new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  async function loadCatalog(){
+   try{
+    const response=await fetch(`${API_BASE}/api/v1/fires/test/catalog`,{signal:controller.signal});
+    if(controller.signal.aborted)return;
+    if(response.status===429){
+     const {retryAt}=new ObservationRateLimitError(response.headers.get('Retry-After'));
+     timer=setTimeout(()=>void loadCatalog(),Math.max(1000,retryAt-Date.now()));
+    }else if(response.ok){
+     const result:ArchiveCatalog=await response.json();
+     if(!controller.signal.aborted&&result.temporary)setCatalog(result);
+    }
+   }catch{ /* The archive is optional when the catalog is unavailable. */ }
+  }
+  void loadCatalog();
+  return()=>{controller.abort();clearTimeout(timer);};
+ },[]);
  const apply=useCallback((selection:ArchiveSelection,reset=false)=>{
  requests.cancel();revision.current++;mapRevision.current++;setApplyRevision(n=>n+1);setBusy(true);setMapBusy(true);setMapLoading(true);setMapInfo({total:0,nextCursor:null,cursor:0});setData(null);setComparison(null);setCursor(0);setViewport(null);setError('');
  const years=[...new Set(catalog?.partitions.filter(p=>p.platform===selection.platform).map(p=>Number(p.month.slice(0,4)))||[])].filter(y=>y<=Number(selection.year)).sort((a,b)=>b-a).slice(0,3);setComparisonYears(years);

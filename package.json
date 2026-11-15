@@ -3,11 +3,16 @@
   "version": "1.0.0",
   "description": "Project Prometheus - NASA Space Apps Challenge: Harmonization of MODIS and VIIRS Hot Spots",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "workspaces": [
     "client",
     "server"
   ],
   "scripts": {
+    "harmonized:preview": "node server/preview-harmonized.js",
+    "harmonized:check": "node server/check-harmonized.js",
     "archive:prepare": "node server/archive-cache.js",
     "archive:clear-cache": "node server/archive-cache.js --clear",
     "test-data:ingest": "python server/import-test-data.py",

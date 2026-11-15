@@ -1,12 +1,17 @@
 import { useId, useState } from 'react';
 
 export interface ChartSeries { id: string; label: string; values: (number | null)[]; color: string; dash?: string; complete?: boolean[] }
-const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
-export function ActivityLineChart({ title, labels, series, unit, selectedIndex = -1, xAxisLabel = 'UTC period', pointSpacing = 0, display = 'line' }: { title: string; labels: string[]; series: ChartSeries[]; unit: string; selectedIndex?: number; xAxisLabel?: string; pointSpacing?: number; display?: 'line' | 'bar' }) {
+const standardNumber = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+const densityNumber = new Intl.NumberFormat(undefined, { maximumSignificantDigits: 4 });
+export function ActivityLineChart({ title, labels, series, unit, selectedIndex = -1, xAxisLabel = 'UTC period', pointSpacing = 0, display = 'line', onPointInspect }: { title: string; labels: string[]; series: ChartSeries[]; unit: string; selectedIndex?: number; xAxisLabel?: string; pointSpacing?: number; display?: 'line' | 'bar'; onPointInspect?: (index: number) => void }) {
   const id = useId();
   const [detail, setDetail] = useState('Hover or focus a point for its exact value.');
   const values = series.flatMap(s => s.values.flatMap(value => value === null ? [] : [value]));
-  const step = Math.max(unit === 'detections' ? 1 : .1, Math.ceil(Math.max(1, ...values) / 4));
+  const density = unit === 'detections per 1,000 km²';
+  const number = density ? densityNumber : standardNumber;
+  const targetStep = Math.max(0, ...values) / 4;
+  const magnitude = targetStep > 0 ? 10 ** Math.floor(Math.log10(targetStep)) : 1;
+  const step = density && targetStep > 0 ? Math.ceil(targetStep / magnitude) * magnitude : Math.max(1, Math.ceil(targetStep));
   const ceiling = step * 4, left = 72, chartWidth = Math.max(736, left + 30 + Math.max(1, labels.length - 1) * pointSpacing), right = chartWidth - 30, top = 24, bottom = 230;
   const x = (index: number) => left + index / Math.max(1, labels.length - 1) * (right - left);
   const y = (value: number) => bottom - value / ceiling * (bottom - top);
@@ -40,7 +45,8 @@ export function ActivityLineChart({ title, labels, series, unit, selectedIndex =
             {s.values.map((value, i) => {
               if (value === null) return null;
               const text = `${s.label} · ${labels[i]} · ${number.format(value)} ${unit}${s.complete?.[i] === false ? ' · incomplete or unknown coverage' : ''}`;
-              return <circle key={i} cx={x(i)} cy={y(value)} r="4" fill={s.complete?.[i] === false ? 'var(--surface, #fcfcfa)' : s.color} stroke={s.color} strokeWidth="2" tabIndex={0} role="button" aria-label={text} onMouseEnter={() => setDetail(text)} onFocus={() => setDetail(text)} onClick={() => setDetail(text)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setDetail(text); } }}><title>{text}</title></circle>;
+              function inspect() { setDetail(text); onPointInspect?.(i); }
+              return <circle key={i} cx={x(i)} cy={y(value)} r="4" fill={s.complete?.[i] === false ? 'var(--surface, #fcfcfa)' : s.color} stroke={s.color} strokeWidth="2" tabIndex={0} role="button" aria-label={text} onMouseEnter={inspect} onFocus={inspect} onClick={inspect} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); inspect(); } }}><title>{text}</title></circle>;
             })}
           </g>;
         })}

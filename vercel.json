@@ -1,50 +1,47 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "version": 2,
-  "builds": [
-    {
-      "src": "client/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    },
-    {
-      "src": "server/index.js",
-      "use": "@vercel/node"
+  "framework": null,
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "client/dist",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 60,
+      "includeFiles": "{shared/**,test-data/harmonized/**}",
+      "excludeFiles": "{server/data/**,test-data/vis-data/**,server/*.test.js}"
     }
-  ],
+  },
   "routes": [
     {
       "src": "/health",
-      "dest": "/server/index.js"
+      "dest": "/api/index.js"
     },
     {
       "src": "/api/(.*)",
-      "dest": "/server/index.js"
+      "dest": "/api/index.js"
     },
     {
       "handle": "filesystem"
     },
     {
       "src": "/explore/?",
-      "dest": "/client/index.html"
+      "dest": "/index.html"
     },
     {
       "src": "/about/?",
-      "dest": "/client/about/index.html"
+      "dest": "/about/index.html"
     },
     {
       "src": "/analytics/?",
-      "dest": "/client/analytics/index.html"
+      "dest": "/analytics/index.html"
     },
     {
       "src": "/monitor/?",
-      "dest": "/client/monitor/index.html"
+      "dest": "/monitor/index.html"
     },
     {
-      "src": "/(.*)",
-      "dest": "/client/$1"
+      "src": "/",
+      "dest": "/index.html"
     }
   ]
 }

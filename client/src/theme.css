@@ -1,0 +1,124 @@
+/* Full-interface appearance. Load after the shared atlas and dashboard styles. */
+:root[data-theme='light'] { color-scheme: light; --page-background: #f4f4f0; --page-loading-ink: #365f76; }
+:root[data-theme='dark'] { color-scheme: dark; --page-background: #0a121a; --page-loading-ink: #bad1de; }
+:root[data-theme] body { background: var(--page-background); }
+.page-loading { color: var(--page-loading-ink, #365f76); }
+
+[data-theme='dark'] .mission-app {
+  --bg: #0a121a;
+  --panel: #101e29;
+  --surface: #162734;
+  --border: #2a4150;
+  --text: #edf4f6;
+  --muted: #b0c3ce;
+  --quiet: #9aafbc;
+  --accent: #a4d6e7;
+  --selected: #223d50;
+  --control-rule: #4d6878;
+  --control-hover: #223d50;
+  --map-panel: #132735f5;
+  --primary-action: #26546e;
+  --analysis-card: #162733;
+  --warning-surface: #30291d;
+  --warning-ink: #efce94;
+  --chart-1: #83bde0;
+  --chart-2: #e19ac7;
+  --chart-3: #7bceba;
+  --chart-4: #e4b170;
+  --chart-5: #b0acf6;
+  --chart-6: #f09e96;
+  --chart-7: #b0d48e;
+  --chart-8: #cda8ec;
+  --chart-9: #ebcc83;
+  --chart-10: #83cdd1;
+  --chart-baseline: #dfcaab;
+  color-scheme: dark;
+  scrollbar-color: #506875 var(--bg);
+}
+
+.mission-app[data-theme='dark'] :is(input, select, textarea):not(.map-stage *) { color-scheme: dark; }
+[data-theme='dark'] .brand-mark { color: #aacbd9; }
+[data-theme='dark'] .analysis-panel { scrollbar-color: #506875 var(--panel); }
+[data-theme='dark'] .mission-app :is(button, a, input, select, summary):focus-visible { outline-color: #a4d6e7; }
+[data-theme='dark'] .mission-app ::selection { color: #f1f8fc; background: #344f64; }
+[data-theme='dark'] .mission-app :is(.export-button, .theme-button, .fit-hotspots, .observation-tools select, .observation-pagination button, .source-badge, .imported-data input) { border-color: var(--control-rule); }
+[data-theme='dark'] :is(.source-badge, .selected .source-badge) { color: var(--accent); background: transparent; }
+[data-theme='dark'] :is(.status-label, .data-status, .segmented-control, .dashboard-unavailable, .drawing-help, .about-note),
+[data-theme='dark'] .sensor-pixel::before { background: var(--surface); border-color: var(--control-rule); }
+[data-theme='dark'] :is(.source-option.selected, .hotspot-row:hover, .source-option:hover, .map-appearance button:hover, .segmented-control button.selected, .anomaly-table .selected-period, .global-filters .day-filter, .selected-day-note) { background: var(--selected); border-color: var(--control-rule); }
+[data-theme='dark'] .mission-app :is(.export-button, .theme-button, .fit-hotspots):hover { background: var(--selected); }
+[data-theme='dark'] :is(.control-actions button:first-child, .search-export button, .map-appearance button[aria-pressed='true'], .analytics-jump-nav a[aria-current='location']) { color: #f3f8fc; background: var(--primary-action); border-color: #477692; }
+[data-theme='dark'] :is(.control-actions button:first-child, .search-export button):hover:not(:disabled) { background: #326480; }
+[data-theme='dark'] :is(.dashboard-error, .upload-feedback.error) { color: #ffb4a9; }
+[data-theme='dark'] :is(.selected-day-note, .chart-point-detail) { color: var(--accent); }
+[data-theme='dark'] .dataset-notice.simulated strong { color: var(--warning-ink); }
+[data-theme='dark'] .simulation-banner { color: var(--warning-ink); background: var(--warning-surface); border-color: #665237; }
+[data-theme='dark'] .archive-toolbar :is(input, select) { color: var(--text); background: var(--surface); border-color: var(--control-rule); }
+[data-theme='dark'] .archive-summary, [data-theme='dark'] .dashboard-section { border-color: var(--border); }
+[data-theme='dark'] .analytics-content { --analysis-line: var(--border); }
+[data-theme='dark'] .analytics-content :is(.analytics-area-panel, .temporary-data-picker, .calendar-scroll, .seasonal-scroll) { background: var(--bg); }
+[data-theme='dark'] .analytics-content .analytics-metrics > div { background: linear-gradient(150deg, var(--analysis-card), var(--panel) 75%); box-shadow: 0 9px 16px -16px #000; }
+[data-theme='dark'] .analytics-table thead th { background: var(--surface); color: var(--text); }
+[data-theme='dark'] .analytics-hour-chart line, [data-theme='dark'] .activity-line-chart .chart-grid { stroke: var(--border); }
+[data-theme='dark'] .analytics-hour-chart rect { fill: var(--chart-1); }
+[data-theme='dark'] .analytics-hour-chart text { fill: var(--muted); }
+[data-theme='dark'] .analytics-breakdown meter,
+[data-theme='dark'] .analytics-breakdown meter::-webkit-meter-bar { background: var(--surface); }
+
+[data-theme='dark'] :is(.calendar-day, .calendar-legend i, .seasonal-table td) { background: var(--surface); border-color: var(--control-rule); color: var(--text); }
+[data-theme='dark'] :is(.calendar-day, .calendar-legend i, .seasonal-table td)[data-level='1'] { background: #25495e; color: #f1f9fc; }
+[data-theme='dark'] :is(.calendar-day, .calendar-legend i, .seasonal-table td)[data-level='2'] { background: #356985; color: #fff; }
+[data-theme='dark'] :is(.calendar-day, .calendar-legend i, .seasonal-table td)[data-level='3'] { background: #6ba5c3; color: #081b28; }
+[data-theme='dark'] :is(.calendar-day, .calendar-legend i, .seasonal-table td)[data-level='4'] { background: #b4dfed; color: #081b28; }
+[data-theme='dark'] :is(.calendar-day.missing, .calendar-legend i.unknown, .seasonal-table td.unknown) { background: repeating-linear-gradient(135deg, #172b39, #172b39 3px, #2e4657 3px, #2e4657 4px); color: var(--text); }
+[data-theme='dark'] .seasonal-table td.outside { color: var(--quiet); background: transparent; }
+[data-theme='dark'] .calendar-day[aria-pressed='true'] { outline-color: #efce94; }
+[data-theme='dark'] .calendar-day:focus-visible { outline-color: #a4d6e7; }
+.map-stage[data-map-theme='dark'] .maplibregl-ctrl-attrib { background: #132735eb; color: #d7e5ed; }
+.map-stage[data-map-theme='dark'] .maplibregl-ctrl-attrib a { color: #d7e5ed; }
+.map-stage[data-map-theme='dark'] .maplibregl-ctrl-attrib-button { filter: invert(1); }
+
+[data-theme='light'] .analytics-content .analytics-hero { color: #173649; border-color: #c8d9df; background: radial-gradient(ellipse at 73% 0%, #dbeaf0, transparent 72%), #f3f8f9; }
+[data-theme='light'] .analytics-content .analytics-hero p:last-child { color: #3c5968; }
+[data-theme='light'] .analytics-content .analytics-hero::before { opacity: .24; }
+[data-theme='light'] .analytics-content .analytics-hero::after { border-color: #3f768561; }
+.map-stage[data-map-theme='light'] .timeline-panel { background: var(--map-tool); color: var(--map-tool-text); border-color: var(--map-tool-rule); }
+.map-stage[data-map-theme='light'] .timeline-panel :is(.overview-button, .timeline-toggle, select) { background: var(--map-tool); color: var(--map-tool-text); border-color: var(--map-tool-rule); }
+.map-stage[data-map-theme='light'] .timeline-panel :is(.overview-button:hover, .timeline-toggle:hover, .overview-button.selected, .play-button) { background: #dce7ee; color: #244b62; }
+.map-stage[data-map-theme='light'] :is(.timeline-title strong small, .time-ticks) { color: var(--map-tool-muted); }
+.map-stage[data-map-theme='light'] .time-ticks .overpass { color: #806121; }
+.map-stage[data-map-theme='light'] .time-ticks .peak { color: #9a4c24; }
+.map-stage[data-map-theme='light'] :is(.map-activity-caption, .map-drawing-status, .analytics-map-empty) { background: var(--map-tool); color: var(--map-tool-text); border-color: var(--map-tool-rule); }
+
+.map-stage[data-map-theme='light'] { color-scheme: light; --map-panel: #fafbf8f5; }
+.map-stage[data-map-theme='dark'] { color-scheme: dark; --map-panel: #132735f5; }
+.basemap-appearance {
+  display: inline-flex;
+  align-self: flex-start;
+  justify-self: start;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding-inline: 9px;
+  border: 1px solid var(--map-tool-rule);
+  border-radius: 4px;
+  background: var(--map-tool);
+  color: var(--map-tool-text);
+  font-size: 12px;
+  pointer-events: auto;
+}
+.basemap-appearance select {
+  min-height: 36px;
+  padding: 4px;
+  border: 0;
+  background: var(--map-tool);
+  color: var(--map-tool-text);
+  font: inherit;
+}
+@media (pointer: coarse) { .basemap-appearance select { min-height: 44px; } }
+
+.harmonized-notice { padding: 20px; border-block: 1px solid var(--border-color, #a9bac5); }
+.harmonized-notice h3 { margin: 0 0 8px; font-size: 16px; }
+.harmonized-notice p, .harmonized-notice li { max-width: 72ch; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.harmonized-notice summary { cursor: pointer; padding-block: 10px; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.harmonized-notice pre { max-width: 100%; overflow: auto; max-height: 280px; font-size: 12px; }

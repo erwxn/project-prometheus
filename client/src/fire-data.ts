@@ -1,5 +1,5 @@
 // Production uses Vercel's same-origin API routes; Vite dev talks to Express.
-export const API_BASE = import.meta.env?.PROD ? '' : 'http://localhost:5000';
+export const API_BASE = import.meta.env?.VITE_API_BASE || (import.meta.env?.PROD ? '' : 'http://localhost:5000');
 
 export interface FireFeature {
   type: string;
@@ -19,8 +19,22 @@ export interface FireFeature {
     acq_time_utc: string;
     local_solar_time: string;
     confidence: string;
+    model_version?: string | null;
     product_version?: string | null;
     method_id?: string;
+    record_unit?: 'predicted_cell' | 'fire_group';
+    fire_id?: string;
+    region?: string;
+    source_sensor?: string;
+    harmonized_to?: string;
+    p_viirs?: number;
+    p_uncertainty?: number;
+    detect_f1?: boolean;
+    cell_column?: number;
+    cell_row?: number;
+    cell_area_km2?: number;
+    cell_wkt?: string;
+    frp_group_viirs_eq_mw?: number;
   };
 }
 

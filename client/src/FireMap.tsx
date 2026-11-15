@@ -5,6 +5,7 @@ import { ScatterplotLayer } from '@deck.gl/layers';
 import { TerraDraw, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode, type GeoJSONStoreFeatures } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import mapLib from './maplibre';
+import { basemapRequest } from './basemap-boundaries';
 import { BASEMAP_STYLES, INITIAL_BASEMAP_TRANSFORM, INITIAL_VIEW_STATE, RENDER_PIXEL_RATIO, ORBITAL_SKY, FLAT_SKY, atlasBasemap, getFRPColor } from './map-style';
 import { observationFrp, type AreaFeature, type DrawMode } from './analytics-model';
 import { validateArea, validateDrawingArea } from './area-selection';
@@ -158,11 +159,11 @@ export function FireMap({ trackArchive = true, mapRef, features, theme, projecti
     if (!info.object) return null;
     const feature = info.object as FireFeature, p = feature.properties;
     const power = (value: number | null) => value === null || !Number.isFinite(value) ? 'Not available' : `${value.toFixed(1)} MW`;
-    return { text: `${p.satellite}${state.collection.metadata.source === 'simulated' ? ' · SIMULATED' : ''}\nRaw FRP: ${power(p.raw_frp)}\nNormalized FRP: ${power(p.normalized_frp)}\nAcquired (UTC): ${p.observed_at_utc || `${p.acq_time_utc} · undated`}\nLocal mean solar time: ${p.local_solar_time || 'Unavailable'}\nPlatform: ${p.platform || p.satellite}\nConfidence: ${p.confidence || 'Unavailable'}\nLatitude, longitude: ${feature.geometry.coordinates[1].toFixed(4)}, ${feature.geometry.coordinates[0].toFixed(4)}`, style: { backgroundColor: '#172f40', color: '#f4f7fa', font: '12px/1.6 "DM Sans", sans-serif', borderRadius: '4px', maxWidth: '300px' } };
+    return { text: `${p.satellite}${p.record_unit === 'predicted_cell' ? ' · Predicted 500 m cell' : p.record_unit === 'fire_group' ? ' · Fire group' : ''}${p.p_viirs !== undefined ? `\nVIIRS detection probability: ${(p.p_viirs * 100).toFixed(1)}%` : ''}${state.collection.metadata.source === 'simulated' ? ' · SIMULATED' : ''}\nRaw FRP: ${power(p.raw_frp)}\nNormalized FRP: ${power(p.normalized_frp)}\nAcquired (UTC): ${p.observed_at_utc || `${p.acq_time_utc} · undated`}\nLocal mean solar time: ${p.local_solar_time || 'Unavailable'}\nPlatform: ${p.platform || p.satellite}\nConfidence: ${p.confidence || 'Unavailable'}\nLatitude, longitude: ${feature.geometry.coordinates[1].toFixed(4)}, ${feature.geometry.coordinates[0].toFixed(4)}`, style: { backgroundColor: '#172f40', color: '#f4f7fa', font: '12px/1.6 "DM Sans", sans-serif', borderRadius: '4px', maxWidth: '300px' } };
   }, [state.collection.metadata.source]);
 
   return <Map mapLib={mapLib} ref={mapRef} initialViewState={camera.current ?? INITIAL_VIEW_STATE} onMoveEnd={event => { const v = event.viewState; saveCamera({ longitude: v.longitude, latitude: v.latitude, zoom: v.zoom, pitch: v.pitch, bearing: v.bearing }); }} onLoad={() => { setReady(true); onLoad?.(); }}
-    mapStyle={BASEMAP_STYLES.dark} projection={{ type: projection }} transformStyle={INITIAL_BASEMAP_TRANSFORM} pixelRatio={RENDER_PIXEL_RATIO}
+    mapStyle={BASEMAP_STYLES.dark} projection={{ type: projection }} transformStyle={INITIAL_BASEMAP_TRANSFORM} transformRequest={basemapRequest} pixelRatio={RENDER_PIXEL_RATIO}
     sky={projection === 'globe' ? ORBITAL_SKY : FLAT_SKY} minZoom={-2} renderWorldCopies={false} dragRotate touchPitch touchZoomRotate keyboard pitchWithRotate maxPitch={85}>
     <DeckGLOverlay useDevicePixels={RENDER_PIXEL_RATIO} interleaved={false} layers={layers} getTooltip={tooltip} onClick={info => { if (mode !== 'static') return; onSelectFeature?.((info.object as FireFeature | undefined) ?? null); }} />
     <NavigationControl position="top-right" visualizePitch />

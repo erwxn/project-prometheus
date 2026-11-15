@@ -20,8 +20,21 @@ export function validateUpload(file: Pick<File, 'name' | 'size'>): string | null
   return null;
 }
 
+export class ObservationRateLimitError extends Error {
+  readonly retryAt: number;
+
+  constructor(retryAfter: string | null) {
+    super('The observation API reached its request limit. Refresh will resume after the cooldown.');
+    const now = Date.now();
+    const value = retryAfter?.trim() ?? '';
+    const delay = /^\d+$/.test(value) ? Number(value) * 1000 : Date.parse(value) - now;
+    this.retryAt = now + (Number.isFinite(delay) ? Math.max(1000, Math.min(delay, 15 * 60_000)) : 15 * 60_000);
+  }
+}
+
 export async function loadObservations(base: string, signal: AbortSignal, request: typeof fetch = fetch): Promise<FireCollection> {
   const response = await request(`${base}/api/v1/fires`, { signal, cache: 'no-store' });
+  if (response.status === 429) throw new ObservationRateLimitError(response.headers.get('Retry-After'));
   if (!response.ok) throw new Error(`Could not load observations (HTTP ${response.status}).`);
   return parseCollection(await response.json());
 }

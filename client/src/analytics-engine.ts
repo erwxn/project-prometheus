@@ -33,6 +33,10 @@ export function datasetDateBounds(collection: FireCollection): [string, string] 
     return date && validDate(date) ? [date] : [];
   });
   if (collection.metadata.coverage_scope === 'global') for (const interval of collection.metadata.coverage ?? []) dates.push(interval.startDate, interval.endDate);
+  if (collection.metadata.delivery_format) for (const bound of [collection.metadata.observed_from, collection.metadata.observed_to]) {
+    const date = bound?.slice(0, 10);
+    if (date && validDate(date)) dates.push(date);
+  }
   dates.sort();
   return [dates[0] ?? '', dates.at(-1) ?? ''];
 }

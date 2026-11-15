@@ -96,7 +96,7 @@ web-service-Nasa-Space-Apps/
 ---
 
 ## 🌐 Deployment (Vercel)
-The root `vercel.json` automatically routes client requests to the static build (`client/dist`) and API requests to `server/index.js` via `@vercel/node`.
+The root `vercel.json` serves the static build (`client/dist`) and routes API requests to Express through `api/index.js`.
 
 ## Import a NASA FIRMS MODIS CSV
 
@@ -204,11 +204,12 @@ Layer optimization guidance: https://deck.gl/docs/developer-guide/performance
 
 ## Step 8: Vercel monorepo deployment and API selection
 
-Use the repository root (`.`) as the Vercel project's Root Directory. Keep the root
-`vercel.json`: it builds `client/package.json` with `@vercel/static-build` into `dist`,
-and exports `server/index.js` through `@vercel/node`. API and health routes precede
-static routing. The existing filesystem and `/about` routes preserve the data guide;
-the final catch-all maps to `client/$1`.
+Use the repository root (`.`) as the Vercel project's Root Directory and Other as
+the framework preset. The root `vercel.json` builds the workspace with `npm run build`,
+serves `client/dist`, and exports Express through `api/index.js` on Node 24.
+API and health routes precede static routing; Explore, Analyze, Monitor and About
+all have direct routes. See [the hosting guide](docs/vercel-hosting.md) for the
+bundled historical preview, Azure connection settings and hosted data limits.
 
 The root workspace lockfile now includes both client and server dependencies for
 reproducible installation (`npm ci` from the repository root). The Express app is
@@ -251,6 +252,8 @@ dependencies, launch commands, feature walkthrough, limitations, and validation.
 
 ## Production harmonized results
 
+The actual team ZIP/cell schema is supported in Explore and Analyze. Run `npm run harmonized:preview` alongside `npm run client:dev` to preview the included 2014 Morocco delivery. See [the delivery format and GCP setup](docs/harmonized-delivery.md) for model-counting rules and the cloud publication contract.
+
 The service supports configurable API or private Google Cloud Storage snapshots in CSV, Parquet, or tabular JSON. See [the integration and teammate handoff guide](docs/harmonized-feed.md) for environment settings, column mapping, credentials, local fixtures, validation commands, and cache limitations. The MODIS upload remains a separate temporary testing tool.
 
 ## Historical archive explorer
@@ -264,3 +267,7 @@ unchanged; generated indexes and caches remain Git-ignored.
 ## Experience workstreams
 
 Explore, Analyze and Monitor share navigation without accounts. See [the team workstream guide](docs/experiences.md) for routes, file ownership boundaries and the live-feed integration contract.
+
+## Historical delivery foundation
+
+Analyze includes complete-search CSV export, dataset version/coverage details and a month-by-year heatmap. See [the historical query and publication contract](docs/historical-delivery.md) for API requests, source limits, export scope and model integration requirements. Raw test data remains explicitly separate from validated harmonized activity.

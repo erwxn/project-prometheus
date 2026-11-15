@@ -5,7 +5,7 @@ import { metricLabel, metricUnit } from './analytics-model';
 import type { ArchiveBucket, ArchiveSummary } from './archive-model';
 import { alignedKeys, chartTitle, historicalLabel, historicalValue, periodKeys, valuesForYear, type TrendGrouping } from './historical-chart';
 
-const colors = ['#365f76', '#8b4f76', '#277569', '#9a641d', '#5151a3', '#9c3b3b', '#4b6f2a', '#6d4c9a', '#ad6a00', '#227b82'];
+const colors = ['#365f76', '#8b4f76', '#277569', '#9a641d', '#5151a3', '#9c3b3b', '#4b6f2a', '#6d4c9a', '#ad6a00', '#227b82'].map((color, index) => `var(--chart-${index + 1}, ${color})`);
 const dashes = ['', '7 4', '2 4', '10 3 2 3', '4 2'];
 const buckets = (summary: ArchiveSummary | null, grouping: TrendGrouping): ArchiveBucket[] => summary?.[grouping] ?? [];
 

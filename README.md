@@ -73,9 +73,11 @@ flowchart TB
     style DATA fill:#102622,stroke:#38746a,color:#dff8f0,stroke-width:1px
 ```
 
-MODIS and VIIRS are satellite instruments with different spatial resolutions and overpass times. Prometheus helps researchers and responders compare fire activity without treating the sensors' original counts as directly equivalent. The upstream pipeline produces harmonized data. The web app validates the published records and gives users tools to filter, compare, and export them. Monitor's seasonal overlay comes from the separate [offline Morocco model](server/train-morocco-seasonal.py).
+NASA FIRMS distributes active-fire products at approximately **1 km for MODIS** (Terra and Aqua) and **375 m for VIIRS** (Suomi NPP, NOAA-20, and NOAA-21). VIIRS can detect smaller hotspots, and different overpass times can capture different stages of a fire. A change in raw hotspot counts can reflect a change in the observing system. [NASA FIRMS active-fire products](https://firms.modaps.eosdis.nasa.gov/map/index.html) · [NASA VIIRS product description](https://firms.modaps.eosdis.nasa.gov/content/descriptions/FIRMS_VIIRS_Firehotspots.html)
 
-[Run locally](#local-quick-start) · [Try the sample](#try-the-bundled-morocco-zip) · [Find code and API routes](#repository-and-api-guide) · [Troubleshoot](#troubleshooting)
+The upstream pipeline produces harmonized data. The web app validates the published records and gives users tools to filter, compare, and export them. Monitor's seasonal overlay comes from the separate [offline Morocco model](server/train-morocco-seasonal.py).
+
+[Judging walkthrough](#judging-walkthrough) · [Run locally](#local-quick-start) · [Find code and API routes](#repository-and-api-guide) · [Troubleshoot](#troubleshooting)
 
 | Route | What you can do |
 | --- | --- |
@@ -84,6 +86,16 @@ MODIS and VIIRS are satellite instruments with different spatial resolutions and
 | `/analytics/` | Filter by area and date, use the burning calendar and seasonal charts, compare countries, and export matching records. |
 | `/monitor/` | Inspect the rolling UTC activity window, use playback, and open the monthly Morocco prediction overlay. |
 | `/about/` | Read about the project and its scientific context. |
+
+## Judging walkthrough
+
+Prometheus helps users answer three questions for an area they care about: **When is activity usually highest? How does a selected period compare with history? How did two places compare over the same dates?** Follow the [local quick start](#local-quick-start) and try these workflows without cloud credentials.
+
+1. **Inspect the delivered model results.** [Load the 2014 Morocco ZIP](#try-the-bundled-morocco-zip) in Analyze. Check the 117 selected cells, open the burning calendar, and select a day to see the map and statistics update. Use **Download search CSV** to inspect the exported records and their provenance.
+2. **Compare seasons and places.** Choose **Use simulated history** to try the month-by-year heatmap and historical comparisons. Select **MODIS**, open **Compare places**, and compare Morocco and Spain from January through December 2025. The simulated series illustrates the controls and comparison rules.
+3. **Check how the app handles uncertainty.** Look at the legend and dataset details for coverage, counting units, and source information. An anomaly requires comparable coverage for the selected period and the three prior reference years. Dates with no records and unknown coverage stay visible as gaps.
+
+The bundled delivery covers one historical year in Morocco. The [Azure Gold verification report](deploy/evidence/TEST_RESULTS.md) records which historical observations, predictions, and evaluation datasets were checked independently of the simulated walkthrough.
 
 ## Local quick start
 
@@ -118,6 +130,15 @@ You can follow this walkthrough without Azure credentials. Explore and Analyze t
 
 For a standalone check of `/api/v1/fires`, stop the API and run `npm run harmonized:preview` in its place. Open [the snapshot endpoint](http://localhost:5000/api/v1/fires) and look for `metadata.preview` and `metadata.predicted_cells`. The [delivery guide](docs/harmonized-delivery.md) explains the ZIP schema and counting rules.
 
+### Try the Explore timeline and reports
+
+- **24 hours** shows one window. The default UTC window for dated observations includes the latest record. For an imported MODIS CSV, find the editable window start under **Region and research controls**.
+- **Full filtered file** spans the dates in the current selection. **Previous 60 min** follows the playback cursor, and **Next detection** jumps to the next timestamp with a matching record.
+- **UTC** uses the original acquisition timestamps. **Solar** aligns observations by local mean solar time, calculated as UTC plus longitude divided by 15 hours. Observations with the same solar time at different longitudes may have been acquired at different UTC times.
+- **Export PDF** and **Download CSV** use the current Explore map selection. For a complete filtered search across archive pages, use **Download search CSV** in Analyze. **Share this view** saves the selection and camera in a link. Uploaded data files stay in your session.
+
+The map uses OpenFreeMap vector tiles in both themes, and the map theme can be set independently of the interface. See the [Explore implementation guide](docs/explore-features.md) for map and share-link details.
+
 ## Data sources
 
 | Source | What it contains | How to use it |
@@ -127,9 +148,13 @@ For a standalone check of `/api/v1/fires`, stop the API and run `npm run harmoni
 | **Raw NASA FIRMS** | Satellite hotspot records, including a separate local SQLite archive. | Use **Upload MODIS CSV** for a browser session. To prepare the indexed archive, follow the [archive guide](HISTORICAL_ARCHIVE.md). |
 | **Simulated history** | Synthetic 2021–2025 examples for testing the calendar, filters, and comparisons. | In local development, choose **Use simulated history** in the dataset controls. |
 
-Supported temporary uploads are capped at 3 MiB and 50,000 records. Uploads are processed in memory for the current session. The MODIS parser expects `latitude`, `longitude`, `acq_date`, `acq_time`, `satellite`, `confidence`, and `frp`. The server also accepts a local CSV at `server/data/modis.csv` or via `FIRES_CSV_PATH` for the snapshot endpoint.
+### Import a raw MODIS CSV
 
-The app counts records according to their source. A **hotspot detection** records heat observed by a sensor. A **predicted cell** is a model-selected grid cell. A **fire group** combines records from one satellite pass. **Fire radiative power (FRP)** is measured in megawatts and describes the rate of energy released. Gold scores are uncalibrated model outputs. Dates with unknown satellite coverage are shown as gaps. See the [analytics guide](FIRE_ANALYTICS.md) and [historical query and export contract](docs/historical-delivery.md) for the interpretation rules.
+Use **Upload MODIS CSV** in the same dataset controls as the ZIP. You can try the [three-row synthetic CSV fixture](client/tests/fixtures/analytics-smoke.csv) first. The parser expects `latitude`, `longitude`, `acq_date` (`YYYY-MM-DD`), `acq_time` (UTC `HHMM`), `satellite` (`T` or `Terra`, `A` or `Aqua`), `confidence` (0–100), and `frp` (nonnegative MW). Invalid rows are counted and excluded. A missing required column or a file with no valid rows is rejected. Raw imports preserve measured FRP.
+
+Temporary uploads are capped at 3 MiB and 50,000 records and are processed in memory for the current session. To use a CSV as the server's snapshot source during local testing, put it at `server/data/modis.csv` or set `FIRES_CSV_PATH` to its absolute path, then restart the API. Read it at `/api/v1/fires`. Explore and Analyze still start with Gold by default.
+
+The app counts records according to their source. A **hotspot detection** records heat observed by a sensor. A **predicted cell** is a model-selected grid cell. A **fire group** combines records from one satellite pass. **Fire radiative power (FRP)** is measured in megawatts and describes the rate of energy released. Gold scores are uncalibrated model outputs. See the [analytics guide](FIRE_ANALYTICS.md) and [historical query and export contract](docs/historical-delivery.md) for the interpretation rules.
 
 ## Repository and API guide
 
@@ -146,6 +171,8 @@ The app counts records according to their source. A **hotspot detection** record
 | `GET /health` | Confirm that the API process is serving requests. |
 | `GET /api/gold/catalog` and `GET /api/gold/explorer` | Inspect committed Gold metadata and retrieve paginated Morocco map points. |
 | `GET /api/v1/fires` | Read the configured snapshot, local import, or demo data, depending on server settings. |
+| `GET /api/v1/fires/sample` | Get the illustrative demo payload for API testing. |
+| `GET /api/v1/fires/diurnal?hour=HH` | Filter the active snapshot by local mean solar hour (`00`–`23`). |
 | `POST /api/v1/fires/upload` and `POST /api/v1/fires/upload-harmonized` | Validate a session-only MODIS CSV or harmonized dataset. |
 | `POST /api/v1/history/query` and `POST /api/v1/history/export.csv` | Query or export a historical selection. |
 
@@ -178,5 +205,7 @@ For data-specific checks, use `npm run harmonized:check -- test-data/harmonized/
 ## Deploy on Vercel
 
 Use the repository root and the **Other** framework preset. [`vercel.json`](vercel.json) installs with `npm ci`, serves `client/dist`, and routes API requests through [`api/index.js`](api/index.js). The production client uses the site's own API origin by default.
+
+Set `ENABLE_CSV_UPLOAD=false` on the API to disable both temporary upload endpoints. Build the client with `VITE_ENABLE_CSV_UPLOAD=false` to hide the upload controls.
 
 Keep credentials on the server. Follow the [Azure Gold deployment instructions](deploy/BACKEND_CONNECTION.md#existing-vercel-project) to connect the current Explore and Analyze maps. The [Vercel hosting guide](docs/vercel-hosting.md) covers the snapshot endpoint and the historical fixture. The local FIRMS SQLite archive is excluded from the hosted bundle.

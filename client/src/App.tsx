@@ -1,3 +1,4 @@
+import { modelCellVisible } from './map-layers';
 import { comparisonMonth } from './season-comparison';
 import { navigateDashboard } from './dashboard-navigation';
 import { observationCsv } from './observation-csv';
@@ -103,7 +104,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
   const clockFormat = useMemo(() => new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }), []);
   const dateFormat = useMemo(() => new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }), []);
   const formatInstant = (time: number) => `${hasDates ? `${dateFormat.format(time)}, ` : ''}${clockFormat.format(time)}`;
-  const datasetFires = useMemo(() => selected.map(row => row.feature), [selected]);
+  const datasetFires = useMemo(() => selected.filter(row => modelCellVisible(row.feature.properties, false, false)).map(row => row.feature), [selected]);
   const filteredFires = useMemo(() => datasetFires.filter(fire => matchesTime(timestamps.get(fire) ?? NaN, windowStart, cursorPosition, allHoursMode, durationMinutes)), [datasetFires, timestamps, windowStart, cursorPosition, allHoursMode, durationMinutes]);
   const datasetTimes = useMemo(() => datasetFires.map(fire => timestamps.get(fire) ?? NaN), [datasetFires, timestamps]);
   const nextMinute = useMemo(() => nextDetectionMinute(datasetTimes, windowStart, cursorPosition, durationMinutes), [datasetTimes, windowStart, cursorPosition, durationMinutes]);
@@ -388,7 +389,7 @@ export default function App({ theme, setTheme, mapTheme, mapPreference, setMapPr
           </section>}
           <div className="thermal-legend" hidden={!!activeFire} aria-label="Satellite markers and fire radiative power">
             <p className="marker-note"><strong>Pixel area + centre</strong></p>
-            <div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Color shows FRP. Outlines show native cell geometry when supplied, or an approximate pixel area. They do not trace the fire perimeter.</p>
+            <div><span>Fire radiative power</span><span>MW</span></div><div className="thermal-ramp" /><div className="legend-values"><span>&lt;50</span><span>50–150</span><span>&gt;150 MW</span></div><p className="marker-note">Model cells shown passed the delivery decision. Color shows FRP. Outlines show native cell geometry when supplied, or an approximate pixel area. They do not trace the fire perimeter.</p>
           </div>
 
           <div className="map-bottom-controls">

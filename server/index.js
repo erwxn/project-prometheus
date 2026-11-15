@@ -20,7 +20,7 @@ if (process.env.VERCEL) app.set('trust proxy', 1);
 
 // Security & utility middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({ exposedHeaders: ['Retry-After'] }));
 app.use(express.json());
 
 // Express rate limiter: 100 requests per 15 minutes window

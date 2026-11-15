@@ -3,7 +3,7 @@ import { SeasonalHeatmap } from './SeasonalHeatmap';
 import { DatasetStatus } from './DatasetStatus';
 import { MapLoading } from './MapLoading';
 import { mapFeedback } from './map-feedback';
-import { MapAppearance } from './MapAppearance';
+import { BasemapAppearance, MapAppearance } from './MapAppearance';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MapRef } from 'react-map-gl/maplibre';
 import { SiteBrand, SiteNavigation } from './SiteHeader';
@@ -14,16 +14,67 @@ import { AreaControls, DatasetControls, GlobalFilters } from './DashboardControl
 import { FireMap } from './FireMap';
 import { ActivityCalendar } from './ActivityCalendar';
 import { HistoricalActivity } from './HistoricalActivity';
+import { PlaceComparison } from './PlaceComparison';
 import { CountrySearch } from './CountrySearch';
 import { areaBounds } from './area-selection';
 import { metricUnit, type DrawMode } from './analytics-model';
 import { archiveFeature } from './archive-model';
 import orbitalStars from './assets/orbital-stars.svg';
+import type { ThemeProps } from './theme';
 
 const whole = new Intl.NumberFormat();
 const decimal = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 const hourLabel = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 const formatPower = (value: number | null) => value === null ? '—' : `${decimal.format(value)} MW`;
+
+const analysisSections = [
+  ['analysis-filters', 'Filters'],
+  ['calendar-title', 'Calendar'],
+  ['seasonal-title', 'Seasonality'],
+  ['history-title', 'History'],
+  ['places-title', 'Places'],
+  ['analysis-export', 'Export'],
+  ['details-title', 'Details'],
+] as const;
+
+function AnalysisNavigation() {
+  const nav = useRef<HTMLElement>(null);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  useEffect(() => {
+    const navigation = nav.current;
+    if (!navigation) return;
+    const targets = analysisSections.map(([id]) => document.getElementById(id));
+    let frame = 0;
+    function update() {
+      frame = 0;
+      const edge = (navigation?.getBoundingClientRect().bottom ?? 0) + 40;
+      let active: string | null = null;
+      for (const target of targets) {
+        if (target && target.getBoundingClientRect().top <= edge) active = target.id;
+      }
+      setActiveSection(active);
+    }
+    function scheduleUpdate() {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    }
+    const resize = new ResizeObserver(scheduleUpdate);
+    resize.observe(navigation.parentElement!);
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate);
+    scheduleUpdate();
+    return () => {
+      resize.disconnect();
+      window.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
+      window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  return <nav className="analytics-jump-nav" aria-label="Analyze sections" ref={nav}>
+    {analysisSections.map(([id, label]) => <a key={id} href={`#${id}`} aria-current={id === activeSection ? 'location' : undefined}>{label}</a>)}
+  </nav>;
+}
 
 function HourlyChart({ hours, clock }: { hours: number[]; clock: string }) {
   const maxCount = Math.max(...hours, 1);
@@ -69,10 +120,9 @@ function Breakdown({ rows, total }: { rows: { label: string; count: number }[]; 
   );
 }
 
-export default function AnalyticsPage() {
+export default function AnalyticsPage({ theme, setTheme, mapTheme, mapPreference, setMapPreference }: ThemeProps) {
   const { camera, state, selected, summary, archive } = useDashboard();
   const [basis, setBasis] = useState<TimeBasis>('utc');
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [projection, setProjection] = useState<'mercator' | 'globe'>('mercator');
   const [mode, setMode] = useState<DrawMode>('static');
   const [drawingError, setDrawingError] = useState('');
@@ -108,13 +158,29 @@ export default function AnalyticsPage() {
     <header className="mission-header"><SiteBrand /><SiteNavigation current="analytics" /><div className="challenge-tag"><span className="tiny-orbit" aria-hidden="true" />NASA Space Apps</div><MapAppearance value={theme} onChange={setTheme} /></header>
     {state.collection.metadata.source === 'simulated' && <div className="simulation-banner" role="status">SIMULATED HISTORY · Synthetic examples, not NASA satellite observations.</div>}
     <main className="analytics-content">
-      <section className="analytics-hero" aria-labelledby="analytics-title"><h1 id="analytics-title">Fire analytics</h1><p>Explore where satellite hotspots occur, follow activity through time, and compare observations with a defensible historical reference.</p></section>
-      <DatasetControls />
-      <div className="analytics-map-layout">
-        <section className="map-stage analytics-map" data-projection={projection} aria-label="Analytics fire observation map">
+      <section className="analytics-hero" aria-labelledby="analytics-title">
+        <div className="analytics-hero-copy">
+          <h1 id="analytics-title">Fire analytics</h1>
+          <p>Explore satellite hotspots across a region, read the burning calendar, and compare fire activity across years.</p>
+        </div>
+      </section>
+      <dl className="analytics-metrics" aria-label="Fire statistics" aria-busy={loading}>
+        <div><dt>Total hotspot detections</dt><dd>{loading ? '—' : whole.format(summary.count)}<small>Satellite records matching the filters</small></dd></div>
+        <div><dt>Active observation days</dt><dd>{loading || summary.activeDays === null ? '—' : whole.format(summary.activeDays)}<small>{summary.activeDays === null ? 'Acquisition dates unavailable' : 'UTC days with at least one detection'}</small></dd></div>
+        <div><dt>Average FRP</dt><dd>{loading ? '—' : formatPower(summary.meanFrp)}<small>{whole.format(summary.frpCount)} valid readings{state.filters.sensor === 'Harmonized' ? ' · stored estimates' : ' · measured FRP'}</small></dd></div>
+        <div><dt>Peak activity day</dt><dd className="peak-day" title={summary.peakDays.join(', ')}>{loading ? '—' : summary.peakDays[0] || '—'}<small>{summary.peak === null ? 'No dated activity value available' : `${decimal.format(summary.peak)} ${metricUnit(state.filters.metric)}${summary.peakDays.length > 1 ? ` · ${summary.peakDays.length} days tied` : ''}`}</small></dd></div>
+      </dl>
+      <AnalysisNavigation />
+      {state.filters.selectedDay && <p className="selected-day-note" role="status">Map and summaries focus on {state.filters.selectedDay} UTC. Calendar and historical charts retain the selected range.</p>}
+      <section className="analytics-query" aria-labelledby="analysis-filters">
+        <h2 id="analysis-filters">Region and filters</h2>
+        <DatasetControls />
+        <GlobalFilters />
+        <div className="analytics-map-layout">
+        <section className="map-stage analytics-map" data-map-theme={mapTheme} data-projection={projection} aria-label="Analytics fire observation map">
           {projection === 'globe' && <img className="orbital-stars" src={orbitalStars} alt="" aria-hidden="true" draggable={false} />}
-          <FireMap mapRef={mapRef} features={features} theme={theme} projection={projection} mode={mode} onModeChange={changeMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
-          <div className="map-top-controls"><div className="map-heading"><h2>{state.filters.area ? 'Selected area' : 'All locations'} <span>/ {whole.format(features.length)} detections</span></h2></div><CountrySearch onSelect={([, , bounds]) => { if (!mapRef.current) return false; mapRef.current.fitBounds(bounds, { padding: 75, pitch: 0, maxZoom: 9 }); return true; }} /><div className="projection-switch" role="group" aria-label="Map projection"><button aria-pressed={projection === 'mercator'} onClick={() => { setMode('static'); setProjection('mercator'); }}>Flat map</button><button aria-pressed={projection === 'globe'} onClick={() => { setMode('static'); setProjection('globe'); }}>3D globe</button></div></div>
+          <FireMap mapRef={mapRef} features={features} theme={mapTheme} projection={projection} mode={mode} onModeChange={changeMode} onDrawingError={setDrawingError} onLoad={() => setMapReady(true)} />
+          <div className="map-top-controls"><div className="map-heading"><h2>{state.filters.area ? 'Selected area' : 'All locations'} <span>/ {whole.format(features.length)} detections</span></h2></div><CountrySearch onSelect={([, , bounds]) => { if (!mapRef.current) return false; mapRef.current.fitBounds(bounds, { padding: 75, pitch: 0, maxZoom: 9 }); return true; }} /><div className="projection-switch" role="group" aria-label="Map projection"><button aria-pressed={projection === 'mercator'} onClick={() => { setMode('static'); setProjection('mercator'); }}>Flat map</button><button aria-pressed={projection === 'globe'} onClick={() => { setMode('static'); setProjection('globe'); }}>3D globe</button></div><BasemapAppearance value={mapPreference} onChange={setMapPreference} /></div>
           {mode !== 'static' && <p className="map-drawing-status" role="status">{mode === 'select' ? 'Editing selected area' : `Drawing ${mode}`} · Finish or cancel in the area controls</p>}
           {mapState === 'loading' && <MapLoading />}
           {mapState === 'error' && <p className="analytics-map-empty" role="alert">Map observations could not be loaded. Use Retry archive in the filters to try again.</p>}
@@ -122,22 +188,19 @@ export default function AnalyticsPage() {
           <div className="map-activity-caption">{state.collection.metadata.source === 'simulated' ? 'SIMULATED' : state.collection.metadata.source === 'csv' ? 'IMPORTED SNAPSHOT' : 'ILLUSTRATIVE DEMO'} · {state.filters.sensor} · Points show detections, not fire perimeters</div>
         </section>
         <aside className="analytics-area-panel" aria-label="Geographic area selection"><AreaControls mapRef={mapRef} mode={mode} onModeChange={changeMode} error={drawingError} onError={setDrawingError} /></aside>
-      </div>
-      <GlobalFilters />
-      <DatasetStatus />
-      <SearchExport />
-      <dl className="analytics-metrics" aria-label="Fire statistics" aria-busy={loading}>
-        <div><dt>Total hotspot detections</dt><dd>{loading ? '—' : whole.format(summary.count)}<small>Satellite records matching the filters</small></dd></div>
-        <div><dt>Active observation days</dt><dd>{loading || summary.activeDays === null ? '—' : whole.format(summary.activeDays)}<small>{summary.activeDays === null ? 'Acquisition dates unavailable' : 'UTC days with at least one detection'}</small></dd></div>
-        <div><dt>Average FRP</dt><dd>{loading ? '—' : formatPower(summary.meanFrp)}<small>{whole.format(summary.frpCount)} valid readings{state.filters.sensor === 'Harmonized' ? ' · stored estimates' : ' · measured FRP'}</small></dd></div>
-        <div><dt>Peak activity day</dt><dd className="peak-day" title={summary.peakDays.join(', ')}>{loading ? '—' : summary.peakDays[0] || '—'}<small>{summary.peak === null ? 'No dated activity value available' : `${decimal.format(summary.peak)} ${metricUnit(state.filters.metric)}${summary.peakDays.length > 1 ? ` · ${summary.peakDays.length} days tied` : ''}`}</small></dd></div>
-      </dl>
-      {state.filters.selectedDay && <p className="selected-day-note" role="status">Map and summaries focus on {state.filters.selectedDay} UTC. Calendar and historical charts retain the selected range.</p>}
+        </div>
+        <details className="analytics-provenance">
+          <summary>Dataset provenance and coverage</summary>
+          <DatasetStatus />
+        </details>
+      </section>
       {!loading && !summary.count && <p className="dashboard-unavailable" role="status">No recorded detections match these filters. Change the area, sensor, dates, or selected day. Unknown coverage is not a known zero.</p>}
       <ActivityCalendar />
-      <HistoricalActivity />
       <SeasonalHeatmap />
-      <section className="dashboard-section observation-analytics" aria-labelledby="details-title"><div className="section-toolbar"><div><span className="section-number">03 / OBSERVATION DETAILS</span><h2 id="details-title">Observation detail analytics</h2><p>Hourly timing, source breakdown, FRP distribution, and strongest readings for the focused selection.</p></div><label>Hourly chart clock<select value={basis} onChange={e => setBasis(e.target.value as TimeBasis)}><option value="utc">UTC</option><option value="solar">Local mean solar time</option></select></label></div>
+      <HistoricalActivity />
+      <PlaceComparison />
+      <div id="analysis-export"><SearchExport /></div>
+      <section className="dashboard-section observation-analytics" aria-labelledby="details-title"><div className="section-toolbar"><div><h2 id="details-title">Observation details</h2><p>Hourly timing, source breakdown, FRP distribution, and strongest readings for the focused selection.</p></div><label>Hourly chart clock<select value={basis} onChange={e => setBasis(e.target.value as TimeBasis)}><option value="utc">UTC</option><option value="solar">Local mean solar time</option></select></label></div>
           <div className="analytics-grid">
             <section className="analytics-card" aria-labelledby="hourly-title">
               <h2 id="hourly-title">Detections by hour</h2>
